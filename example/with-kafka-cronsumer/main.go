@@ -5,9 +5,15 @@ import (
 	"github.com/Abdulsametileri/kafka-template/pkg/kafka"
 	"github.com/Abdulsametileri/kafka-template/pkg/listener"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
+	gracefulShutdown := make(chan os.Signal, 1)
+	signal.Notify(gracefulShutdown, syscall.SIGTERM, syscall.SIGINT)
+
 	kafkaCfg := &config.Kafka{
 		Servers: "localhost:29092",
 	}
@@ -24,9 +30,13 @@ func main() {
 	}
 
 	processor := NewProcessor()
+	processor.Cronsumer.Start()
 
 	activeListenerManager := listener.NewManager()
 	activeListenerManager.RegisterAndStart(consumer, processor, kafkaConsumer.Concurrency)
 
-	select {}
+	<-gracefulShutdown
+
+	activeListenerManager.Stop()
+	processor.Cronsumer.Stop()
 }
