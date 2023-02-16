@@ -60,6 +60,7 @@ func (c *consumer) Consume(processor Processor) {
 func (c *consumer) consume() {
 	c.wg.Add(1)
 	defer c.wg.Done()
+
 	for {
 		select {
 		case <-c.quit:
