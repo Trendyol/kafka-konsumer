@@ -1,6 +1,6 @@
-module gitlab.trendyol.com/mobile/zeus/albus/kafka
+module github.com/Trendyol/kafka-konsumer
 
-go 1.18
+go 1.19
 
 require github.com/segmentio/kafka-go v0.4.38
 
