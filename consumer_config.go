@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"github.com/segmentio/kafka-go"
 	"runtime"
 )
@@ -14,6 +15,10 @@ type ConsumerConfig struct {
 	// Concurrency default is runtime.NumCPU()
 	Concurrency int
 	Reader      ReaderConfig
+
+	CronsumerEnabled bool
+	CronsumerConfig  *kcronsumer.Config
+	ExceptionFunc    func(kcronsumer.Message) error
 }
 
 func (c ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {

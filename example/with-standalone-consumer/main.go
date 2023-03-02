@@ -21,8 +21,11 @@ func main() {
 		},
 	})
 
-	processor := NewProcessor()
-	consumer.Consume(processor)
+	consumer.Consume(func(message kafka.Message) {
+		fmt.Println(message.Key, message.Value, message.Topic)
+	})
+
+	defer consumer.Stop()
 
 	fmt.Println("Consumer started...!")
 

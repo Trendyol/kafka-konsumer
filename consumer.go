@@ -2,17 +2,14 @@ package kafka
 
 import (
 	"context"
+	cronsumer "github.com/Trendyol/kafka-cronsumer"
+	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"github.com/segmentio/kafka-go"
-	"io"
 	"sync"
 )
 
-type Processor interface {
-	Process(message Message)
-}
-
 type Consumer interface {
-	Consume(processor Processor)
+	Consume(func(Message))
 	Stop() error
 	Lag() int64
 }
@@ -22,28 +19,38 @@ type consumer struct {
 	m           sync.Mutex
 	wg          sync.WaitGroup
 	once        sync.Once
-	messageCh   chan Message
+	messageCh   chan Message // TODO: enhancement sync pool yapılabilir mi
 	quit        chan struct{}
 	concurrency int
+	cronsumer   kcronsumer.Cronsumer
 }
 
 var _ Consumer = (*consumer)(nil)
 
 func NewConsumer(cfg ConsumerConfig) (Consumer, error) {
-	reader, err := cfg.newKafkaReader()
+	c := consumer{
+		messageCh:   make(chan Message, cfg.Concurrency),
+		quit:        make(chan struct{}),
+		concurrency: cfg.Concurrency,
+	}
+
+	var err error
+
+	c.r, err = cfg.newKafkaReader()
 	if err != nil {
 		return nil, err
 	}
 
-	return &consumer{
-		r:           reader,
-		messageCh:   make(chan Message, cfg.Concurrency),
-		quit:        make(chan struct{}),
-		concurrency: cfg.Concurrency,
-	}, nil
+	if cfg.CronsumerEnabled {
+		c.cronsumer = cronsumer.New(cfg.CronsumerConfig, cfg.ExceptionFunc)
+	}
+
+	return &c, nil
 }
 
-func (c *consumer) Consume(processor Processor) {
+func (c *consumer) Consume(processFn func(Message)) {
+	c.cronsumer.Start()
+
 	go c.consume()
 
 	for i := 0; i < c.concurrency; i++ {
@@ -51,7 +58,7 @@ func (c *consumer) Consume(processor Processor) {
 		go func() {
 			defer c.wg.Done()
 			for message := range c.messageCh {
-				processor.Process(message)
+				processFn(message)
 			}
 		}()
 	}
@@ -68,10 +75,6 @@ func (c *consumer) consume() {
 		default:
 			message, err := c.r.ReadMessage(context.Background())
 			if err != nil {
-				if err == io.EOF {
-					break
-				}
-
 				continue
 			}
 
@@ -83,6 +86,7 @@ func (c *consumer) consume() {
 func (c *consumer) Stop() error {
 	var err error
 	c.once.Do(func() {
+		c.cronsumer.Stop()
 		err = c.r.Close()
 		c.quit <- struct{}{}
 		close(c.messageCh)
