@@ -4,10 +4,12 @@ go 1.19
 
 replace github.com/Trendyol/kafka-konsumer => ../..
 
-require github.com/Trendyol/kafka-konsumer v0.0.0-00010101000000-000000000000
+require (
+	github.com/Trendyol/kafka-cronsumer v0.6.2
+	github.com/Trendyol/kafka-konsumer v0.0.0-00010101000000-000000000000
+)
 
 require (
-	github.com/Trendyol/kafka-cronsumer v0.6.2 // indirect
 	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
