@@ -40,7 +40,7 @@ services:
     command: "bash -c 'echo Waiting for Kafka to be ready... && \
                          cub kafka-ready -b kafka:9092 1 20 && \
                          kafka-topics --create --topic standart-topic --if-not-exists --zookeeper zookeeper:2181 --partitions 1 --replication-factor 1 && \
-                         kafka-topics --create --topic exception-topic --if-not-exists --zookeeper zookeeper:2181 --partitions 1 --replication-factor 1 && \
+                         kafka-topics --create --topic retry-topic --if-not-exists --zookeeper zookeeper:2181 --partitions 1 --replication-factor 1 && \
                          sleep infinity'"
     environment:
       KAFKA_BROKER_ID: ignored

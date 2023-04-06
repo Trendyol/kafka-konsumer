@@ -3,36 +3,33 @@ package kafka
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
+	"os"
 )
 
 type CertLoader struct {
-	RootCA  func() ([]byte, error)
-	InterCA func() ([]byte, error)
+	RootCAPath         string
+	IntermediateCAPath string
 }
 
-func (c CertLoader) TLSConfig() (*tls.Config, error) {
+func (c *CertLoader) TLSConfig() (*tls.Config, error) {
+	rootCA, err := os.ReadFile(c.RootCAPath)
+	if err != nil {
+		return nil, fmt.Errorf("Error while reading Root CA file: " + c.RootCAPath + " error: " + err.Error())
+	}
+
+	interCA, err := os.ReadFile(c.IntermediateCAPath)
+	if err != nil {
+		return nil, fmt.Errorf("Error while reading Intermediate CA file: " + c.IntermediateCAPath + " error: " + err.Error())
+	}
+
 	caCertPool := x509.NewCertPool()
-	appendCAWithLoader := func(loader func() ([]byte, error)) error {
-		if loader == nil {
-			return nil
-		}
-
-		bytes, err := loader()
-		if err != nil {
-			return err
-		}
-
-		caCertPool.AppendCertsFromPEM(bytes)
-		return nil
-	}
-
-	if err := appendCAWithLoader(c.RootCA); err != nil {
-		return nil, err
-	}
-
-	if err := appendCAWithLoader(c.InterCA); err != nil {
-		return nil, err
-	}
+	caCertPool.AppendCertsFromPEM(rootCA)
+	caCertPool.AppendCertsFromPEM(interCA)
 
 	return &tls.Config{RootCAs: caCertPool}, nil
+}
+
+func (c *CertLoader) IsEmpty() bool {
+	return c == nil || c.RootCAPath == "" && c.IntermediateCAPath == ""
 }

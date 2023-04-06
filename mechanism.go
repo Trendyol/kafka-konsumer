@@ -19,7 +19,7 @@ type SASLConfig struct {
 	Password string
 }
 
-func (s SASLConfig) Mechanism() (sasl.Mechanism, error) {
+func (s *SASLConfig) Mechanism() (sasl.Mechanism, error) {
 	if s.Type == MechanismScram {
 		return scram.Mechanism(scram.SHA512, s.Username, s.Password)
 	}
@@ -27,9 +27,13 @@ func (s SASLConfig) Mechanism() (sasl.Mechanism, error) {
 	return s.plain(), nil
 }
 
-func (s SASLConfig) plain() sasl.Mechanism {
+func (s *SASLConfig) plain() sasl.Mechanism {
 	return &plain.Mechanism{
 		Username: s.Username,
 		Password: s.Password,
 	}
+}
+
+func (s *SASLConfig) IsEmpty() bool {
+	return s == nil
 }

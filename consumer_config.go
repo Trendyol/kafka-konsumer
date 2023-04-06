@@ -1,27 +1,36 @@
 package kafka
 
 import (
-	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"github.com/segmentio/kafka-go"
 	"runtime"
+	"time"
 )
 
 type ReaderConfig kafka.ReaderConfig
 
 type ConsumerConfig struct {
+	Reader ReaderConfig
+
 	SASL *SASLConfig
 	TLS  *CertLoader
 
 	// Concurrency default is runtime.NumCPU()
 	Concurrency int
-	Reader      ReaderConfig
 
-	CronsumerEnabled bool
-	CronsumerConfig  *kcronsumer.Config
-	ExceptionFunc    func(kcronsumer.Message) error
+	ConsumeFn func(Message) error
+
+	RetryEnabled       bool
+	RetryConfiguration RetryConfiguration
 }
 
-func (c ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
+type RetryConfiguration struct {
+	MaxRetry      int
+	Topic         string
+	StartTimeCron string
+	WorkDuration  time.Duration
+}
+
+func (c *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
 	if c.SASL == nil && c.TLS == nil {
 		return nil, nil
 	}
@@ -34,7 +43,7 @@ func (c ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
 	return dialer.Dialer, nil
 }
 
-func (c ConsumerConfig) newKafkaReader() (*kafka.Reader, error) {
+func (c *ConsumerConfig) newKafkaReader() (*kafka.Reader, error) {
 	c.validate()
 
 	dialer, err := c.newKafkaDialer()
@@ -48,7 +57,7 @@ func (c ConsumerConfig) newKafkaReader() (*kafka.Reader, error) {
 	return kafka.NewReader(reader), nil
 }
 
-func (c ConsumerConfig) validate() {
+func (c *ConsumerConfig) validate() {
 	if c.Concurrency == 0 {
 		c.Concurrency = runtime.NumCPU()
 	}
