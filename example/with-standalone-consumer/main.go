@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/Trendyol/kafka-konsumer"
-	"time"
 )
 
 func main() {
@@ -14,14 +13,8 @@ func main() {
 			Topic:   "standart-topic",
 			GroupID: "standart-cg",
 		},
-		RetryEnabled: true,
-		RetryConfiguration: kafka.RetryConfiguration{
-			Topic:         "retry-topic",
-			StartTimeCron: "*/1 * * * *",
-			WorkDuration:  50 * time.Second,
-			MaxRetry:      3,
-		},
-		ConsumeFn: consumeFn,
+		RetryEnabled: false,
+		ConsumeFn:    consumeFn,
 	}
 
 	consumer, _ := kafka.NewConsumer(consumerCfg)

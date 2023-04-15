@@ -36,6 +36,7 @@ func (c *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
 	}
 
 	dialer := newDialer()
+
 	if err := fillLayer(dialer, c.SASL, c.TLS); err != nil {
 		return nil, err
 	}

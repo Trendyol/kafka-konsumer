@@ -1,13 +1,15 @@
-module with-kafka-cronsumer
+module with-kafka-producer
 
 go 1.19
 
 replace github.com/Trendyol/kafka-konsumer => ../..
 
-require github.com/Trendyol/kafka-konsumer v0.0.0-00010101000000-000000000000
-
 require (
 	github.com/Trendyol/kafka-cronsumer v0.6.4 // indirect
+	github.com/Trendyol/kafka-konsumer v0.0.0-00010101000000-000000000000
+)
+
+require (
 	github.com/klauspost/compress v1.16.4 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect

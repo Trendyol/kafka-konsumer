@@ -7,7 +7,7 @@ import (
 
 type WriterConfig struct {
 	Topic                  string
-	Servers                []string
+	Brokers                []string
 	MaxAttempts            int
 	WriteBackoffMin        time.Duration
 	WriteBackoffMax        time.Duration
@@ -32,27 +32,9 @@ type ProducerConfig struct {
 	TLS    *CertLoader
 }
 
-func (c ProducerConfig) newKafkaTransport() (*kafka.Transport, error) {
-	if c.SASL == nil && c.TLS == nil {
-		return nil, nil
-	}
-
-	transport := newTransport()
-	if err := fillLayer(transport, c.SASL, c.TLS); err != nil {
-		return nil, err
-	}
-
-	return transport.Transport, nil
-}
-
 func (c ProducerConfig) newKafkaWriter() (*kafka.Writer, error) {
-	transport, err := c.newKafkaTransport()
-	if err != nil {
-		return nil, err
-	}
-
-	return &kafka.Writer{
-		Addr:                   kafka.TCP(c.Writer.Servers...),
+	kafkaWriter := &kafka.Writer{
+		Addr:                   kafka.TCP(c.Writer.Brokers...),
 		Topic:                  c.Writer.Topic,
 		Balancer:               c.Writer.Balancer,
 		MaxAttempts:            c.Writer.MaxAttempts,
@@ -69,7 +51,25 @@ func (c ProducerConfig) newKafkaWriter() (*kafka.Writer, error) {
 		Compression:            c.Writer.Compression,
 		Logger:                 c.Writer.Logger,
 		ErrorLogger:            c.Writer.ErrorLogger,
-		Transport:              transport,
 		AllowAutoTopicCreation: c.Writer.AllowAutoTopicCreation,
-	}, nil
+	}
+
+	if c.SASL != nil || c.TLS != nil {
+		transport, err := c.newKafkaTransport()
+		if err != nil {
+			return nil, err
+		}
+		kafkaWriter.Transport = transport
+	}
+
+	return kafkaWriter, nil
+}
+
+func (c ProducerConfig) newKafkaTransport() (*kafka.Transport, error) {
+	transport := newTransport()
+	if err := fillLayer(transport, c.SASL, c.TLS); err != nil {
+		return nil, err
+	}
+
+	return transport.Transport, nil
 }

@@ -7,6 +7,7 @@ import (
 
 type Producer interface {
 	Produce(ctx context.Context, message Message) error
+	Close() error
 }
 
 type producer struct {
@@ -26,4 +27,8 @@ func NewProducer(cfg ProducerConfig) (Producer, error) {
 
 func (c *producer) Produce(ctx context.Context, message Message) error {
 	return c.w.WriteMessages(ctx, kafka.Message(message))
+}
+
+func (c *producer) Close() error {
+	return c.w.Close()
 }
