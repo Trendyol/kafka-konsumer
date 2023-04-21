@@ -10,7 +10,7 @@ type Layer interface {
 	SetSASL(mechanism sasl.Mechanism)
 }
 
-func fillLayer(layer Layer, sasl *SASLConfig, loader *CertLoader) error {
+func fillLayer(layer Layer, sasl *SASLConfig, tls *TLSConfig) error {
 	if sasl != nil {
 		mechanism, err := sasl.Mechanism()
 		if err != nil {
@@ -20,8 +20,8 @@ func fillLayer(layer Layer, sasl *SASLConfig, loader *CertLoader) error {
 		layer.SetSASL(mechanism)
 	}
 
-	if loader != nil {
-		config, err := loader.TLSConfig()
+	if tls != nil {
+		config, err := tls.TLSConfig()
 		if err != nil {
 			return err
 		}

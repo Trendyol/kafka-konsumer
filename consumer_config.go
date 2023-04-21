@@ -12,7 +12,7 @@ type ConsumerConfig struct {
 	Reader ReaderConfig
 
 	SASL *SASLConfig
-	TLS  *CertLoader
+	TLS  *TLSConfig
 
 	// Concurrency default is runtime.NumCPU()
 	Concurrency int

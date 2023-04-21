@@ -12,11 +12,7 @@ Kafka Konsumer provides an easy implementation of Kafka consumer with a built-in
 
 You can find a number of ready-to-run examples at [this directory](examples).
 
-`docker-compose up`
-
-`run any example if you want`
-
-That's it.
+After running `docker-compose up` command, you can run any application you want.
 
 #### Without Retry/Exception Manager
 ```go

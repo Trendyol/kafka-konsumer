@@ -29,7 +29,7 @@ type WriterConfig struct {
 type ProducerConfig struct {
 	Writer WriterConfig
 	SASL   *SASLConfig
-	TLS    *CertLoader
+	TLS    *TLSConfig
 }
 
 func (c ProducerConfig) newKafkaWriter() (*kafka.Writer, error) {

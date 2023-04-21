@@ -7,12 +7,12 @@ import (
 	"os"
 )
 
-type CertLoader struct {
+type TLSConfig struct {
 	RootCAPath         string
 	IntermediateCAPath string
 }
 
-func (c *CertLoader) TLSConfig() (*tls.Config, error) {
+func (c *TLSConfig) TLSConfig() (*tls.Config, error) {
 	rootCA, err := os.ReadFile(c.RootCAPath)
 	if err != nil {
 		return nil, fmt.Errorf("Error while reading Root CA file: " + c.RootCAPath + " error: " + err.Error())
@@ -30,6 +30,6 @@ func (c *CertLoader) TLSConfig() (*tls.Config, error) {
 	return &tls.Config{RootCAs: caCertPool}, nil
 }
 
-func (c *CertLoader) IsEmpty() bool {
+func (c *TLSConfig) IsEmpty() bool {
 	return c == nil || c.RootCAPath == "" && c.IntermediateCAPath == ""
 }

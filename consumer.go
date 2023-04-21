@@ -184,7 +184,9 @@ func (c *consumer) consume() {
 func (c *consumer) Stop() error {
 	var err error
 	c.once.Do(func() {
-		c.cronsumer.Stop()
+		if c.retryEnabled {
+			c.cronsumer.Stop()
+		}
 		err = c.r.Close()
 		c.quit <- struct{}{}
 		close(c.messageCh)
