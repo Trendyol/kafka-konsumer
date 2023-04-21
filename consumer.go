@@ -95,7 +95,9 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 }
 
 func (c *consumer) Consume() {
-	c.cronsumer.Start()
+	if c.retryEnabled {
+		c.cronsumer.Start()
+	}
 
 	go c.consume()
 
