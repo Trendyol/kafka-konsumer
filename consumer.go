@@ -11,6 +11,7 @@ import (
 
 type Consumer interface {
 	Consume()
+	WithLogger(logger LoggerInterface)
 	Stop() error
 }
 
@@ -29,6 +30,8 @@ type consumer struct {
 	retryEnabled bool
 	retryFn      func(message kcronsumer.Message) error
 	retryTopic   string
+
+	logger LoggerInterface
 }
 
 var _ Consumer = (*consumer)(nil)
@@ -40,15 +43,17 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		concurrency:  cfg.Concurrency,
 		consumeFn:    cfg.ConsumeFn,
 		retryEnabled: cfg.RetryEnabled,
+		logger:       NewZapLogger(cfg.LogLevel),
 	}
 
 	var err error
-
 	if c.r, err = cfg.newKafkaReader(); err != nil {
+		c.logger.Errorf("Error when initializing kafka reader %v", err)
 		return nil, err
 	}
 
 	if cfg.RetryEnabled {
+		c.logger.Debug("Konsumer retry enabled mode active!")
 		kcronsumerCfg := kcronsumer.Config{
 			Brokers: cfg.Reader.Brokers,
 			Consumer: kcronsumer.ConsumerConfig{
@@ -72,6 +77,7 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		}
 
 		if !cfg.SASL.IsEmpty() {
+			c.logger.Debug("Setting cronsumer SASL configurations...")
 			kcronsumerCfg.SASL.Enabled = true
 			kcronsumerCfg.SASL.AuthType = string(cfg.SASL.Type)
 			kcronsumerCfg.SASL.Username = cfg.SASL.Username
@@ -79,6 +85,7 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		}
 
 		if !cfg.TLS.IsEmpty() {
+			c.logger.Debug("Setting cronsumer TLS configurations...")
 			kcronsumerCfg.SASL.RootCAPath = cfg.TLS.RootCAPath
 			kcronsumerCfg.SASL.IntermediateCAPath = cfg.TLS.IntermediateCAPath
 		}
@@ -96,7 +103,9 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 }
 
 func (c *consumer) Consume() {
+	c.logger.Info("Consuming is starting!")
 	if c.retryEnabled {
+		c.logger.Debug("Cronsumer is starting!")
 		c.cronsumer.Start()
 	}
 
@@ -115,12 +124,19 @@ func (c *consumer) Consume() {
 				if c.retryEnabled {
 					retryableMsg := convertToRetryableMessage(c.retryTopic, message)
 					if err := c.retryFn(retryableMsg); err != nil {
-						_ = c.cronsumer.Produce(retryableMsg)
+						if err = c.cronsumer.Produce(retryableMsg); err != nil {
+							c.logger.Errorf("Error producing message %s to exception/retry topic %v",
+								string(retryableMsg.Value), err.Error())
+						}
 					}
 				}
 			}
 		}()
 	}
+}
+
+func (c *consumer) WithLogger(logger LoggerInterface) {
+	c.logger = logger
 }
 
 func convertToRetryableMessage(retryTopic string, message Message) kcronsumer.Message {
@@ -164,6 +180,7 @@ func convertFromRetryableMessage(message kcronsumer.Message) Message {
 }
 
 func (c *consumer) consume() {
+	c.logger.Debug("Consuming is starting")
 	c.wg.Add(1)
 	defer c.wg.Done()
 
@@ -174,6 +191,7 @@ func (c *consumer) consume() {
 		default:
 			message, err := c.r.ReadMessage(context.Background())
 			if err != nil {
+				c.logger.Errorf("Message could not read, err %s", err.Error())
 				continue
 			}
 

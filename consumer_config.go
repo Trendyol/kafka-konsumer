@@ -8,6 +8,8 @@ import (
 
 type ReaderConfig kafka.ReaderConfig
 
+type ConsumeFn func(Message) error
+
 type ConsumerConfig struct {
 	Reader ReaderConfig
 
@@ -17,10 +19,14 @@ type ConsumerConfig struct {
 	// Concurrency default is runtime.NumCPU()
 	Concurrency int
 
-	ConsumeFn func(Message) error
+	ConsumeFn ConsumeFn
 
 	RetryEnabled       bool
 	RetryConfiguration RetryConfiguration
+
+	// LogLevel default is info
+	LogLevel LogLevel
+	Logger   LoggerInterface
 }
 
 type RetryConfiguration struct {
