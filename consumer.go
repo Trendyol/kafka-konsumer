@@ -72,6 +72,7 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		}
 
 		if !cfg.SASL.IsEmpty() {
+			kcronsumerCfg.SASL.Enabled = true
 			kcronsumerCfg.SASL.AuthType = string(cfg.SASL.Type)
 			kcronsumerCfg.SASL.Username = cfg.SASL.Username
 			kcronsumerCfg.SASL.Password = cfg.SASL.Password
