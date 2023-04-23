@@ -80,8 +80,6 @@ func consumeFn(message kafka.Message) error {
 
 ## Configurations
 
-## Configurations
-
 | config                        | description                                                                                                                           | default          |
 |-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|------------------|
 | `reader`                      | [Describes all segmentio kafka reader configurations](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.39#ReaderConfig)          |                  |
