@@ -80,20 +80,20 @@ func consumeFn(message kafka.Message) error {
 
 ## Configurations
 
-| config                        | description                                                                                                                           | default          |
-|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|------------------|
-| `reader`                      | [Describes all segmentio kafka reader configurations](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.39#ReaderConfig)          |                  |
-| `consumeFn`                   | Kafka consumer function, if retry enabled it, is also used to consume retriable messages                                              |                  |
-| `logLevel`                    | Describes log level; valid options are `debug`, `info`, `warn`, and `error`                                                           | info             |                          |
-| `concurrency`                 | Number of goroutines used at listeners                                                                                                | runtime.NumCPU() |
-| `retryEnabled`                | Retry/Exception consumer is working or not                                                                                            | false            |
-| `retryConfiguration.cron`     | Cron expression when retry consumer ([kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer#configurations)) starts to work at |                  |
-| `retryConfiguration.duration` | Work duration exception consumer actively consuming messages                                                                          |                  |
-| `retryConfiguration.topic`    | Retry/Exception topic names                                                                                                           |                  |
-| `retryConfiguration.maxRetry` | Maximum retry value for attempting to retry a message                                                                                 | 3                |
-| `tls.rootCAPath`              | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                               | ""               |
-| `tls.intermediateCAPath`      | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                    | ""               |
-| `sasl.authType`               | `SCRAM` or `PLAIN`                                                                                                                    |                  |
-| `sasl.username`               | SCRAM OR PLAIN username                                                                                                               |                  |
-| `sasl.password`               | SCRAM OR PLAIN password                                                                                                               |                  |
-| `logger`                      | If you want to custom logger                                                                                                          | info             |                          |
+| config                             | description                                                                                                                           | default          |
+|------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|------------------|
+| `reader`                           | [Describes all segmentio kafka reader configurations](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.39#ReaderConfig)          |                  |
+| `consumeFn`                        | Kafka consumer function, if retry enabled it, is also used to consume retriable messages                                              |                  |
+| `logLevel`                         | Describes log level; valid options are `debug`, `info`, `warn`, and `error`                                                           | info             |                          |
+| `concurrency`                      | Number of goroutines used at listeners                                                                                                | runtime.NumCPU() |
+| `retryEnabled`                     | Retry/Exception consumer is working or not                                                                                            | false            |
+| `retryConfiguration.startTimeCron` | Cron expression when retry consumer ([kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer#configurations)) starts to work at |                  |
+| `retryConfiguration.workDuration`  | Work duration exception consumer actively consuming messages                                                                          |                  |
+| `retryConfiguration.topic`         | Retry/Exception topic names                                                                                                           |                  |
+| `retryConfiguration.maxRetry`      | Maximum retry value for attempting to retry a message                                                                                 | 3                |
+| `tls.rootCAPath`                   | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                               | ""               |
+| `tls.intermediateCAPath`           | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                    | ""               |
+| `sasl.authType`                    | `SCRAM` or `PLAIN`                                                                                                                    |                  |
+| `sasl.username`                    | SCRAM OR PLAIN username                                                                                                               |                  |
+| `sasl.password`                    | SCRAM OR PLAIN password                                                                                                               |                  |
+| `logger`                           | If you want to custom logger                                                                                                          | info             |                          |
