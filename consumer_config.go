@@ -1,9 +1,10 @@
 package kafka
 
 import (
-	"github.com/segmentio/kafka-go"
 	"runtime"
 	"time"
+
+	"github.com/segmentio/kafka-go"
 )
 
 type ReaderConfig kafka.ReaderConfig

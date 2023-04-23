@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"crypto/tls"
+
 	"github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/sasl"
 )

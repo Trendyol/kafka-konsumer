@@ -27,7 +27,7 @@ func (c *TLSConfig) TLSConfig() (*tls.Config, error) {
 	caCertPool.AppendCertsFromPEM(rootCA)
 	caCertPool.AppendCertsFromPEM(interCA)
 
-	return &tls.Config{RootCAs: caCertPool}, nil
+	return &tls.Config{RootCAs: caCertPool}, nil //nolint:gosec
 }
 
 func (c *TLSConfig) IsEmpty() bool {

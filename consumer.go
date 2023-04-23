@@ -2,11 +2,12 @@ package kafka
 
 import (
 	"context"
+	"sync"
+
 	cronsumer "github.com/Trendyol/kafka-cronsumer"
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/protocol"
-	"sync"
 )
 
 type Consumer interface {
@@ -17,7 +18,6 @@ type Consumer interface {
 
 type consumer struct {
 	r           *kafka.Reader
-	m           sync.Mutex
 	wg          sync.WaitGroup
 	once        sync.Once
 	messageCh   chan Message
