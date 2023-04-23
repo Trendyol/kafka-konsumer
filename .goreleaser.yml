@@ -1,0 +1,17 @@
+project_name: kafka-konsumer
+release:
+  github:
+    name: kafka-konsumer
+    owner: Trendyol
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - skip: true
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
