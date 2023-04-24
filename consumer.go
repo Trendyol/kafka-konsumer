@@ -208,8 +208,8 @@ func (c *consumer) Stop() error {
 		}
 		c.quit <- struct{}{}
 		close(c.messageCh)
-		err = c.r.Close()
 		c.wg.Wait()
+		err = c.r.Close()
 	})
 
 	return err
