@@ -84,6 +84,7 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 			kcronsumerCfg.SASL.AuthType = string(cfg.SASL.Type)
 			kcronsumerCfg.SASL.Username = cfg.SASL.Username
 			kcronsumerCfg.SASL.Password = cfg.SASL.Password
+			kcronsumerCfg.SASL.Rack = cfg.Rack
 		}
 
 		if !cfg.TLS.IsEmpty() {
