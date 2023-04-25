@@ -14,6 +14,7 @@ type ConsumeFn func(Message) error
 type ConsumerConfig struct {
 	Reader ReaderConfig
 
+	Rack string
 	SASL *SASLConfig
 	TLS  *TLSConfig
 
@@ -61,6 +62,9 @@ func (c *ConsumerConfig) newKafkaReader() (*kafka.Reader, error) {
 
 	reader := kafka.ReaderConfig(c.Reader)
 	reader.Dialer = dialer
+	if c.Rack != "" {
+		reader.GroupBalancers = []kafka.GroupBalancer{kafka.RackAffinityGroupBalancer{Rack: c.Rack}}
+	}
 
 	return kafka.NewReader(reader), nil
 }

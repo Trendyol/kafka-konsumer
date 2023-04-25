@@ -87,6 +87,7 @@ func consumeFn(message kafka.Message) error {
 | `logLevel`                         | Describes log level; valid options are `debug`, `info`, `warn`, and `error`                                                           | info             |                          |
 | `concurrency`                      | Number of goroutines used at listeners                                                                                                | runtime.NumCPU() |
 | `retryEnabled`                     | Retry/Exception consumer is working or not                                                                                            | false            |
+| `rack`                             | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go#RackAffinityGroupBalancer)                                                 |                  |
 | `retryConfiguration.startTimeCron` | Cron expression when retry consumer ([kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer#configurations)) starts to work at |                  |
 | `retryConfiguration.workDuration`  | Work duration exception consumer actively consuming messages                                                                          |                  |
 | `retryConfiguration.topic`         | Retry/Exception topic names                                                                                                           |                  |
