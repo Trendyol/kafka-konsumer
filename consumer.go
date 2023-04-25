@@ -32,6 +32,8 @@ type consumer struct {
 	retryTopic   string
 
 	logger LoggerInterface
+
+	cancelFn context.CancelFunc
 }
 
 var _ Consumer = (*consumer)(nil)
@@ -109,7 +111,10 @@ func (c *consumer) Consume() {
 		c.cronsumer.Start()
 	}
 
-	go c.consume()
+	ctx, cancel := context.WithCancel(context.Background())
+	c.cancelFn = cancel
+
+	go c.consume(ctx)
 
 	for i := 0; i < c.concurrency; i++ {
 		c.wg.Add(1)
@@ -181,16 +186,21 @@ func convertFromRetryableMessage(message kcronsumer.Message) Message {
 	}
 }
 
-func (c *consumer) consume() {
+func (c *consumer) consume(ctx context.Context) {
 	c.logger.Debug("Consuming is starting")
+	c.wg.Add(1)
+	defer c.wg.Done()
 
 	for {
 		select {
 		case <-c.quit:
 			return
 		default:
-			message, err := c.r.FetchMessage(context.Background())
+			message, err := c.r.FetchMessage(ctx)
 			if err != nil {
+				if ctx.Err() != nil {
+					continue
+				}
 				c.logger.Errorf("Message could not read, err %s", err.Error())
 				continue
 			}
@@ -206,6 +216,7 @@ func (c *consumer) Stop() error {
 		if c.retryEnabled {
 			c.cronsumer.Stop()
 		}
+		c.cancelFn()
 		c.quit <- struct{}{}
 		close(c.messageCh)
 		c.wg.Wait()
