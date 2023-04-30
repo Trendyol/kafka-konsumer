@@ -1,4 +1,5 @@
 # Kafka Konsumer
+<div style="text-align:center"><img src=".github/images/konsumer.png"/></div>
 
 ## Description
 
