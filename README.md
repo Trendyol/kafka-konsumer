@@ -85,7 +85,7 @@ func consumeFn(message kafka.Message) error {
 |------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|------------------|
 | `reader`                           | [Describes all segmentio kafka reader configurations](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.39#ReaderConfig)          |                  |
 | `consumeFn`                        | Kafka consumer function, if retry enabled it, is also used to consume retriable messages                                              |                  |
-| `logLevel`                         | Describes log level; valid options are `debug`, `info`, `warn`, and `error`                                                           | info             |                          |
+| `logLevel`                         | Describes log level; valid options are `debug`, `info`, `warn`, and `error`                                                           | info             |
 | `concurrency`                      | Number of goroutines used at listeners                                                                                                | runtime.NumCPU() |
 | `retryEnabled`                     | Retry/Exception consumer is working or not                                                                                            | false            |
 | `rack`                             | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go#RackAffinityGroupBalancer)                                                 |                  |
@@ -98,4 +98,19 @@ func consumeFn(message kafka.Message) error {
 | `sasl.authType`                    | `SCRAM` or `PLAIN`                                                                                                                    |                  |
 | `sasl.username`                    | SCRAM OR PLAIN username                                                                                                               |                  |
 | `sasl.password`                    | SCRAM OR PLAIN password                                                                                                               |                  |
-| `logger`                           | If you want to custom logger                                                                                                          | info             |                          |
+| `logger`                           | If you want to custom logger                                                                                                          | info             |
+| `apiEnabled`                       | Enabled metrics                                                                                                                       | false            |
+| `apiConfiguration.port`            | Set API port                                                                                                                          | 8090             |
+| `apiConfiguration.healtCheckPath`  | Set Health check path                                                                                                                 | healthcheck      |
+| `metricConfiguration.path`         | Set metric endpoint path                                                                                                              | /metrics         |
+
+## Monitoring
+
+Kafka Konsumer offers an API that handles exposing several metrics.
+
+### Exposed Metrics
+
+| Metric Name                                    | Description                                   | Value Type |
+|------------------------------------------------|-----------------------------------------------|------------|
+| kafka_kronsumer_processed_messages_total       | Total number of processed messages.           | Counter    |
+| kafka_kronsumer_processed_retry_messages_total | Total number of processed retryable messages. | Counter    |

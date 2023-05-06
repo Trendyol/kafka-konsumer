@@ -2,7 +2,7 @@ linters-settings:
   lll:
     line-length: 140
   funlen:
-    lines: 70
+    lines: 100
 
 linters:
   disable-all: true
@@ -46,6 +46,6 @@ issues:
         - funlen
 
 service:
-  golangci-lint-version: 1.50.x # use the fixed version to not introduce new linters unexpectedly
+  golangci-lint-version: 1.51.x # use the fixed version to not introduce new linters unexpectedly
   prepare:
     - echo "here I can run custom commands, but no preparation needed for this repo"
