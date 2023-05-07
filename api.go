@@ -9,8 +9,8 @@ import (
 )
 
 type API interface {
-	Listen()
-	Shutdown()
+	Start()
+	Stop()
 }
 
 type server struct {
@@ -52,7 +52,7 @@ func setDefaults(cfg *ConsumerConfig) {
 	}
 }
 
-func (s *server) Listen() {
+func (s *server) Start() {
 	s.logger.Infof("server starting on port %d", *s.cfg.APIConfiguration.Port)
 
 	if err := s.fiber.Listen(fmt.Sprintf(":%d", *s.cfg.APIConfiguration.Port)); err != nil {
@@ -60,7 +60,7 @@ func (s *server) Listen() {
 	}
 }
 
-func (s *server) Shutdown() {
+func (s *server) Stop() {
 	s.logger.Info("server is closing")
 
 	if err := s.fiber.Shutdown(); err != nil {

@@ -16,13 +16,17 @@ type Consumer interface {
 	Stop() error
 }
 
+type subprocess interface {
+	Start()
+	Stop()
+}
+
 type consumer struct {
 	r           *kafka.Reader
 	wg          sync.WaitGroup
 	once        sync.Once
 	messageCh   chan Message
 	quit        chan struct{}
-	apiShutdown chan struct{}
 	concurrency int
 	cronsumer   kcronsumer.Cronsumer
 
@@ -34,8 +38,9 @@ type consumer struct {
 
 	logger LoggerInterface
 
-	cancelFn context.CancelFunc
-	api      API
+	cancelFn     context.CancelFunc
+	api          API
+	subprocesses []subprocess
 }
 
 var _ Consumer = (*consumer)(nil)
@@ -44,11 +49,11 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	c := consumer{
 		messageCh:    make(chan Message, cfg.Concurrency),
 		quit:         make(chan struct{}),
-		apiShutdown:  make(chan struct{}, 1),
 		concurrency:  cfg.Concurrency,
 		consumeFn:    cfg.ConsumeFn,
 		retryEnabled: cfg.RetryEnabled,
 		logger:       NewZapLogger(cfg.LogLevel),
+		subprocesses: []subprocess{},
 	}
 
 	var err error
@@ -104,29 +109,20 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		}
 
 		c.cronsumer = cronsumer.New(&kcronsumerCfg, c.retryFn)
+		c.subprocesses = append(c.subprocesses, c.cronsumer)
 	}
 
 	if cfg.APIEnabled {
 		c.logger.Debug("Metrics API Enabled!")
-		go func() {
-			go func() {
-				<-c.apiShutdown
-				c.api.Shutdown()
-			}()
-
-			c.api = NewAPI(cfg)
-			c.api.Listen()
-		}()
+		c.api = NewAPI(cfg)
+		c.subprocesses = append(c.subprocesses, c.api)
 	}
 
 	return &c, nil
 }
 
 func (c *consumer) Consume() {
-	if c.retryEnabled {
-		c.logger.Debug("Cronsumer is starting!")
-		c.cronsumer.Start()
-	}
+	go c.startSubprocesses()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	c.cancelFn = cancel
@@ -166,13 +162,7 @@ func (c *consumer) Stop() error {
 	c.logger.Debug("Consuming is closing!")
 	var err error
 	c.once.Do(func() {
-		if c.api != nil {
-			c.apiShutdown <- struct{}{}
-		}
-		if c.retryEnabled {
-			c.logger.Debug("Cronsumer is closing!")
-			c.cronsumer.Stop()
-		}
+		c.stopSubprocesses()
 		c.cancelFn()
 		c.quit <- struct{}{}
 		close(c.messageCh)
@@ -185,6 +175,18 @@ func (c *consumer) Stop() error {
 
 func (c *consumer) WithLogger(logger LoggerInterface) {
 	c.logger = logger
+}
+
+func (c *consumer) startSubprocesses() {
+	for i := range c.subprocesses {
+		c.subprocesses[i].Start()
+	}
+}
+
+func (c *consumer) stopSubprocesses() {
+	for i := range c.subprocesses {
+		c.subprocesses[i].Stop()
+	}
 }
 
 func (c *consumer) consume(ctx context.Context) {

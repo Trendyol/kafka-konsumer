@@ -21,6 +21,7 @@ func main() {
 			WorkDuration:  50 * time.Second,
 			MaxRetry:      3,
 		},
+		LogLevel:   kafka.LogLevelDebug,
 		ConsumeFn:  consumeFn,
 		APIEnabled: true,
 	}
