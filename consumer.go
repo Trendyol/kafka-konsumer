@@ -6,14 +6,19 @@ import (
 
 	cronsumer "github.com/Trendyol/kafka-cronsumer"
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
+	"github.com/Trendyol/kafka-konsumer/instrumentation"
 	"github.com/segmentio/kafka-go"
-	"github.com/segmentio/kafka-go/protocol"
 )
 
 type Consumer interface {
 	Consume()
 	WithLogger(logger LoggerInterface)
 	Stop() error
+}
+
+type subprocess interface {
+	Start()
+	Stop()
 }
 
 type consumer struct {
@@ -33,7 +38,9 @@ type consumer struct {
 
 	logger LoggerInterface
 
-	cancelFn context.CancelFunc
+	cancelFn     context.CancelFunc
+	api          API
+	subprocesses []subprocess
 }
 
 var _ Consumer = (*consumer)(nil)
@@ -46,6 +53,7 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		consumeFn:    cfg.ConsumeFn,
 		retryEnabled: cfg.RetryEnabled,
 		logger:       NewZapLogger(cfg.LogLevel),
+		subprocesses: []subprocess{},
 	}
 
 	var err error
@@ -94,23 +102,27 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		}
 
 		c.retryTopic = cfg.RetryConfiguration.Topic
-
 		c.retryFn = func(message kcronsumer.Message) error {
-			return c.consumeFn(convertFromRetryableMessage(message))
+			consumeErr := c.consumeFn(ToMessage(message))
+			instrumentation.TotalProcessedRetryableMessagesCounter.Inc()
+			return consumeErr
 		}
 
 		c.cronsumer = cronsumer.New(&kcronsumerCfg, c.retryFn)
+		c.subprocesses = append(c.subprocesses, c.cronsumer)
+	}
+
+	if cfg.APIEnabled {
+		c.logger.Debug("Metrics API Enabled!")
+		c.api = NewAPI(cfg)
+		c.subprocesses = append(c.subprocesses, c.api)
 	}
 
 	return &c, nil
 }
 
 func (c *consumer) Consume() {
-	c.logger.Info("Consuming is starting!")
-	if c.retryEnabled {
-		c.logger.Debug("Cronsumer is starting!")
-		c.cronsumer.Start()
-	}
+	go c.startSubprocesses()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	c.cancelFn = cancel
@@ -124,66 +136,56 @@ func (c *consumer) Consume() {
 
 			for message := range c.messageCh {
 				err := c.consumeFn(message)
+				instrumentation.TotalProcessedMessagesCounter.Inc()
 
 				if err != nil && c.retryEnabled {
-					retryableMsg := convertToRetryableMessage(c.retryTopic, message)
-					if err := c.retryFn(retryableMsg); err != nil {
+					c.logger.Warnf("Consume Function Err %s, Message is sending to exception/retry topic %s", err.Error(), c.retryTopic)
+
+					retryableMsg := message.ToRetryableMessage(c.retryTopic)
+					if err = c.retryFn(retryableMsg); err != nil {
 						if err = c.cronsumer.Produce(retryableMsg); err != nil {
 							c.logger.Errorf("Error producing message %s to exception/retry topic %v",
 								string(retryableMsg.Value), err.Error())
 						}
 					}
 				}
+
 				if err = c.r.CommitMessages(context.Background(), kafka.Message(message)); err != nil {
-					c.logger.Errorf("Error Committing message %s",
-						string(message.Value))
+					c.logger.Errorf("Error Committing message %s", string(message.Value))
 				}
 			}
 		}()
 	}
 }
 
+func (c *consumer) Stop() error {
+	c.logger.Debug("Consuming is closing!")
+	var err error
+	c.once.Do(func() {
+		c.stopSubprocesses()
+		c.cancelFn()
+		c.quit <- struct{}{}
+		close(c.messageCh)
+		c.wg.Wait()
+		err = c.r.Close()
+	})
+
+	return err
+}
+
 func (c *consumer) WithLogger(logger LoggerInterface) {
 	c.logger = logger
 }
 
-func convertToRetryableMessage(retryTopic string, message Message) kcronsumer.Message {
-	headers := make([]kcronsumer.Header, 0, len(message.Headers))
-	for i := range message.Headers {
-		headers = append(headers, kcronsumer.Header{
-			Key:   message.Headers[i].Key,
-			Value: message.Headers[i].Value,
-		})
+func (c *consumer) startSubprocesses() {
+	for i := range c.subprocesses {
+		c.subprocesses[i].Start()
 	}
-
-	return kcronsumer.NewMessageBuilder().
-		WithKey(message.Key).
-		WithValue(message.Value).
-		WithTopic(retryTopic).
-		WithHeaders(headers).
-		WithPartition(message.Partition).
-		WithHighWatermark(message.HighWaterMark).
-		Build()
 }
 
-func convertFromRetryableMessage(message kcronsumer.Message) Message {
-	headers := make([]protocol.Header, 0, len(message.Headers))
-	for i := range message.Headers {
-		headers = append(headers, protocol.Header{
-			Key:   message.Headers[i].Key,
-			Value: message.Headers[i].Value,
-		})
-	}
-
-	return Message{
-		Topic:         message.Topic,
-		Partition:     message.Partition,
-		Offset:        message.Offset,
-		HighWaterMark: message.HighWaterMark,
-		Key:           message.Key,
-		Value:         message.Value,
-		Headers:       headers,
-		Time:          message.Time,
+func (c *consumer) stopSubprocesses() {
+	for i := range c.subprocesses {
+		c.subprocesses[i].Stop()
 	}
 }
 
@@ -209,20 +211,4 @@ func (c *consumer) consume(ctx context.Context) {
 			c.messageCh <- Message(message)
 		}
 	}
-}
-
-func (c *consumer) Stop() error {
-	var err error
-	c.once.Do(func() {
-		if c.retryEnabled {
-			c.cronsumer.Stop()
-		}
-		c.cancelFn()
-		c.quit <- struct{}{}
-		close(c.messageCh)
-		c.wg.Wait()
-		err = c.r.Close()
-	})
-
-	return err
 }

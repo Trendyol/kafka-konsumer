@@ -26,9 +26,26 @@ type ConsumerConfig struct {
 	RetryEnabled       bool
 	RetryConfiguration RetryConfiguration
 
+	APIEnabled          bool
+	APIConfiguration    APIConfiguration
+	MetricConfiguration MetricConfiguration
+
 	// LogLevel default is info
 	LogLevel LogLevel
 	Logger   LoggerInterface
+}
+
+type APIConfiguration struct {
+	// Port default is 8090
+	Port *int
+
+	// HealthCheckPath default is /healthcheck
+	HealthCheckPath *string
+}
+
+type MetricConfiguration struct {
+	// Path default is /metrics
+	Path *string
 }
 
 type RetryConfiguration struct {
