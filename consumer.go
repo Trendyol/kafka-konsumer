@@ -86,19 +86,19 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 			LogLevel: "info",
 		}
 
-		if !cfg.SASL.IsEmpty() {
+		if !cfg.RetryConfiguration.SASL.IsEmpty() {
 			c.logger.Debug("Setting cronsumer SASL configurations...")
 			kcronsumerCfg.SASL.Enabled = true
-			kcronsumerCfg.SASL.AuthType = string(cfg.SASL.Type)
-			kcronsumerCfg.SASL.Username = cfg.SASL.Username
-			kcronsumerCfg.SASL.Password = cfg.SASL.Password
-			kcronsumerCfg.SASL.Rack = cfg.Rack
+			kcronsumerCfg.SASL.AuthType = string(cfg.RetryConfiguration.SASL.Type)
+			kcronsumerCfg.SASL.Username = cfg.RetryConfiguration.SASL.Username
+			kcronsumerCfg.SASL.Password = cfg.RetryConfiguration.SASL.Password
+			kcronsumerCfg.SASL.Rack = cfg.RetryConfiguration.Rack
 		}
 
-		if !cfg.TLS.IsEmpty() {
+		if !cfg.RetryConfiguration.TLS.IsEmpty() {
 			c.logger.Debug("Setting cronsumer TLS configurations...")
-			kcronsumerCfg.SASL.RootCAPath = cfg.TLS.RootCAPath
-			kcronsumerCfg.SASL.IntermediateCAPath = cfg.TLS.IntermediateCAPath
+			kcronsumerCfg.SASL.RootCAPath = cfg.RetryConfiguration.TLS.RootCAPath
+			kcronsumerCfg.SASL.IntermediateCAPath = cfg.RetryConfiguration.TLS.IntermediateCAPath
 		}
 
 		c.retryTopic = cfg.RetryConfiguration.Topic

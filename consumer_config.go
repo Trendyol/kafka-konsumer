@@ -49,11 +49,14 @@ type MetricConfiguration struct {
 }
 
 type RetryConfiguration struct {
-	Brokers       []string
-	Topic         string
 	MaxRetry      int
 	StartTimeCron string
 	WorkDuration  time.Duration
+	Brokers       []string
+	Topic         string
+	SASL          *SASLConfig
+	TLS           *TLSConfig
+	Rack          string
 }
 
 func (c *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
