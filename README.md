@@ -92,6 +92,7 @@ func consumeFn(message kafka.Message) error {
 | `retryConfiguration.startTimeCron` | Cron expression when retry consumer ([kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer#configurations)) starts to work at |                  |
 | `retryConfiguration.workDuration`  | Work duration exception consumer actively consuming messages                                                                          |                  |
 | `retryConfiguration.topic`         | Retry/Exception topic names                                                                                                           |                  |
+| `retryConfiguration.brokers`       | Retry topic brokers urls                                                                                                              |                  |
 | `retryConfiguration.maxRetry`      | Maximum retry value for attempting to retry a message                                                                                 | 3                |
 | `tls.rootCAPath`                   | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                               | ""               |
 | `tls.intermediateCAPath`           | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                    | ""               |
