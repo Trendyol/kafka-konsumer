@@ -16,6 +16,7 @@ func main() {
 		},
 		RetryEnabled: true,
 		RetryConfiguration: kafka.RetryConfiguration{
+			Brokers:       []string{"localhost:29092"},
 			Topic:         "retry-topic",
 			StartTimeCron: "*/1 * * * *",
 			WorkDuration:  50 * time.Second,

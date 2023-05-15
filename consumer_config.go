@@ -49,8 +49,9 @@ type MetricConfiguration struct {
 }
 
 type RetryConfiguration struct {
-	MaxRetry      int
+	Brokers       []string
 	Topic         string
+	MaxRetry      int
 	StartTimeCron string
 	WorkDuration  time.Duration
 }

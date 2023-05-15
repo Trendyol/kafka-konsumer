@@ -65,7 +65,7 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	if cfg.RetryEnabled {
 		c.logger.Debug("Konsumer retry enabled mode active!")
 		kcronsumerCfg := kcronsumer.Config{
-			Brokers: cfg.Reader.Brokers,
+			Brokers: cfg.RetryConfiguration.Brokers,
 			Consumer: kcronsumer.ConsumerConfig{
 				GroupID:           cfg.Reader.GroupID,
 				Topic:             cfg.RetryConfiguration.Topic,
