@@ -2,16 +2,18 @@ groups:
   - name: konsumer-alerts
     rules:
       - alert: ProcessedRetryMessageIncreasing
-        expr: rate(kafka_konsumer_processed_retry_messages_total{job="konsumer"}[1m]) > 0.25
-        for: 1m
+        expr: rate(sum(kafka_konsumer_processed_retry_messages_total{job="konsumer"}[1m])) > 0.25
+        for: 5m
         labels:
           severity: "error"
         annotations:
-          summary: "Kafka Konsumer processed retry message increasing, current rate: {{ $value }}"
+          summary: "Kafka Konsumer processed retry message increasing"
+          description: "Kafka Konsumer processed retry message increasing, current rate: {{ $value }} <http://localhost:3000/d/DlIdtG_4z/kafka-konsumer-dashboard|Grafana>"
       - alert: ProcessedMessageDecreasing
-        expr: rate(kafka_konsumer_processed_messages_total{job="konsumer"}[1m]) < 0.1
-        for: 1m
+        expr: rate(sum(kafka_konsumer_processed_messages_total{job="konsumer"}[1m])) < 0.1
+        for: 5m
         labels:
           severity: "critical"
         annotations:
-          summary: "Kafka Konsumer processed message decreasing, current rate: {{ $value }}"
+          summary: "Kafka Konsumer processed message decreasing"
+          description: "Kafka Konsumer processed message decreasing, current rate: {{ $value }} <http://localhost:3000/d/DlIdtG_4z/kafka-konsumer-dashboard|Grafana>"

@@ -1,4 +1,4 @@
-version: '3'
+version: '3.9'
 networks:
   monitoring:
     driver: bridge
