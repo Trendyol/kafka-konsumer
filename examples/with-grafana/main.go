@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/Trendyol/kafka-konsumer"
+	"os"
+	"os/signal"
 	"strconv"
 	"sync/atomic"
 	"time"
+
+	"github.com/Trendyol/kafka-konsumer"
 )
 
 type user struct {
@@ -41,6 +44,7 @@ func main() {
 	ticker := time.NewTicker(1 * time.Second)
 	quit := make(chan struct{})
 	go func() {
+		// to find the message we will produce at the next interval
 		var i uint64
 		for {
 			select {
@@ -108,5 +112,9 @@ func main() {
 	consumer.Consume()
 
 	fmt.Println("Consumer started!")
-	select {}
+
+	// wait for interrupt signal to gracefully shutdown the consumer
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	<-c
 }
