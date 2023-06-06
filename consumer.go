@@ -46,20 +46,22 @@ type consumer struct {
 var _ Consumer = (*consumer)(nil)
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
+	logger := NewZapLogger(cfg.LogLevel)
+	reader, err := cfg.newKafkaReader()
+	if err != nil {
+		logger.Errorf("Error when initializing kafka reader %v", err)
+		return nil, err
+	}
+
 	c := consumer{
 		messageCh:    make(chan Message, cfg.Concurrency),
 		quit:         make(chan struct{}),
 		concurrency:  cfg.Concurrency,
 		consumeFn:    cfg.ConsumeFn,
 		retryEnabled: cfg.RetryEnabled,
-		logger:       NewZapLogger(cfg.LogLevel),
+		logger:       logger,
 		subprocesses: []subprocess{},
-	}
-
-	var err error
-	if c.r, err = cfg.newKafkaReader(); err != nil {
-		c.logger.Errorf("Error when initializing kafka reader %v", err)
-		return nil, err
+		r:            reader,
 	}
 
 	if cfg.RetryEnabled {
