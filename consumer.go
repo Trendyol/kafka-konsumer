@@ -16,11 +16,6 @@ type Consumer interface {
 	Stop() error
 }
 
-type subprocess interface {
-	Start()
-	Stop()
-}
-
 type consumer struct {
 	r           *kafka.Reader
 	wg          sync.WaitGroup
@@ -40,7 +35,7 @@ type consumer struct {
 
 	cancelFn     context.CancelFunc
 	api          API
-	subprocesses []subprocess
+	subprocesses subprocesses
 }
 
 var _ Consumer = (*consumer)(nil)
@@ -111,20 +106,20 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		}
 
 		c.cronsumer = cronsumer.New(&kcronsumerCfg, c.retryFn)
-		c.subprocesses = append(c.subprocesses, c.cronsumer)
+		c.subprocesses.Add(c.cronsumer)
 	}
 
 	if cfg.APIEnabled {
 		c.logger.Debug("Metrics API Enabled!")
 		c.api = NewAPI(cfg)
-		c.subprocesses = append(c.subprocesses, c.api)
+		c.subprocesses.Add(c.api)
 	}
 
 	return &c, nil
 }
 
 func (c *consumer) Consume() {
-	go c.startSubprocesses()
+	go c.subprocesses.Start()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	c.cancelFn = cancel
@@ -165,7 +160,7 @@ func (c *consumer) Stop() error {
 	c.logger.Debug("Consuming is closing!")
 	var err error
 	c.once.Do(func() {
-		c.stopSubprocesses()
+		c.subprocesses.Stop()
 		c.cancelFn()
 		c.quit <- struct{}{}
 		close(c.messageCh)
@@ -178,18 +173,6 @@ func (c *consumer) Stop() error {
 
 func (c *consumer) WithLogger(logger LoggerInterface) {
 	c.logger = logger
-}
-
-func (c *consumer) startSubprocesses() {
-	for i := range c.subprocesses {
-		c.subprocesses[i].Start()
-	}
-}
-
-func (c *consumer) stopSubprocesses() {
-	for i := range c.subprocesses {
-		c.subprocesses[i].Stop()
-	}
 }
 
 func (c *consumer) consume(ctx context.Context) {
