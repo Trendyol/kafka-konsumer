@@ -138,7 +138,6 @@ func (c *consumer) Consume() {
 
 			for message := range c.messageCh {
 				err := c.consumeFn(message)
-				instrumentation.TotalProcessedMessagesCounter.Inc()
 
 				if err != nil && c.retryEnabled {
 					c.logger.Warnf("Consume Function Err %s, Message is sending to exception/retry topic %s", err.Error(), c.retryTopic)
@@ -155,6 +154,8 @@ func (c *consumer) Consume() {
 				if err = c.r.CommitMessages(context.Background(), kafka.Message(message)); err != nil {
 					c.logger.Errorf("Error Committing message %s", string(message.Value))
 				}
+
+				instrumentation.TotalProcessedMessagesCounter.Inc()
 			}
 		}()
 	}
