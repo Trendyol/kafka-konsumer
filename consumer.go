@@ -149,10 +149,10 @@ func (c *consumer) process(message Message) {
 		retryableMsg := (*kcronsumer.Message)(unsafe.Pointer(&message))
 		retryableMsg.Topic = c.retryTopic
 
-		if consumeErr = c.retryFn(*retryableMsg); consumeErr != nil {
-			if consumeErr = c.cronsumer.Produce(*retryableMsg); consumeErr != nil {
+		if retryErr := c.retryFn(*retryableMsg); retryErr != nil {
+			if produceErr := c.cronsumer.Produce(*retryableMsg); produceErr != nil {
 				c.logger.Errorf("Error producing message %s to exception/retry topic %v",
-					string(retryableMsg.Value), consumeErr.Error())
+					string(retryableMsg.Value), produceErr.Error())
 			}
 		}
 
