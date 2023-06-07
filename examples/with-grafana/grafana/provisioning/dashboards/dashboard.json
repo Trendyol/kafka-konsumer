@@ -310,7 +310,7 @@
             "uid": "PE4E52330B67298A4"
           },
           "editorMode": "code",
-          "expr": "kafka_konsumer_processed_retry_messages_total{job=\"konsumer\"}",
+          "expr": "rate(kafka_konsumer_processed_retry_messages_total{job=\"konsumer\"}[1m])",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -433,6 +433,6 @@
   "timezone": "",
   "title": "Kafka Konsumer Dashboard",
   "uid": "DlIdtG_4z",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
