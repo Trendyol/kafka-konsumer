@@ -213,7 +213,7 @@
             "uid": "PE4E52330B67298A4"
           },
           "editorMode": "code",
-          "expr": "rate(sum(kafka_konsumer_processed_messages_total{job=\"konsumer\"}[$__rate_interval]))",
+          "expr": "sum(rate(kafka_konsumer_processed_messages_total{job=\"konsumer\"}[1m]))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -407,7 +407,7 @@
             "uid": "PE4E52330B67298A4"
           },
           "editorMode": "code",
-          "expr": "rate(sum(kafka_konsumer_processed_retry_messages_total{job=\"konsumer\"}[$__rate_interval]))",
+          "expr": "sum(rate(kafka_konsumer_processed_retry_messages_total{job=\"konsumer\"}[1m]))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -417,7 +417,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "",
+  "refresh": "5s",
   "revision": 1,
   "schemaVersion": 38,
   "style": "dark",
@@ -426,7 +426,7 @@
     "list": []
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {},
