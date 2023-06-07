@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"sync"
+	"unsafe"
 
 	cronsumer "github.com/Trendyol/kafka-cronsumer"
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
@@ -99,9 +100,10 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		}
 
 		c.retryTopic = cfg.RetryConfiguration.Topic
+
 		c.retryFn = func(message kcronsumer.Message) error {
-			consumeErr := c.consumeFn(ToMessage(message))
-			instrumentation.TotalProcessedRetryableMessagesCounter.Inc()
+			toMessage := (*Message)(unsafe.Pointer(&message))
+			consumeErr := c.consumeFn(*toMessage)
 			return consumeErr
 		}
 
@@ -132,28 +134,41 @@ func (c *consumer) Consume() {
 			defer c.wg.Done()
 
 			for message := range c.messageCh {
-				err := c.consumeFn(message)
-
-				if err != nil && c.retryEnabled {
-					c.logger.Warnf("Consume Function Err %s, Message is sending to exception/retry topic %s", err.Error(), c.retryTopic)
-
-					retryableMsg := message.ToRetryableMessage(c.retryTopic)
-					if err = c.retryFn(retryableMsg); err != nil {
-						if err = c.cronsumer.Produce(retryableMsg); err != nil {
-							c.logger.Errorf("Error producing message %s to exception/retry topic %v",
-								string(retryableMsg.Value), err.Error())
-						}
-					}
-				}
-
-				if err = c.r.CommitMessages(context.Background(), kafka.Message(message)); err != nil {
-					c.logger.Errorf("Error Committing message %s", string(message.Value))
-				}
-
-				instrumentation.TotalProcessedMessagesCounter.Inc()
+				c.process(message)
 			}
 		}()
 	}
+}
+
+func (c *consumer) process(message Message) {
+	consumeErr := c.consumeFn(message)
+
+	if consumeErr != nil && c.retryEnabled {
+		c.logger.Warnf("Consume Function Err %s, Message is sending to exception/retry topic %s", consumeErr.Error(), c.retryTopic)
+
+		retryableMsg := (*kcronsumer.Message)(unsafe.Pointer(&message))
+		retryableMsg.Topic = c.retryTopic
+
+		if consumeErr = c.retryFn(*retryableMsg); consumeErr != nil {
+			if consumeErr = c.cronsumer.Produce(*retryableMsg); consumeErr != nil {
+				c.logger.Errorf("Error producing message %s to exception/retry topic %v",
+					string(retryableMsg.Value), consumeErr.Error())
+			}
+		}
+
+	}
+
+	commitErr := c.r.CommitMessages(context.Background(), kafka.Message(message))
+	if commitErr != nil {
+		c.logger.Errorf("Error Committing message %s", string(message.Value))
+		return
+	}
+
+	if consumeErr != nil {
+		instrumentation.TotalProcessedRetryableMessagesCounter.Inc()
+	}
+
+	instrumentation.TotalProcessedMessagesCounter.Inc()
 }
 
 func (c *consumer) Stop() error {
