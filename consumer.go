@@ -56,7 +56,7 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		consumeFn:    cfg.ConsumeFn,
 		retryEnabled: cfg.RetryEnabled,
 		logger:       log,
-		subprocesses: []subprocess{},
+		subprocesses: newSubProcesses(),
 		r:            reader,
 	}
 	c.context, c.cancelFn = context.WithCancel(context.Background())
@@ -92,7 +92,6 @@ func (c *consumer) Consume() {
 }
 
 func (c *consumer) Stop() error {
-	c.logger.Debug("Consuming is closing!")
 	var err error
 	c.once.Do(func() {
 		c.subprocesses.Stop()
@@ -111,7 +110,6 @@ func (c *consumer) WithLogger(logger LoggerInterface) {
 }
 
 func (c *consumer) consume() {
-	c.logger.Debug("Consuming is starting")
 	c.wg.Add(1)
 	defer c.wg.Done()
 
@@ -148,7 +146,6 @@ func (c *consumer) process(message Message) {
 					string(retryableMsg.Value), produceErr.Error())
 			}
 		}
-
 	}
 
 	commitErr := c.r.CommitMessages(context.Background(), kafka.Message(message))
@@ -165,6 +162,5 @@ func (c *consumer) process(message Message) {
 }
 
 func (c *consumer) retryFn(message kcronsumer.Message) error {
-	consumeErr := c.consumeFn(toMessage(message))
-	return consumeErr
+	return c.consumeFn(toMessage(message))
 }
