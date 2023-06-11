@@ -1,10 +1,52 @@
 package kafka
 
 import (
+	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/protocol"
 )
 
 type Message kafka.Message
+
+func (m *Message) toRetryableMessage(retryTopic string) kcronsumer.Message {
+	headers := make([]kcronsumer.Header, 0, len(m.Headers))
+	for i := range m.Headers {
+		headers = append(headers, kcronsumer.Header{
+			Key:   m.Headers[i].Key,
+			Value: m.Headers[i].Value,
+		})
+	}
+
+	return kcronsumer.NewMessageBuilder().
+		WithKey(m.Key).
+		WithValue(m.Value).
+		WithTopic(retryTopic).
+		WithHeaders(headers).
+		WithPartition(m.Partition).
+		WithHighWatermark(m.HighWaterMark).
+		Build()
+}
+
+func toMessage(message kcronsumer.Message) Message {
+	headers := make([]protocol.Header, 0, len(message.Headers))
+	for i := range message.Headers {
+		headers = append(headers, protocol.Header{
+			Key:   message.Headers[i].Key,
+			Value: message.Headers[i].Value,
+		})
+	}
+
+	return Message{
+		Topic:         message.Topic,
+		Partition:     message.Partition,
+		Offset:        message.Offset,
+		HighWaterMark: message.HighWaterMark,
+		Key:           message.Key,
+		Value:         message.Value,
+		Headers:       headers,
+		Time:          message.Time,
+	}
+}
 
 func (m *Message) Header(key string) *kafka.Header {
 	for i, header := range m.Headers {

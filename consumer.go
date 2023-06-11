@@ -2,13 +2,11 @@ package kafka
 
 import (
 	"context"
-	"sync"
-	"unsafe"
-
 	cronsumer "github.com/Trendyol/kafka-cronsumer"
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"github.com/Trendyol/kafka-konsumer/instrumentation"
 	"github.com/segmentio/kafka-go"
+	"sync"
 )
 
 type Consumer interface {
@@ -29,12 +27,13 @@ type consumer struct {
 	consumeFn func(Message) error
 
 	retryEnabled bool
-	retryFn      func(message kcronsumer.Message) error
 	retryTopic   string
 
 	logger LoggerInterface
 
-	cancelFn     context.CancelFunc
+	cancelFn context.CancelFunc
+	context  context.Context
+
 	api          API
 	subprocesses subprocesses
 }
@@ -43,6 +42,7 @@ var _ Consumer = (*consumer)(nil)
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	log := NewZapLogger(cfg.LogLevel)
+
 	reader, err := cfg.newKafkaReader()
 	if err != nil {
 		log.Errorf("Error when initializing kafka reader %v", err)
@@ -59,60 +59,15 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		subprocesses: []subprocess{},
 		r:            reader,
 	}
+	c.context, c.cancelFn = context.WithCancel(context.Background())
 
 	if cfg.RetryEnabled {
-		c.logger.Debug("Konsumer retry enabled mode active!")
-		kcronsumerCfg := kcronsumer.Config{
-			Brokers: cfg.RetryConfiguration.Brokers,
-			Consumer: kcronsumer.ConsumerConfig{
-				GroupID:           cfg.Reader.GroupID,
-				Topic:             cfg.RetryConfiguration.Topic,
-				Cron:              cfg.RetryConfiguration.StartTimeCron,
-				Duration:          cfg.RetryConfiguration.WorkDuration,
-				Concurrency:       cfg.Concurrency,
-				MinBytes:          cfg.Reader.MinBytes,
-				MaxBytes:          cfg.Reader.MaxBytes,
-				MaxRetry:          cfg.RetryConfiguration.MaxRetry,
-				MaxWait:           cfg.Reader.MaxWait,
-				CommitInterval:    cfg.Reader.CommitInterval,
-				HeartbeatInterval: cfg.Reader.HeartbeatInterval,
-				SessionTimeout:    cfg.Reader.SessionTimeout,
-				RebalanceTimeout:  cfg.Reader.RebalanceTimeout,
-				StartOffset:       kcronsumer.ToStringOffset(cfg.Reader.StartOffset),
-				RetentionTime:     cfg.Reader.RetentionTime,
-			},
-			LogLevel: "info",
-		}
-
-		if !cfg.RetryConfiguration.SASL.IsEmpty() {
-			c.logger.Debug("Setting cronsumer SASL configurations...")
-			kcronsumerCfg.SASL.Enabled = true
-			kcronsumerCfg.SASL.AuthType = string(cfg.RetryConfiguration.SASL.Type)
-			kcronsumerCfg.SASL.Username = cfg.RetryConfiguration.SASL.Username
-			kcronsumerCfg.SASL.Password = cfg.RetryConfiguration.SASL.Password
-			kcronsumerCfg.SASL.Rack = cfg.RetryConfiguration.Rack
-		}
-
-		if !cfg.RetryConfiguration.TLS.IsEmpty() {
-			c.logger.Debug("Setting cronsumer TLS configurations...")
-			kcronsumerCfg.SASL.RootCAPath = cfg.RetryConfiguration.TLS.RootCAPath
-			kcronsumerCfg.SASL.IntermediateCAPath = cfg.RetryConfiguration.TLS.IntermediateCAPath
-		}
-
 		c.retryTopic = cfg.RetryConfiguration.Topic
-
-		c.retryFn = func(message kcronsumer.Message) error {
-			toMessage := (*Message)(unsafe.Pointer(&message))
-			consumeErr := c.consumeFn(*toMessage)
-			return consumeErr
-		}
-
-		c.cronsumer = cronsumer.New(&kcronsumerCfg, c.retryFn)
+		c.cronsumer = cronsumer.New(cfg.newCronsumerConfig(), c.retryFn)
 		c.subprocesses.Add(c.cronsumer)
 	}
 
 	if cfg.APIEnabled {
-		c.logger.Debug("Metrics API Enabled!")
 		c.api = NewAPI(cfg)
 		c.subprocesses.Add(c.api)
 	}
@@ -122,11 +77,7 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 
 func (c *consumer) Consume() {
 	go c.subprocesses.Start()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	c.cancelFn = cancel
-
-	go c.consume(ctx)
+	go c.consume()
 
 	for i := 0; i < c.concurrency; i++ {
 		c.wg.Add(1)
@@ -138,37 +89,6 @@ func (c *consumer) Consume() {
 			}
 		}()
 	}
-}
-
-func (c *consumer) process(message Message) {
-	consumeErr := c.consumeFn(message)
-
-	if consumeErr != nil && c.retryEnabled {
-		c.logger.Warnf("Consume Function Err %s, Message is sending to exception/retry topic %s", consumeErr.Error(), c.retryTopic)
-
-		retryableMsg := (*kcronsumer.Message)(unsafe.Pointer(&message))
-		retryableMsg.Topic = c.retryTopic
-
-		if retryErr := c.retryFn(*retryableMsg); retryErr != nil {
-			if produceErr := c.cronsumer.Produce(*retryableMsg); produceErr != nil {
-				c.logger.Errorf("Error producing message %s to exception/retry topic %v",
-					string(retryableMsg.Value), produceErr.Error())
-			}
-		}
-
-	}
-
-	commitErr := c.r.CommitMessages(context.Background(), kafka.Message(message))
-	if commitErr != nil {
-		c.logger.Errorf("Error Committing message %s", string(message.Value))
-		return
-	}
-
-	if consumeErr != nil {
-		instrumentation.TotalProcessedRetryableMessagesCounter.Inc()
-	}
-
-	instrumentation.TotalProcessedMessagesCounter.Inc()
 }
 
 func (c *consumer) Stop() error {
@@ -190,7 +110,7 @@ func (c *consumer) WithLogger(logger LoggerInterface) {
 	c.logger = logger
 }
 
-func (c *consumer) consume(ctx context.Context) {
+func (c *consumer) consume() {
 	c.logger.Debug("Consuming is starting")
 	c.wg.Add(1)
 	defer c.wg.Done()
@@ -200,9 +120,9 @@ func (c *consumer) consume(ctx context.Context) {
 		case <-c.quit:
 			return
 		default:
-			message, err := c.r.FetchMessage(ctx)
+			message, err := c.r.FetchMessage(c.context)
 			if err != nil {
-				if ctx.Err() != nil {
+				if c.context.Err() != nil {
 					continue
 				}
 				c.logger.Errorf("Message could not read, err %s", err.Error())
@@ -212,4 +132,39 @@ func (c *consumer) consume(ctx context.Context) {
 			c.messageCh <- Message(message)
 		}
 	}
+}
+
+func (c *consumer) process(message Message) {
+	consumeErr := c.consumeFn(message)
+
+	if consumeErr != nil && c.retryEnabled {
+		c.logger.Warnf("Consume Function Err %s, Message is sending to exception/retry topic %s", consumeErr.Error(), c.retryTopic)
+
+		retryableMsg := message.toRetryableMessage(c.retryTopic)
+
+		if retryErr := c.retryFn(retryableMsg); retryErr != nil {
+			if produceErr := c.cronsumer.Produce(retryableMsg); produceErr != nil {
+				c.logger.Errorf("Error producing message %s to exception/retry topic %v",
+					string(retryableMsg.Value), produceErr.Error())
+			}
+		}
+
+	}
+
+	commitErr := c.r.CommitMessages(context.Background(), kafka.Message(message))
+	if commitErr != nil {
+		c.logger.Errorf("Error Committing message %s", string(message.Value))
+		return
+	}
+
+	if consumeErr != nil {
+		instrumentation.TotalProcessedRetryableMessagesCounter.Inc()
+	}
+
+	instrumentation.TotalProcessedMessagesCounter.Inc()
+}
+
+func (c *consumer) retryFn(message kcronsumer.Message) error {
+	consumeErr := c.consumeFn(toMessage(message))
+	return consumeErr
 }
