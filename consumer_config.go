@@ -10,6 +10,8 @@ import (
 
 type ReaderConfig kafka.ReaderConfig
 
+type BatchConsumeFn func([]Message) error
+
 type ConsumeFn func(Message) error
 
 type ConsumerConfig struct {
@@ -26,6 +28,8 @@ type ConsumerConfig struct {
 
 	RetryEnabled       bool
 	RetryConfiguration RetryConfiguration
+
+	BatchConfiguration BatchConfiguration
 
 	APIEnabled          bool
 	APIConfiguration    APIConfiguration
@@ -97,6 +101,12 @@ type RetryConfiguration struct {
 	SASL          *SASLConfig
 	TLS           *TLSConfig
 	Rack          string
+}
+
+type BatchConfiguration struct {
+	MessageGroupLimit    int
+	MessageGroupDuration time.Duration
+	BatchConsumeFn       BatchConsumeFn
 }
 
 func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
