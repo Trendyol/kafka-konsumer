@@ -87,6 +87,12 @@ and running the infrastructure with `docker compose up` and then the application
 
 ![grafana](.github/images/grafana.jpg)
 
+#### With SASL-PLAINTEXT Authentication
+
+Under the [examples](examples) - [with-sasl-plaintext](examples/with-sasl-plaintext) folder, you can find an example 
+of a consumer integration with SASL/PLAIN mechanism. To try the example, you can run the command `docker compose up` 
+under [the specified folder](examples/with-sasl-plaintext) and then start the application.
+
 ## Configurations
 
 | config                                      | description                                                                                                                           | default          |
