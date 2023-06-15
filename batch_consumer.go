@@ -2,10 +2,11 @@ package kafka
 
 import (
 	"context"
+	"time"
+
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"github.com/Trendyol/kafka-konsumer/instrumentation"
 	"github.com/segmentio/kafka-go"
-	"time"
 )
 
 type batchConsumer struct {

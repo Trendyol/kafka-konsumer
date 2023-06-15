@@ -1,9 +1,10 @@
 package kafka
 
 import (
-	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"runtime"
 	"time"
+
+	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 
 	"github.com/segmentio/kafka-go"
 )

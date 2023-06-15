@@ -2,10 +2,11 @@ package kafka
 
 import (
 	"context"
+	"sync"
+
 	cronsumer "github.com/Trendyol/kafka-cronsumer"
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"github.com/segmentio/kafka-go"
-	"sync"
 )
 
 type Consumer interface {

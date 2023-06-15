@@ -21,6 +21,7 @@ func (processes *subprocesses) Start() {
 		(*processes)[i].Start()
 	}
 }
+
 func (processes *subprocesses) Stop() {
 	for i := range *processes {
 		(*processes)[i].Stop()
