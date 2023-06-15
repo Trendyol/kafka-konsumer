@@ -79,6 +79,43 @@ func consumeFn(message kafka.Message) error {
 }
 ```
 
+#### With Batch Option
+```go
+func main() {
+	consumerCfg := &kafka.ConsumerConfig{
+		Reader: kafka.ReaderConfig{
+			Brokers: []string{"localhost:29092"},
+			Topic:   "standart-topic",
+			GroupID: "standart-cg",
+		},
+		LogLevel:     kafka.LogLevelDebug,
+		RetryEnabled: true,
+		RetryConfiguration: kafka.RetryConfiguration{
+			Brokers:       []string{"localhost:29092"},
+			Topic:         "retry-topic",
+			StartTimeCron: "*/1 * * * *",
+			WorkDuration:  50 * time.Second,
+			MaxRetry:      3,
+		},
+		BatchConfiguration: kafka.BatchConfiguration{
+			MessageGroupLimit:    1000,
+			MessageGroupDuration: time.Second,
+			BatchConsumeFn:       batchConsumeFn,
+		},
+	}
+
+	consumer, _ := kafka.NewBatchConsumer(consumerCfg)
+	defer consumer.Stop()
+
+	consumer.Consume()
+}
+
+func batchConsumeFn(messages []kafka.Message) error {
+	fmt.Printf("%d\n comes first %s", len(messages), messages[0].Value)
+	return nil
+}
+```
+
 #### With Grafana & Prometheus
 
 In this example, we are demonstrating how to create Grafana dashboard and how to define alerts in Prometheus. You can
@@ -107,6 +144,8 @@ and running the infrastructure with `docker compose up` and then the application
 | `retryConfiguration.sasl.authType`          | `SCRAM` or `PLAIN`                                                                                                                    |                  |
 | `retryConfiguration.sasl.username`          | SCRAM OR PLAIN username                                                                                                               |                  |
 | `retryConfiguration.sasl.password`          | SCRAM OR PLAIN password                                                                                                               |                  |
+| `batchConfiguration.messageGroupLimit`      | Maximum number of messages in a batch                                                                                                 |                  |
+| `batchConfiguration.messageGroupDuration`   | Maximum time to wait for a batch                                                                                                      |                  |
 | `tls.rootCAPath`                            | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                               | ""               |
 | `tls.intermediateCAPath`                    | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                    | ""               |
 | `sasl.authType`                             | `SCRAM` or `PLAIN`                                                                                                                    |                  |
