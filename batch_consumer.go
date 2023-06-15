@@ -2,57 +2,52 @@ package kafka
 
 import (
 	"context"
+	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
+	"github.com/Trendyol/kafka-konsumer/instrumentation"
 	"github.com/segmentio/kafka-go"
-	"sync"
 	"time"
 )
 
 type batchConsumer struct {
-	r           *kafka.Reader
-	wg          sync.WaitGroup
-	once        sync.Once
-	messageCh   chan Message
-	quit        chan struct{}
-	concurrency int
-	consumeFn   func([]Message) error
+	*base
+
+	consumeFn func([]Message) error
 
 	messageGroupLimit    int
 	messageGroupDuration time.Duration
-
-	cancelFn context.CancelFunc
-	context  context.Context
-
-	logger LoggerInterface
 }
 
 var _ Consumer = (*batchConsumer)(nil)
 
 func NewBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
-	log := NewZapLogger(cfg.LogLevel)
-	reader, err := cfg.newKafkaReader()
+	consumerBase, err := newBase(cfg)
 	if err != nil {
-		log.Errorf("Error when initializing kafka reader %v", err)
 		return nil, err
 	}
 
 	c := batchConsumer{
-		r:                    reader,
-		messageCh:            make(chan Message, cfg.Concurrency),
-		quit:                 make(chan struct{}),
-		concurrency:          cfg.Concurrency,
+		base:                 consumerBase,
 		consumeFn:            cfg.BatchConfiguration.BatchConsumeFn,
 		messageGroupLimit:    cfg.BatchConfiguration.MessageGroupLimit,
 		messageGroupDuration: cfg.BatchConfiguration.MessageGroupDuration,
-		logger:               log,
 	}
 
-	c.context, c.cancelFn = context.WithCancel(context.Background())
+	if cfg.RetryEnabled {
+		c.base.setupCronsumer(cfg, func(message kcronsumer.Message) error {
+			return c.consumeFn([]Message{toMessage(message)})
+		})
+	}
+
+	if cfg.APIEnabled {
+		c.base.setupAPI(cfg)
+	}
 
 	return &c, nil
 }
 
 func (b *batchConsumer) Consume() {
-	go b.consume()
+	go b.base.subprocesses.Start()
+	go b.startConsume()
 
 	for i := 0; i < b.concurrency; i++ {
 		b.wg.Add(1)
@@ -73,7 +68,7 @@ func (b *batchConsumer) startBatch() {
 				continue
 			}
 
-			b.processMessage(messages)
+			b.process(messages)
 			messages = messages[:0]
 		case msg, ok := <-b.messageCh:
 			if !ok {
@@ -83,16 +78,31 @@ func (b *batchConsumer) startBatch() {
 			messages = append(messages, msg)
 
 			if len(messages) == b.messageGroupLimit {
-				b.processMessage(messages)
+				b.process(messages)
 				messages = messages[:0]
 			}
 		}
 	}
 }
 
-func (b *batchConsumer) processMessage(messages []Message) {
-	if err := b.consumeFn(messages); err != nil {
-		return
+func (b *batchConsumer) process(messages []Message) {
+	consumeErr := b.consumeFn(messages)
+	if consumeErr != nil && b.retryEnabled {
+		b.logger.Warnf("Consume Function Err %s, Messages will be retried", consumeErr.Error())
+
+		// Try to process same message again
+		if consumeErr = b.consumeFn(messages); consumeErr != nil {
+			b.logger.Warnf("Consume Function Again Err %s, messages are sending to exception/retry topic %s", consumeErr.Error(), b.retryTopic)
+
+			cronsumerMessages := make([]kcronsumer.Message, 0, len(messages))
+			for i := range messages {
+				cronsumerMessages = append(cronsumerMessages, messages[i].toRetryableMessage(b.retryTopic))
+			}
+
+			if produceErr := b.base.cronsumer.ProduceBatch(cronsumerMessages); produceErr != nil {
+				b.logger.Errorf("Error producing messages to exception/retry topic %s", produceErr.Error())
+			}
+		}
 	}
 
 	segmentioMessages := make([]kafka.Message, 0, len(messages))
@@ -102,48 +112,10 @@ func (b *batchConsumer) processMessage(messages []Message) {
 
 	commitErr := b.r.CommitMessages(context.Background(), segmentioMessages...)
 	if commitErr != nil {
+		instrumentation.TotalUnprocessedBatchMessagesCounter.Inc()
 		b.logger.Error("Error Committing messages %s", commitErr.Error())
 		return
 	}
-}
 
-func (b *batchConsumer) consume() {
-	b.wg.Add(1)
-	defer b.wg.Done()
-
-	for {
-		select {
-		case <-b.quit:
-			return
-		default:
-			message, err := b.r.FetchMessage(b.context)
-			if err != nil {
-				if b.context.Err() != nil {
-					continue
-				}
-				b.logger.Errorf("Message could not read, err %s", err.Error())
-				continue
-			}
-
-			b.messageCh <- Message(message)
-		}
-	}
-}
-
-func (b *batchConsumer) WithLogger(logger LoggerInterface) {
-	b.logger = logger
-}
-
-func (b *batchConsumer) Stop() error {
-	b.logger.Debug("Consuming is closing!")
-	var err error
-	b.once.Do(func() {
-		b.cancelFn()
-		b.quit <- struct{}{}
-		close(b.messageCh)
-		b.wg.Wait()
-		err = b.r.Close()
-	})
-
-	return err
+	instrumentation.TotalProcessedBatchMessagesCounter.Inc()
 }

@@ -124,7 +124,9 @@ Kafka Konsumer offers an API that handles exposing several metrics.
 
 ### Exposed Metrics
 
-| Metric Name                                   | Description                                   | Value Type |
-|-----------------------------------------------|-----------------------------------------------|------------|
-| kafka_konsumer_processed_messages_total       | Total number of processed messages.           | Counter    |
-| kafka_konsumer_processed_retry_messages_total | Total number of processed retryable messages. | Counter    |
+| Metric Name                                     | Description                                 | Value Type |
+|-------------------------------------------------|---------------------------------------------|------------|
+| kafka_konsumer_processed_messages_total         | Total number of processed messages.         | Counter    |
+| kafka_konsumer_processed_batch_messages_total   | Total number of processed batch messages.   | Counter    |
+| kafka_konsumer_unprocessed_messages_total       | Total number of unprocessed messages.       | Counter    |
+| kafka_konsumer_unprocessed_batch_messages_total | Total number of unprocessed batch messages. | Counter    |
