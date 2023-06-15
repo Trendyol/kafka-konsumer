@@ -18,8 +18,8 @@ func main() {
 		},
 		LogLevel: kafka.LogLevelDebug,
 		BatchConfiguration: kafka.BatchConfiguration{
-			MessageGroupLimit:    1000,
-			MessageGroupDuration: time.Second,
+			MessageGroupLimit:    3,
+			MessageGroupDuration: 3 * time.Second,
 			BatchConsumeFn:       batchConsumeFn,
 		},
 	}

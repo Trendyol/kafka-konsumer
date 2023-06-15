@@ -5,7 +5,6 @@ import (
 	"github.com/segmentio/kafka-go"
 	"sync"
 	"time"
-	"unsafe"
 )
 
 type batchConsumer struct {
@@ -31,7 +30,6 @@ var _ Consumer = (*batchConsumer)(nil)
 func NewBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	log := NewZapLogger(cfg.LogLevel)
 	reader, err := cfg.newKafkaReader()
-
 	if err != nil {
 		log.Errorf("Error when initializing kafka reader %v", err)
 		return nil, err
@@ -58,11 +56,11 @@ func (b *batchConsumer) Consume() {
 
 	for i := 0; i < b.concurrency; i++ {
 		b.wg.Add(1)
-		go b.processMessage()
+		go b.startBatch()
 	}
 }
 
-func (b *batchConsumer) processMessage() {
+func (b *batchConsumer) startBatch() {
 	defer b.wg.Done()
 
 	ticker := time.NewTicker(b.messageGroupDuration)
@@ -75,11 +73,7 @@ func (b *batchConsumer) processMessage() {
 				continue
 			}
 
-			_ = b.consumeFn(messages)
-
-			segmentioMessages := (*[]kafka.Message)(unsafe.Pointer(&messages))
-			b.r.CommitMessages(context.Background(), *segmentioMessages...)
-
+			b.processMessage(messages)
 			messages = messages[:0]
 		case msg, ok := <-b.messageCh:
 			if !ok {
@@ -89,14 +83,27 @@ func (b *batchConsumer) processMessage() {
 			messages = append(messages, msg)
 
 			if len(messages) == b.messageGroupLimit {
-				_ = b.consumeFn(messages)
-
-				segmentioMessages := (*[]kafka.Message)(unsafe.Pointer(&messages))
-				b.r.CommitMessages(context.Background(), *segmentioMessages...)
-
+				b.processMessage(messages)
 				messages = messages[:0]
 			}
 		}
+	}
+}
+
+func (b *batchConsumer) processMessage(messages []Message) {
+	if err := b.consumeFn(messages); err != nil {
+		return
+	}
+
+	segmentioMessages := make([]kafka.Message, 0, len(messages))
+	for i := range messages {
+		segmentioMessages = append(segmentioMessages, kafka.Message(messages[i]))
+	}
+
+	commitErr := b.r.CommitMessages(context.Background(), segmentioMessages...)
+	if commitErr != nil {
+		b.logger.Error("Error Committing messages %s", commitErr.Error())
+		return
 	}
 }
 

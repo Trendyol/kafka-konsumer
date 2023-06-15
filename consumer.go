@@ -150,7 +150,7 @@ func (c *consumer) process(message Message) {
 
 	commitErr := c.r.CommitMessages(context.Background(), kafka.Message(message))
 	if commitErr != nil {
-		c.logger.Errorf("Error Committing message %s", string(message.Value))
+		c.logger.Errorf("Error Committing message %s, %s", string(message.Value), commitErr.Error())
 		return
 	}
 
