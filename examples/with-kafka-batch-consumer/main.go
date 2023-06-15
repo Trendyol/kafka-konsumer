@@ -43,6 +43,7 @@ func main() {
 	<-c
 }
 
+// In order to load topic with data, use:
 // kafka-console-producer --broker-list localhost:29092 --topic standart-topic < examples/with-kafka-batch-consumer/load.txt
 func batchConsumeFn(messages []kafka.Message) error {
 	fmt.Printf("%d\n comes first %s", len(messages), messages[0].Value)

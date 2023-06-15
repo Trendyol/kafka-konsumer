@@ -85,7 +85,7 @@ In this example, we are demonstrating how to create Grafana dashboard and how to
 see the example by going to the [with-grafana](examples/with-grafana) folder in the [examples](examples) folder
 and running the infrastructure with `docker compose up` and then the application.
 
-![grafana](.github/images/grafana.jpg)
+![grafana](.github/images/grafana.png)
 
 ## Configurations
 
