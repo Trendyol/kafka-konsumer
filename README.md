@@ -23,7 +23,6 @@ After running `docker-compose up` command, you can run any application you want.
 <details>
     <summary>Without Retry/Exception Manager</summary>
 
-    ```go
     func main() {
         consumerCfg := &kafka.ConsumerConfig{
             Reader: kafka.ReaderConfig{
@@ -45,13 +44,11 @@ After running `docker-compose up` command, you can run any application you want.
         fmt.Printf("Message From %s with value %s", message.Topic, string(message.Value))
         return nil
     }
-    ```
 </details>
 
 <details>
     <summary>With Retry/Exception Option Enabled</summary>
     
-    ```go
     func main() {
         consumerCfg := &kafka.ConsumerConfig{
             Reader: kafka.ReaderConfig{
@@ -79,13 +76,11 @@ After running `docker-compose up` command, you can run any application you want.
         fmt.Printf("Message From %s with value %s", message.Topic, string(message.Value))
         return nil
     }
-    ```
 </details>
 
 <details>
     <summary>With Batch Option</summary>
 
-    ```go
     func main() {
         consumerCfg := &kafka.ConsumerConfig{
             Reader: kafka.ReaderConfig{
@@ -119,7 +114,6 @@ After running `docker-compose up` command, you can run any application you want.
         fmt.Printf("%d\n comes first %s", len(messages), messages[0].Value)
         return nil
     }
-    ```
 </details>
 
 
