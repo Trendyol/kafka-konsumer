@@ -20,101 +20,108 @@ You can find a number of ready-to-run examples at [this directory](examples).
 
 After running `docker-compose up` command, you can run any application you want.
 
-#### Without Retry/Exception Manager
+<details>
+    <summary>Without Retry/Exception Manager</summary>
 
-```go
-func main() {
-    consumerCfg := &kafka.ConsumerConfig{
-        Reader: kafka.ReaderConfig{
-            Brokers: []string{"localhost:29092"},
-            Topic:   "standart-topic",
-            GroupID: "standart-cg",
-        },
-        ConsumeFn:    consumeFn,
-        RetryEnabled: false,
-    }
-
-    consumer, _ := kafka.NewConsumer(consumerCfg)
-    defer consumer.Stop()
+    ```go
+    func main() {
+        consumerCfg := &kafka.ConsumerConfig{
+            Reader: kafka.ReaderConfig{
+                Brokers: []string{"localhost:29092"},
+                Topic:   "standart-topic",
+                GroupID: "standart-cg",
+            },
+            ConsumeFn:    consumeFn,
+            RetryEnabled: false,
+        }
     
-    consumer.Consume()
-}
-
-func consumeFn(message kafka.Message) error {
-    fmt.Printf("Message From %s with value %s", message.Topic, string(message.Value))
-    return nil
-}
-
-```
-
-#### With Retry/Exception Option Enabled
-
-```go
-func main() {
-    consumerCfg := &kafka.ConsumerConfig{
-        Reader: kafka.ReaderConfig{
-            Brokers: []string{"localhost:29092"},
-            Topic:   "standart-topic",
-            GroupID: "standart-cg",
-        },
-        RetryEnabled: true,
-        RetryConfiguration: kafka.RetryConfiguration{
-            Topic:         "retry-topic",
-            StartTimeCron: "*/1 * * * *",
-            WorkDuration:  50 * time.Second,
-            MaxRetry:      3,
-        },
-        ConsumeFn: consumeFn,
+        consumer, _ := kafka.NewConsumer(consumerCfg)
+        defer consumer.Stop()
+        
+        consumer.Consume()
     }
     
-    consumer, _ := kafka.NewConsumer(consumerCfg)
-    defer consumer.Stop()
+    func consumeFn(message kafka.Message) error {
+        fmt.Printf("Message From %s with value %s", message.Topic, string(message.Value))
+        return nil
+    }
+    ```
+</details>
+
+<details>
+    <summary>With Retry/Exception Option Enabled</summary>
     
-    consumer.Consume()
-}
+    ```go
+    func main() {
+        consumerCfg := &kafka.ConsumerConfig{
+            Reader: kafka.ReaderConfig{
+                Brokers: []string{"localhost:29092"},
+                Topic:   "standart-topic",
+                GroupID: "standart-cg",
+            },
+            RetryEnabled: true,
+            RetryConfiguration: kafka.RetryConfiguration{
+                Topic:         "retry-topic",
+                StartTimeCron: "*/1 * * * *",
+                WorkDuration:  50 * time.Second,
+                MaxRetry:      3,
+            },
+            ConsumeFn: consumeFn,
+        }
+    
+        consumer, _ := kafka.NewConsumer(consumerCfg)
+        defer consumer.Stop()
+        
+        consumer.Consume()
+    }
+    
+    func consumeFn(message kafka.Message) error {
+        fmt.Printf("Message From %s with value %s", message.Topic, string(message.Value))
+        return nil
+    }
+    ```
+</details>
 
-func consumeFn(message kafka.Message) error {
-    fmt.Printf("Message From %s with value %s", message.Topic, string(message.Value))
-    return nil
-}
-```
+<details>
+    <summary>With Batch Option</summary>
 
-#### With Batch Option
-```go
-func main() {
-	consumerCfg := &kafka.ConsumerConfig{
-		Reader: kafka.ReaderConfig{
-			Brokers: []string{"localhost:29092"},
-			Topic:   "standart-topic",
-			GroupID: "standart-cg",
-		},
-		LogLevel:     kafka.LogLevelDebug,
-		RetryEnabled: true,
-		RetryConfiguration: kafka.RetryConfiguration{
-			Brokers:       []string{"localhost:29092"},
-			Topic:         "retry-topic",
-			StartTimeCron: "*/1 * * * *",
-			WorkDuration:  50 * time.Second,
-			MaxRetry:      3,
-		},
-		BatchConfiguration: kafka.BatchConfiguration{
-			MessageGroupLimit:    1000,
-			MessageGroupDuration: time.Second,
-			BatchConsumeFn:       batchConsumeFn,
-		},
-	}
+    ```go
+    func main() {
+        consumerCfg := &kafka.ConsumerConfig{
+            Reader: kafka.ReaderConfig{
+                Brokers: []string{"localhost:29092"},
+                Topic:   "standart-topic",
+                GroupID: "standart-cg",
+            },
+            LogLevel:     kafka.LogLevelDebug,
+            RetryEnabled: true,
+            RetryConfiguration: kafka.RetryConfiguration{
+                Brokers:       []string{"localhost:29092"},
+                Topic:         "retry-topic",
+                StartTimeCron: "*/1 * * * *",
+                WorkDuration:  50 * time.Second,
+                MaxRetry:      3,
+            },
+            BatchConfiguration: kafka.BatchConfiguration{
+                MessageGroupLimit:    1000,
+                MessageGroupDuration: time.Second,
+                BatchConsumeFn:       batchConsumeFn,
+            },
+        }
+    
+        consumer, _ := kafka.NewConsumer(consumerCfg)
+        defer consumer.Stop()
+    
+        consumer.Consume()
+    }
+    
+    func batchConsumeFn(messages []kafka.Message) error {
+        fmt.Printf("%d\n comes first %s", len(messages), messages[0].Value)
+        return nil
+    }
+    ```
+</details>
 
-	consumer, _ := kafka.NewConsumer(consumerCfg)
-	defer consumer.Stop()
-
-	consumer.Consume()
-}
-
-func batchConsumeFn(messages []kafka.Message) error {
-	fmt.Printf("%d\n comes first %s", len(messages), messages[0].Value)
-	return nil
-}
-```
 
 #### With Grafana & Prometheus
 
