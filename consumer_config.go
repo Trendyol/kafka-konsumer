@@ -30,7 +30,7 @@ type ConsumerConfig struct {
 	RetryEnabled       bool
 	RetryConfiguration RetryConfiguration
 
-	BatchConfiguration BatchConfiguration
+	BatchConfiguration *BatchConfiguration
 
 	APIEnabled          bool
 	APIConfiguration    APIConfiguration

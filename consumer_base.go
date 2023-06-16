@@ -37,6 +37,14 @@ type base struct {
 	subprocesses subprocesses
 }
 
+func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
+	if cfg.BatchConfiguration != nil {
+		return newBatchConsumer(cfg)
+	}
+
+	return newSingleConsumer(cfg)
+}
+
 func newBase(cfg *ConsumerConfig) (*base, error) {
 	log := NewZapLogger(cfg.LogLevel)
 

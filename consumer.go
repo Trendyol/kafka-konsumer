@@ -16,7 +16,7 @@ type consumer struct {
 
 var _ Consumer = (*consumer)(nil)
 
-func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
+func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	consumerBase, err := newBase(cfg)
 	if err != nil {
 		return nil, err

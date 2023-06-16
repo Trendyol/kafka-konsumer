@@ -104,7 +104,7 @@ func main() {
 		},
 	}
 
-	consumer, _ := kafka.NewBatchConsumer(consumerCfg)
+	consumer, _ := kafka.NewConsumer(consumerCfg)
 	defer consumer.Stop()
 
 	consumer.Consume()

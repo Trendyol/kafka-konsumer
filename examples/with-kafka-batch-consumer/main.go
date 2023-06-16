@@ -24,14 +24,14 @@ func main() {
 			WorkDuration:  50 * time.Second,
 			MaxRetry:      3,
 		},
-		BatchConfiguration: kafka.BatchConfiguration{
+		BatchConfiguration: &kafka.BatchConfiguration{
 			MessageGroupLimit:    1000,
 			MessageGroupDuration: time.Second,
 			BatchConsumeFn:       batchConsumeFn,
 		},
 	}
 
-	consumer, _ := kafka.NewBatchConsumer(consumerCfg)
+	consumer, _ := kafka.NewConsumer(consumerCfg)
 	defer consumer.Stop()
 
 	consumer.Consume()

@@ -20,7 +20,7 @@ type batchConsumer struct {
 
 var _ Consumer = (*batchConsumer)(nil)
 
-func NewBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
+func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	consumerBase, err := newBase(cfg)
 	if err != nil {
 		return nil, err
