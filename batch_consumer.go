@@ -18,8 +18,6 @@ type batchConsumer struct {
 	messageGroupDuration time.Duration
 }
 
-var _ Consumer = (*batchConsumer)(nil)
-
 func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	consumerBase, err := newBase(cfg)
 	if err != nil {

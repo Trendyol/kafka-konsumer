@@ -14,8 +14,6 @@ type consumer struct {
 	consumeFn func(Message) error
 }
 
-var _ Consumer = (*consumer)(nil)
-
 func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	consumerBase, err := newBase(cfg)
 	if err != nil {
