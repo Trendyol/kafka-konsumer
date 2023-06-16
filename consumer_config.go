@@ -1,7 +1,6 @@
 package kafka
 
 import (
-	"runtime"
 	"time"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
@@ -22,7 +21,8 @@ type ConsumerConfig struct {
 	SASL *SASLConfig
 	TLS  *TLSConfig
 
-	// Concurrency default is runtime.NumCPU()
+	// Concurrency default is 1
+	// If this config is being set rathher than 1, partition order may be disappeared
 	Concurrency int
 
 	ConsumeFn ConsumeFn
@@ -143,6 +143,6 @@ func (cfg *ConsumerConfig) newKafkaReader() (*kafka.Reader, error) {
 
 func (cfg *ConsumerConfig) validate() {
 	if cfg.Concurrency == 0 {
-		cfg.Concurrency = runtime.NumCPU()
+		cfg.Concurrency = 1
 	}
 }
