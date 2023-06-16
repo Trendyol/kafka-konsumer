@@ -8,17 +8,7 @@ import (
 
 type Message kafka.Message
 
-func (m *Message) Header(key string) *kafka.Header {
-	for i, header := range m.Headers {
-		if header.Key == key {
-			return &m.Headers[i]
-		}
-	}
-
-	return nil
-}
-
-func (m *Message) ToRetryableMessage(retryTopic string) kcronsumer.Message {
+func (m *Message) toRetryableMessage(retryTopic string) kcronsumer.Message {
 	headers := make([]kcronsumer.Header, 0, len(m.Headers))
 	for i := range m.Headers {
 		headers = append(headers, kcronsumer.Header{
@@ -37,7 +27,7 @@ func (m *Message) ToRetryableMessage(retryTopic string) kcronsumer.Message {
 		Build()
 }
 
-func ToMessage(message kcronsumer.Message) Message {
+func toMessage(message kcronsumer.Message) Message {
 	headers := make([]protocol.Header, 0, len(message.Headers))
 	for i := range message.Headers {
 		headers = append(headers, protocol.Header{
@@ -56,6 +46,16 @@ func ToMessage(message kcronsumer.Message) Message {
 		Headers:       headers,
 		Time:          message.Time,
 	}
+}
+
+func (m *Message) Header(key string) *kafka.Header {
+	for i, header := range m.Headers {
+		if header.Key == key {
+			return &m.Headers[i]
+		}
+	}
+
+	return nil
 }
 
 func (m *Message) AddHeader(header ...kafka.Header) {

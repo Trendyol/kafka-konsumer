@@ -15,8 +15,6 @@ type producer struct {
 	w *kafka.Writer
 }
 
-var _ Producer = (*producer)(nil)
-
 func NewProducer(cfg ProducerConfig) (Producer, error) {
 	writer, err := cfg.newKafkaWriter()
 	if err != nil {

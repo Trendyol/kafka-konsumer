@@ -20,64 +20,102 @@ You can find a number of ready-to-run examples at [this directory](examples).
 
 After running `docker-compose up` command, you can run any application you want.
 
-#### Without Retry/Exception Manager
+<details>
+    <summary>Without Retry/Exception Manager</summary>
 
-```go
-func main() {
-    consumerCfg := &kafka.ConsumerConfig{
-        Reader: kafka.ReaderConfig{
-            Brokers: []string{"localhost:29092"},
-            Topic:   "standart-topic",
-            GroupID: "standart-cg",
-        },
-        ConsumeFn:    consumeFn,
-        RetryEnabled: false,
-    }
-
-    consumer, _ := kafka.NewConsumer(consumerCfg)
-    defer consumer.Stop()
+    func main() {
+        consumerCfg := &kafka.ConsumerConfig{
+            Reader: kafka.ReaderConfig{
+                Brokers: []string{"localhost:29092"},
+                Topic:   "standart-topic",
+                GroupID: "standart-cg",
+            },
+            ConsumeFn:    consumeFn,
+            RetryEnabled: false,
+        }
     
-    consumer.Consume()
-}
-
-func consumeFn(message kafka.Message) error {
-    fmt.Printf("Message From %s with value %s", message.Topic, string(message.Value))
-    return nil
-}
-
-```
-
-#### With Retry/Exception Option Enabled
-
-```go
-func main() {
-    consumerCfg := &kafka.ConsumerConfig{
-        Reader: kafka.ReaderConfig{
-            Brokers: []string{"localhost:29092"},
-            Topic:   "standart-topic",
-            GroupID: "standart-cg",
-        },
-        RetryEnabled: true,
-        RetryConfiguration: kafka.RetryConfiguration{
-            Topic:         "retry-topic",
-            StartTimeCron: "*/1 * * * *",
-            WorkDuration:  50 * time.Second,
-            MaxRetry:      3,
-        },
-        ConsumeFn: consumeFn,
+        consumer, _ := kafka.NewConsumer(consumerCfg)
+        defer consumer.Stop()
+        
+        consumer.Consume()
     }
     
-    consumer, _ := kafka.NewConsumer(consumerCfg)
-    defer consumer.Stop()
-    
-    consumer.Consume()
-}
+    func consumeFn(message kafka.Message) error {
+        fmt.Printf("Message From %s with value %s", message.Topic, string(message.Value))
+        return nil
+    }
+</details>
 
-func consumeFn(message kafka.Message) error {
-    fmt.Printf("Message From %s with value %s", message.Topic, string(message.Value))
-    return nil
-}
-```
+<details>
+    <summary>With Retry/Exception Option Enabled</summary>
+    
+    func main() {
+        consumerCfg := &kafka.ConsumerConfig{
+            Reader: kafka.ReaderConfig{
+                Brokers: []string{"localhost:29092"},
+                Topic:   "standart-topic",
+                GroupID: "standart-cg",
+            },
+            RetryEnabled: true,
+            RetryConfiguration: kafka.RetryConfiguration{
+                Topic:         "retry-topic",
+                StartTimeCron: "*/1 * * * *",
+                WorkDuration:  50 * time.Second,
+                MaxRetry:      3,
+            },
+            ConsumeFn: consumeFn,
+        }
+    
+        consumer, _ := kafka.NewConsumer(consumerCfg)
+        defer consumer.Stop()
+        
+        consumer.Consume()
+    }
+    
+    func consumeFn(message kafka.Message) error {
+        fmt.Printf("Message From %s with value %s", message.Topic, string(message.Value))
+        return nil
+    }
+</details>
+
+<details>
+    <summary>With Batch Option</summary>
+
+    func main() {
+        consumerCfg := &kafka.ConsumerConfig{
+            Reader: kafka.ReaderConfig{
+                Brokers: []string{"localhost:29092"},
+                Topic:   "standart-topic",
+                GroupID: "standart-cg",
+            },
+            LogLevel:     kafka.LogLevelDebug,
+            RetryEnabled: true,
+            RetryConfiguration: kafka.RetryConfiguration{
+                Brokers:       []string{"localhost:29092"},
+                Topic:         "retry-topic",
+                StartTimeCron: "*/1 * * * *",
+                WorkDuration:  50 * time.Second,
+                MaxRetry:      3,
+            },
+            BatchConfiguration: kafka.BatchConfiguration{
+                MessageGroupLimit:    1000,
+                MessageGroupDuration: time.Second,
+                BatchConsumeFn:       batchConsumeFn,
+            },
+        }
+    
+        consumer, _ := kafka.NewConsumer(consumerCfg)
+        defer consumer.Stop()
+    
+        consumer.Consume()
+    }
+    
+    func batchConsumeFn(messages []kafka.Message) error {
+        fmt.Printf("%d\n comes first %s", len(messages), messages[0].Value)
+        return nil
+    }
+</details>
+
 
 #### With Grafana & Prometheus
 
@@ -85,7 +123,7 @@ In this example, we are demonstrating how to create Grafana dashboard and how to
 see the example by going to the [with-grafana](examples/with-grafana) folder in the [examples](examples) folder
 and running the infrastructure with `docker compose up` and then the application.
 
-![grafana](.github/images/grafana.jpg)
+![grafana](.github/images/grafana.png)
 
 #### With SASL-PLAINTEXT Authentication
 
@@ -95,34 +133,36 @@ under [the specified folder](examples/with-sasl-plaintext) and then start the ap
 
 ## Configurations
 
-| config                                      | description                                                                                                                           | default          |
-|---------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|------------------|
-| `reader`                                    | [Describes all segmentio kafka reader configurations](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.39#ReaderConfig)          |                  |
-| `consumeFn`                                 | Kafka consumer function, if retry enabled it, is also used to consume retriable messages                                              |                  |
-| `logLevel`                                  | Describes log level; valid options are `debug`, `info`, `warn`, and `error`                                                           | info             |
-| `concurrency`                               | Number of goroutines used at listeners                                                                                                | runtime.NumCPU() |
-| `retryEnabled`                              | Retry/Exception consumer is working or not                                                                                            | false            |
-| `rack`                                      | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go#RackAffinityGroupBalancer)                                                 |                  |
-| `retryConfiguration.startTimeCron`          | Cron expression when retry consumer ([kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer#configurations)) starts to work at |                  |
-| `retryConfiguration.workDuration`           | Work duration exception consumer actively consuming messages                                                                          |                  |
-| `retryConfiguration.topic`                  | Retry/Exception topic names                                                                                                           |                  |
-| `retryConfiguration.brokers`                | Retry topic brokers urls                                                                                                              |                  |
-| `retryConfiguration.maxRetry`               | Maximum retry value for attempting to retry a message                                                                                 | 3                |
-| `retryConfiguration.tls.rootCAPath`         | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                               | ""               |
-| `retryConfiguration.tls.intermediateCAPath` | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                    | ""               |
-| `retryConfiguration.sasl.authType`          | `SCRAM` or `PLAIN`                                                                                                                    |                  |
-| `retryConfiguration.sasl.username`          | SCRAM OR PLAIN username                                                                                                               |                  |
-| `retryConfiguration.sasl.password`          | SCRAM OR PLAIN password                                                                                                               |                  |
-| `tls.rootCAPath`                            | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                               | ""               |
-| `tls.intermediateCAPath`                    | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                    | ""               |
-| `sasl.authType`                             | `SCRAM` or `PLAIN`                                                                                                                    |                  |
-| `sasl.username`                             | SCRAM OR PLAIN username                                                                                                               |                  |
-| `sasl.password`                             | SCRAM OR PLAIN password                                                                                                               |                  |
-| `logger`                                    | If you want to custom logger                                                                                                          | info             |
-| `apiEnabled`                                | Enabled metrics                                                                                                                       | false            |
-| `apiConfiguration.port`                     | Set API port                                                                                                                          | 8090             |
-| `apiConfiguration.healtCheckPath`           | Set Health check path                                                                                                                 | healthcheck      |
-| `metricConfiguration.path`                  | Set metric endpoint path                                                                                                              | /metrics         |
+| config                                      | description                                                                                                                          | default     |
+|---------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|-------------|
+| `reader`                                    | [Describes all segmentio kafka reader configurations](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.39#ReaderConfig)         |             |
+| `consumeFn`                                 | Kafka consumer function, if retry enabled it, is also used to consume retriable messages                                             |             |
+| `logLevel`                                  | Describes log level; valid options are `debug`, `info`, `warn`, and `error`                                                          | info        |
+| `concurrency`                               | Number of goroutines used at listeners                                                                                               | 1           |
+| `retryEnabled`                              | Retry/Exception consumer is working or not                                                                                           | false       |
+| `rack`                                      | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go#RackAffinityGroupBalancer)                                                |             |
+| `retryConfiguration.startTimeCron`          | Cron expression when retry consumer ([kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer#configurations)) starts to work at |             |
+| `retryConfiguration.workDuration`           | Work duration exception consumer actively consuming messages                                                                         |             |
+| `retryConfiguration.topic`                  | Retry/Exception topic names                                                                                                          |             |
+| `retryConfiguration.brokers`                | Retry topic brokers urls                                                                                                             |             |
+| `retryConfiguration.maxRetry`               | Maximum retry value for attempting to retry a message                                                                                | 3           |
+| `retryConfiguration.tls.rootCAPath`         | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                              | ""          |
+| `retryConfiguration.tls.intermediateCAPath` | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                   | ""          |
+| `retryConfiguration.sasl.authType`          | `SCRAM` or `PLAIN`                                                                                                                   |             |
+| `retryConfiguration.sasl.username`          | SCRAM OR PLAIN username                                                                                                              |             |
+| `retryConfiguration.sasl.password`          | SCRAM OR PLAIN password                                                                                                              |             |
+| `batchConfiguration.messageGroupLimit`      | Maximum number of messages in a batch                                                                                                |             |
+| `batchConfiguration.messageGroupDuration`   | Maximum time to wait for a batch                                                                                                     |             |
+| `tls.rootCAPath`                            | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                              | ""          |
+| `tls.intermediateCAPath`                    | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                   | ""          |
+| `sasl.authType`                             | `SCRAM` or `PLAIN`                                                                                                                   |             |
+| `sasl.username`                             | SCRAM OR PLAIN username                                                                                                              |             |
+| `sasl.password`                             | SCRAM OR PLAIN password                                                                                                              |             |
+| `logger`                                    | If you want to custom logger                                                                                                         | info        |
+| `apiEnabled`                                | Enabled metrics                                                                                                                      | false       |
+| `apiConfiguration.port`                     | Set API port                                                                                                                         | 8090        |
+| `apiConfiguration.healtCheckPath`           | Set Health check path                                                                                                                | healthcheck |
+| `metricConfiguration.path`                  | Set metric endpoint path                                                                                                             | /metrics    |
 
 ## Monitoring
 
@@ -130,7 +170,9 @@ Kafka Konsumer offers an API that handles exposing several metrics.
 
 ### Exposed Metrics
 
-| Metric Name                                   | Description                                   | Value Type |
-|-----------------------------------------------|-----------------------------------------------|------------|
-| kafka_konsumer_processed_messages_total       | Total number of processed messages.           | Counter    |
-| kafka_konsumer_processed_retry_messages_total | Total number of processed retryable messages. | Counter    |
+| Metric Name                                     | Description                                 | Value Type |
+|-------------------------------------------------|---------------------------------------------|------------|
+| kafka_konsumer_processed_messages_total         | Total number of processed messages.         | Counter    |
+| kafka_konsumer_processed_batch_messages_total   | Total number of processed batch messages.   | Counter    |
+| kafka_konsumer_unprocessed_messages_total       | Total number of unprocessed messages.       | Counter    |
+| kafka_konsumer_unprocessed_batch_messages_total | Total number of unprocessed batch messages. | Counter    |
