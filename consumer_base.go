@@ -16,25 +16,20 @@ type Consumer interface {
 }
 
 type base struct {
-	r           *kafka.Reader
-	wg          sync.WaitGroup
-	once        sync.Once
-	messageCh   chan Message
-	quit        chan struct{}
-	concurrency int
-
-	cronsumer kcronsumer.Cronsumer
-
-	retryEnabled bool
-	retryTopic   string
-
-	cancelFn context.CancelFunc
-	context  context.Context
-
-	logger LoggerInterface
-
+	cronsumer    kcronsumer.Cronsumer
 	api          API
+	logger       LoggerInterface
+	context      context.Context
+	messageCh    chan Message
+	quit         chan struct{}
+	cancelFn     context.CancelFunc
+	r            *kafka.Reader
+	retryTopic   string
 	subprocesses subprocesses
+	wg           sync.WaitGroup
+	concurrency  int
+	once         sync.Once
+	retryEnabled bool
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {

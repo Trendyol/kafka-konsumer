@@ -14,8 +14,8 @@ import (
 )
 
 type user struct {
-	ID   int
 	Name string
+	ID   int
 }
 
 var messages = []user{

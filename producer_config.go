@@ -7,30 +7,31 @@ import (
 )
 
 type WriterConfig struct {
+	ErrorLogger            kafka.Logger
+	Logger                 kafka.Logger
+	Balancer               kafka.Balancer
+	Completion             func(messages []kafka.Message, err error)
 	Topic                  string
 	Brokers                []string
-	MaxAttempts            int
-	WriteBackoffMin        time.Duration
-	WriteBackoffMax        time.Duration
-	BatchSize              int
-	BatchBytes             int64
-	BatchTimeout           time.Duration
 	ReadTimeout            time.Duration
+	BatchTimeout           time.Duration
+	BatchBytes             int64
 	WriteTimeout           time.Duration
 	RequiredAcks           kafka.RequiredAcks
+	BatchSize              int
+	WriteBackoffMax        time.Duration
+	WriteBackoffMin        time.Duration
+	MaxAttempts            int
 	Async                  bool
 	Compression            kafka.Compression
 	AllowAutoTopicCreation bool
-	Balancer               kafka.Balancer
-	Logger                 kafka.Logger
-	ErrorLogger            kafka.Logger
-	Completion             func(messages []kafka.Message, err error)
 }
 
 type ProducerConfig struct {
-	Writer WriterConfig
-	SASL   *SASLConfig
-	TLS    *TLSConfig
+	SASL     *SASLConfig
+	TLS      *TLSConfig
+	ClientId string
+	Writer   WriterConfig
 }
 
 func (c ProducerConfig) newKafkaWriter() (*kafka.Writer, error) {
@@ -67,7 +68,12 @@ func (c ProducerConfig) newKafkaWriter() (*kafka.Writer, error) {
 }
 
 func (c ProducerConfig) newKafkaTransport() (*kafka.Transport, error) {
-	transport := newTransport()
+	transport := &Transport{
+		Transport: &kafka.Transport{
+			ClientID: c.ClientId,
+		},
+	}
+
 	if err := fillLayer(transport, c.SASL, c.TLS); err != nil {
 		return nil, err
 	}

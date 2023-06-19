@@ -1,4 +1,5 @@
 # Kafka Konsumer
+
 <div style="text-align:center"><img src=".github/images/konsumer.png"/></div>
 
 ## Description
@@ -44,11 +45,12 @@ After running `docker-compose up` command, you can run any application you want.
         fmt.Printf("Message From %s with value %s", message.Topic, string(message.Value))
         return nil
     }
+
 </details>
 
 <details>
     <summary>With Retry/Exception Option Enabled</summary>
-    
+
     func main() {
         consumerCfg := &kafka.ConsumerConfig{
             Reader: kafka.ReaderConfig{
@@ -76,6 +78,7 @@ After running `docker-compose up` command, you can run any application you want.
         fmt.Printf("Message From %s with value %s", message.Topic, string(message.Value))
         return nil
     }
+
 </details>
 
 <details>
@@ -114,8 +117,8 @@ After running `docker-compose up` command, you can run any application you want.
         fmt.Printf("%d\n comes first %s", len(messages), messages[0].Value)
         return nil
     }
-</details>
 
+</details>
 
 #### With Grafana & Prometheus
 
@@ -127,42 +130,44 @@ and running the infrastructure with `docker compose up` and then the application
 
 #### With SASL-PLAINTEXT Authentication
 
-Under the [examples](examples) - [with-sasl-plaintext](examples/with-sasl-plaintext) folder, you can find an example 
-of a consumer integration with SASL/PLAIN mechanism. To try the example, you can run the command `docker compose up` 
+Under the [examples](examples) - [with-sasl-plaintext](examples/with-sasl-plaintext) folder, you can find an example
+of a consumer integration with SASL/PLAIN mechanism. To try the example, you can run the command `docker compose up`
 under [the specified folder](examples/with-sasl-plaintext) and then start the application.
 
 ## Configurations
 
-| config                                      | description                                                                                                                          | default     |
-|---------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|-------------|
-| `reader`                                    | [Describes all segmentio kafka reader configurations](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.39#ReaderConfig)         |             |
-| `consumeFn`                                 | Kafka consumer function, if retry enabled it, is also used to consume retriable messages                                             |             |
-| `logLevel`                                  | Describes log level; valid options are `debug`, `info`, `warn`, and `error`                                                          | info        |
-| `concurrency`                               | Number of goroutines used at listeners                                                                                               | 1           |
-| `retryEnabled`                              | Retry/Exception consumer is working or not                                                                                           | false       |
-| `rack`                                      | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go#RackAffinityGroupBalancer)                                                |             |
+| config                                      | description                                                                                                                           | default     |
+|---------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|-------------|
+| `reader`                                    | [Describes all segmentio kafka reader configurations](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.39#ReaderConfig)          |             |
+| `consumeFn`                                 | Kafka consumer function, if retry enabled it, is also used to consume retriable messages                                              |             |
+| `logLevel`                                  | Describes log level; valid options are `debug`, `info`, `warn`, and `error`                                                           | info        |
+| `concurrency`                               | Number of goroutines used at listeners                                                                                                | 1           |
+| `retryEnabled`                              | Retry/Exception consumer is working or not                                                                                            | false       |
+| `rack`                                      | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go#RackAffinityGroupBalancer)                                                 |             |
+| `clientId`                                  | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.39#Dialer)                                                            |             |
+| `retryConfiguration.clientId`               | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.39#Transport)                                                         |             |
 | `retryConfiguration.startTimeCron`          | Cron expression when retry consumer ([kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer#configurations)) starts to work at |             |
-| `retryConfiguration.workDuration`           | Work duration exception consumer actively consuming messages                                                                         |             |
-| `retryConfiguration.topic`                  | Retry/Exception topic names                                                                                                          |             |
-| `retryConfiguration.brokers`                | Retry topic brokers urls                                                                                                             |             |
-| `retryConfiguration.maxRetry`               | Maximum retry value for attempting to retry a message                                                                                | 3           |
-| `retryConfiguration.tls.rootCAPath`         | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                              | ""          |
-| `retryConfiguration.tls.intermediateCAPath` | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                   | ""          |
-| `retryConfiguration.sasl.authType`          | `SCRAM` or `PLAIN`                                                                                                                   |             |
-| `retryConfiguration.sasl.username`          | SCRAM OR PLAIN username                                                                                                              |             |
-| `retryConfiguration.sasl.password`          | SCRAM OR PLAIN password                                                                                                              |             |
-| `batchConfiguration.messageGroupLimit`      | Maximum number of messages in a batch                                                                                                |             |
-| `batchConfiguration.messageGroupDuration`   | Maximum time to wait for a batch                                                                                                     |             |
-| `tls.rootCAPath`                            | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                              | ""          |
-| `tls.intermediateCAPath`                    | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                   | ""          |
-| `sasl.authType`                             | `SCRAM` or `PLAIN`                                                                                                                   |             |
-| `sasl.username`                             | SCRAM OR PLAIN username                                                                                                              |             |
-| `sasl.password`                             | SCRAM OR PLAIN password                                                                                                              |             |
-| `logger`                                    | If you want to custom logger                                                                                                         | info        |
-| `apiEnabled`                                | Enabled metrics                                                                                                                      | false       |
-| `apiConfiguration.port`                     | Set API port                                                                                                                         | 8090        |
-| `apiConfiguration.healtCheckPath`           | Set Health check path                                                                                                                | healthcheck |
-| `metricConfiguration.path`                  | Set metric endpoint path                                                                                                             | /metrics    |
+| `retryConfiguration.workDuration`           | Work duration exception consumer actively consuming messages                                                                          |             |
+| `retryConfiguration.topic`                  | Retry/Exception topic names                                                                                                           |             |
+| `retryConfiguration.brokers`                | Retry topic brokers urls                                                                                                              |             |
+| `retryConfiguration.maxRetry`               | Maximum retry value for attempting to retry a message                                                                                 | 3           |
+| `retryConfiguration.tls.rootCAPath`         | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                               | ""          |
+| `retryConfiguration.tls.intermediateCAPath` | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                    | ""          |
+| `retryConfiguration.sasl.authType`          | `SCRAM` or `PLAIN`                                                                                                                    |             |
+| `retryConfiguration.sasl.username`          | SCRAM OR PLAIN username                                                                                                               |             |
+| `retryConfiguration.sasl.password`          | SCRAM OR PLAIN password                                                                                                               |             |
+| `batchConfiguration.messageGroupLimit`      | Maximum number of messages in a batch                                                                                                 |             |
+| `batchConfiguration.messageGroupDuration`   | Maximum time to wait for a batch                                                                                                      |             |
+| `tls.rootCAPath`                            | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                               | ""          |
+| `tls.intermediateCAPath`                    | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                    | ""          |
+| `sasl.authType`                             | `SCRAM` or `PLAIN`                                                                                                                    |             |
+| `sasl.username`                             | SCRAM OR PLAIN username                                                                                                               |             |
+| `sasl.password`                             | SCRAM OR PLAIN password                                                                                                               |             |
+| `logger`                                    | If you want to custom logger                                                                                                          | info        |
+| `apiEnabled`                                | Enabled metrics                                                                                                                       | false       |
+| `apiConfiguration.port`                     | Set API port                                                                                                                          | 8090        |
+| `apiConfiguration.healtCheckPath`           | Set Health check path                                                                                                                 | healthcheck |
+| `metricConfiguration.path`                  | Set metric endpoint path                                                                                                              | /metrics    |
 
 ## Monitoring
 

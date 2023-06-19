@@ -15,36 +15,29 @@ type BatchConsumeFn func([]Message) error
 type ConsumeFn func(Message) error
 
 type ConsumerConfig struct {
-	Reader ReaderConfig
-
-	Rack string
-	SASL *SASLConfig
-	TLS  *TLSConfig
-
-	// Concurrency default is 1
-	// If this config is being set rathher than 1, partition order may be disappeared
-	Concurrency int
-
-	ConsumeFn ConsumeFn
-
-	RetryEnabled       bool
-	RetryConfiguration RetryConfiguration
-
-	BatchConfiguration *BatchConfiguration
-
-	APIEnabled          bool
 	APIConfiguration    APIConfiguration
+	Logger              LoggerInterface
 	MetricConfiguration MetricConfiguration
-
-	// LogLevel default is info
-	LogLevel LogLevel
-	Logger   LoggerInterface
+	SASL                *SASLConfig
+	TLS                 *TLSConfig
+	BatchConfiguration  *BatchConfiguration
+	ConsumeFn           ConsumeFn
+	ClientId            string
+	Rack                string
+	LogLevel            LogLevel
+	Reader              ReaderConfig
+	RetryConfiguration  RetryConfiguration
+	Concurrency         int
+	RetryEnabled        bool
+	APIEnabled          bool
 }
 
 func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 	cronsumerCfg := kcronsumer.Config{
-		Brokers: cfg.RetryConfiguration.Brokers,
+		ClientID: cfg.RetryConfiguration.ClientId,
+		Brokers:  cfg.RetryConfiguration.Brokers,
 		Consumer: kcronsumer.ConsumerConfig{
+			ClientID:          cfg.ClientId,
 			GroupID:           cfg.Reader.GroupID,
 			Topic:             cfg.RetryConfiguration.Topic,
 			Cron:              cfg.RetryConfiguration.StartTimeCron,
@@ -94,28 +87,33 @@ type MetricConfiguration struct {
 }
 
 type RetryConfiguration struct {
-	MaxRetry      int
-	StartTimeCron string
-	WorkDuration  time.Duration
-	Brokers       []string
-	Topic         string
 	SASL          *SASLConfig
 	TLS           *TLSConfig
+	ClientId      string
+	StartTimeCron string
+	Topic         string
 	Rack          string
+	Brokers       []string
+	MaxRetry      int
+	WorkDuration  time.Duration
 }
 
 type BatchConfiguration struct {
+	BatchConsumeFn       BatchConsumeFn
 	MessageGroupLimit    int
 	MessageGroupDuration time.Duration
-	BatchConsumeFn       BatchConsumeFn
 }
 
 func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
-	if cfg.SASL == nil && cfg.TLS == nil {
-		return nil, nil
+	dialer := &Dialer{
+		Dialer: &kafka.Dialer{
+			ClientID: cfg.ClientId,
+		},
 	}
 
-	dialer := newDialer()
+	if cfg.SASL == nil && cfg.TLS == nil {
+		return dialer.Dialer, nil
+	}
 
 	if err := fillLayer(dialer, cfg.SASL, cfg.TLS); err != nil {
 		return nil, err

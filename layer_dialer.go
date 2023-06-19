@@ -11,12 +11,6 @@ type Dialer struct {
 	*kafka.Dialer
 }
 
-func newDialer() *Dialer {
-	return &Dialer{
-		Dialer: &kafka.Dialer{},
-	}
-}
-
 func (t *Dialer) SetTLSConfig(config *tls.Config) {
 	t.TLS = config
 }
