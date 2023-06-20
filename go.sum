@@ -1,9 +1,5 @@
-github.com/Trendyol/kafka-cronsumer v1.0.0 h1:35ZaChsCPmesBPY81zSUZWhKkCChJbgdfzH/XoxVT28=
-github.com/Trendyol/kafka-cronsumer v1.0.0/go.mod h1:GzV1DUvjUTco+Qk4zR2GLfWblFszKTuYY9Epx8d7ROM=
-github.com/Trendyol/kafka-cronsumer v1.0.1 h1:uO5w8yjmN+ItgENBMAsILqDyXU8iwSqIeLHTP6C0Xtw=
-github.com/Trendyol/kafka-cronsumer v1.0.1/go.mod h1:GzV1DUvjUTco+Qk4zR2GLfWblFszKTuYY9Epx8d7ROM=
-github.com/Trendyol/kafka-cronsumer v1.1.0 h1:+bsWdmN9EvuvqaT1lKhOpT1I9MSVrAJxTtVH9B+F/Nw=
-github.com/Trendyol/kafka-cronsumer v1.1.0/go.mod h1:GzV1DUvjUTco+Qk4zR2GLfWblFszKTuYY9Epx8d7ROM=
+github.com/Trendyol/kafka-cronsumer v1.2.0 h1:ukaDwdRXqD6jVe4L+gD5IcO8EBJDB8/lIJBVm1slmkQ=
+github.com/Trendyol/kafka-cronsumer v1.2.0/go.mod h1:GzV1DUvjUTco+Qk4zR2GLfWblFszKTuYY9Epx8d7ROM=
 github.com/andybalholm/brotli v1.0.5 h1:8uQZIdzKmjc/iuPu7O2ioW48L81FgatrcpfFmiq/cCs=
 github.com/andybalholm/brotli v1.0.5/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
