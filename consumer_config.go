@@ -22,7 +22,7 @@ type ConsumerConfig struct {
 	TLS                 *TLSConfig
 	BatchConfiguration  *BatchConfiguration
 	ConsumeFn           ConsumeFn
-	ClientId            string
+	ClientID            string
 	Rack                string
 	LogLevel            LogLevel
 	Reader              ReaderConfig
@@ -34,10 +34,10 @@ type ConsumerConfig struct {
 
 func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 	cronsumerCfg := kcronsumer.Config{
-		ClientID: cfg.RetryConfiguration.ClientId,
+		ClientID: cfg.RetryConfiguration.ClientID,
 		Brokers:  cfg.RetryConfiguration.Brokers,
 		Consumer: kcronsumer.ConsumerConfig{
-			ClientID:          cfg.ClientId,
+			ClientID:          cfg.ClientID,
 			GroupID:           cfg.Reader.GroupID,
 			Topic:             cfg.RetryConfiguration.Topic,
 			Cron:              cfg.RetryConfiguration.StartTimeCron,
@@ -89,7 +89,7 @@ type MetricConfiguration struct {
 type RetryConfiguration struct {
 	SASL          *SASLConfig
 	TLS           *TLSConfig
-	ClientId      string
+	ClientID      string
 	StartTimeCron string
 	Topic         string
 	Rack          string
@@ -107,7 +107,7 @@ type BatchConfiguration struct {
 func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
 	dialer := &Dialer{
 		Dialer: &kafka.Dialer{
-			ClientID: cfg.ClientId,
+			ClientID: cfg.ClientID,
 		},
 	}
 

@@ -30,7 +30,7 @@ type WriterConfig struct {
 type ProducerConfig struct {
 	SASL     *SASLConfig
 	TLS      *TLSConfig
-	ClientId string
+	ClientID string
 	Writer   WriterConfig
 }
 
@@ -70,7 +70,7 @@ func (c ProducerConfig) newKafkaWriter() (*kafka.Writer, error) {
 func (c ProducerConfig) newKafkaTransport() (*kafka.Transport, error) {
 	transport := &Transport{
 		Transport: &kafka.Transport{
-			ClientID: c.ClientId,
+			ClientID: c.ClientID,
 		},
 	}
 
