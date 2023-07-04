@@ -4,6 +4,7 @@ import (
 	"time"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
+	lcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/logger"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -54,7 +55,7 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 			StartOffset:       kcronsumer.ToStringOffset(cfg.Reader.StartOffset),
 			RetentionTime:     cfg.Reader.RetentionTime,
 		},
-		LogLevel: "info",
+		LogLevel: lcronsumer.Level(cfg.RetryConfiguration.LogLevel),
 	}
 
 	if !cfg.RetryConfiguration.SASL.IsEmpty() {
@@ -96,6 +97,7 @@ type RetryConfiguration struct {
 	Brokers       []string
 	MaxRetry      int
 	WorkDuration  time.Duration
+	LogLevel      LogLevel
 }
 
 type BatchConfiguration struct {
