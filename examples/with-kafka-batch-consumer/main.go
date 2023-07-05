@@ -15,7 +15,6 @@ func main() {
 			Topic:   "standart-topic",
 			GroupID: "standart-cg",
 		},
-		LogLevel:     kafka.LogLevelDebug,
 		RetryEnabled: true,
 		RetryConfiguration: kafka.RetryConfiguration{
 			Brokers:       []string{"localhost:29092"},
