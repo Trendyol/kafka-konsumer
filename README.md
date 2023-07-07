@@ -22,7 +22,7 @@ You can find a number of ready-to-run examples at [this directory](examples).
 After running `docker-compose up` command, you can run any application you want.
 
 <details>
-    <summary>Without Retry/Exception Manager</summary>
+    <summary>Simple Consumer</summary>
 
     func main() {
         consumerCfg := &kafka.ConsumerConfig{
@@ -49,7 +49,7 @@ After running `docker-compose up` command, you can run any application you want.
 </details>
 
 <details>
-    <summary>With Retry/Exception Option Enabled</summary>
+    <summary>Simple Consumer With Retry/Exception Option</summary>
 
     func main() {
         consumerCfg := &kafka.ConsumerConfig{

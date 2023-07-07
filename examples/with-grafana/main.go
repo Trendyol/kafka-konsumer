@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"sync/atomic"
 	"time"
 
 	"github.com/Trendyol/kafka-konsumer"
@@ -27,47 +26,31 @@ var messages = []user{
 }
 
 func main() {
-	// retryMap stores the number of retries for each message
-	var retryMap = make(map[int]int, len(messages))
-	for _, message := range messages {
-		retryMap[message.ID] = 0
-	}
-
 	// create new kafka producer
 	producer, _ := kafka.NewProducer(kafka.ProducerConfig{
 		Writer: kafka.WriterConfig{
 			Brokers: []string{"localhost:29092"},
 		},
 	})
+	defer producer.Close()
 
-	// produce messages at 1 seconds interval
-	ticker := time.NewTicker(1 * time.Second)
-	quit := make(chan struct{})
 	go func() {
-		// to find the message we will produce at the next interval
-		var i uint64
-		for {
-			select {
-			case <-ticker.C:
-				message := messages[atomic.LoadUint64(&i)]
-				bytes, _ := json.Marshal(message)
-
-				_ = producer.Produce(context.Background(), kafka.Message{
-					Topic: "konsumer",
-					Key:   []byte(strconv.Itoa(message.ID)),
-					Value: bytes,
-				})
-
-				if message.ID == messages[len(messages)-1].ID {
-					quit <- struct{}{}
-					return
-				}
-
-				atomic.AddUint64(&i, 1)
-			case <-quit:
-				ticker.Stop()
-				return
+		// produce messages at 1 seconds interval
+		i := 0
+		ticker := time.NewTicker(1 * time.Second)
+		for range ticker.C {
+			if i == len(messages) {
+				break
 			}
+			message := messages[i]
+			bytes, _ := json.Marshal(message)
+
+			_ = producer.Produce(context.Background(), kafka.Message{
+				Topic: "konsumer",
+				Key:   []byte(strconv.Itoa(message.ID)),
+				Value: bytes,
+			})
+			i++
 		}
 	}()
 
@@ -88,16 +71,8 @@ func main() {
 			MaxRetry:      3,
 		},
 		ConsumeFn: func(message kafka.Message) error {
-			u := &user{}
-			if err := json.Unmarshal(message.Value, u); err != nil {
-				return err
-			}
-
-			n := retryMap[u.ID]
-			if n < 3 {
-				retryMap[u.ID] += 1
-				return fmt.Errorf("message %s retrying, current retry count: %d", message.Key, n)
-			}
+			// mocking some background task
+			time.Sleep(1 * time.Second)
 
 			fmt.Printf("Message from %s with value %s is consumed successfully\n", message.Topic, string(message.Value))
 			return nil
@@ -113,7 +88,7 @@ func main() {
 
 	fmt.Println("Consumer started!")
 
-	// wait for interrupt signal to gracefully shutdown the consumer
+	// wait for interrupt signal to gracefully shut down the consumer
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
