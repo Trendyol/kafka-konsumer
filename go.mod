@@ -3,7 +3,7 @@ module github.com/Trendyol/kafka-konsumer
 go 1.19
 
 require (
-	github.com/Trendyol/kafka-cronsumer v1.2.0
+	github.com/Trendyol/kafka-cronsumer v1.2.1
 	github.com/gofiber/adaptor/v2 v2.2.1
 	github.com/gofiber/fiber/v2 v2.44.0
 	github.com/prometheus/client_golang v1.15.1
