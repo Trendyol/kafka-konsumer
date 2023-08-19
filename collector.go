@@ -9,7 +9,7 @@ import (
 const Name = "kafka_konsumer_"
 
 type metricCollector struct {
-	consumer Consumer
+	consumerMetric *ConsumerMetric
 
 	totalUnprocessedMessagesCounter      *prometheus.Desc
 	totalProcessedMessagesCounter        *prometheus.Desc
@@ -22,39 +22,37 @@ func (s *metricCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (s *metricCollector) Collect(ch chan<- prometheus.Metric) {
-	consumerMetric := s.consumer.GetMetric()
-
 	ch <- prometheus.MustNewConstMetric(
 		s.totalProcessedMessagesCounter,
 		prometheus.CounterValue,
-		float64(consumerMetric.TotalProcessedMessagesCounter),
+		float64(s.consumerMetric.TotalProcessedMessagesCounter),
 		[]string{}...,
 	)
 
 	ch <- prometheus.MustNewConstMetric(
 		s.totalUnprocessedMessagesCounter,
 		prometheus.CounterValue,
-		float64(consumerMetric.TotalUnprocessedMessagesCounter),
+		float64(s.consumerMetric.TotalUnprocessedMessagesCounter),
 		[]string{}...,
 	)
 	ch <- prometheus.MustNewConstMetric(
 		s.totalProcessedBatchMessagesCounter,
 		prometheus.CounterValue,
-		float64(consumerMetric.TotalProcessedBatchMessagesCounter),
+		float64(s.consumerMetric.TotalProcessedBatchMessagesCounter),
 		[]string{}...,
 	)
 
 	ch <- prometheus.MustNewConstMetric(
 		s.totalUnprocessedBatchMessagesCounter,
 		prometheus.CounterValue,
-		float64(consumerMetric.TotalUnprocessedBatchMessagesCounter),
+		float64(s.consumerMetric.TotalUnprocessedBatchMessagesCounter),
 		[]string{}...,
 	)
 }
 
-func newMetricCollector(consumer Consumer) *metricCollector {
+func newMetricCollector(consumerMetric *ConsumerMetric) *metricCollector {
 	return &metricCollector{
-		consumer: consumer,
+		consumerMetric: consumerMetric,
 
 		totalProcessedMessagesCounter: prometheus.NewDesc(
 			prometheus.BuildFQName(Name, "processed_messages_total", "current"),
@@ -85,10 +83,10 @@ func newMetricCollector(consumer Consumer) *metricCollector {
 
 func NewMetricMiddleware(cfg *ConsumerConfig,
 	app *fiber.App,
-	consumer Consumer,
+	consumerMetric *ConsumerMetric,
 	metricCollectors ...prometheus.Collector,
 ) (func(ctx *fiber.Ctx) error, error) {
-	prometheus.DefaultRegisterer.MustRegister(newMetricCollector(consumer))
+	prometheus.DefaultRegisterer.MustRegister(newMetricCollector(consumerMetric))
 	prometheus.DefaultRegisterer.MustRegister(metricCollectors...)
 
 	fiberPrometheus := fiberprometheus.New(cfg.Reader.GroupID)

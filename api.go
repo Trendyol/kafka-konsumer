@@ -19,7 +19,7 @@ type server struct {
 	logger LoggerInterface
 }
 
-func NewAPI(cfg *ConsumerConfig, consumer Consumer, metricCollectors ...prometheus.Collector) API {
+func NewAPI(cfg *ConsumerConfig, consumerMetric *ConsumerMetric, metricCollectors ...prometheus.Collector) API {
 	setDefaults(cfg)
 
 	svr := server{
@@ -34,7 +34,7 @@ func NewAPI(cfg *ConsumerConfig, consumer Consumer, metricCollectors ...promethe
 		),
 	}
 
-	metricMiddleware, err := NewMetricMiddleware(cfg, svr.fiber, consumer, metricCollectors...)
+	metricMiddleware, err := NewMetricMiddleware(cfg, svr.fiber, consumerMetric, metricCollectors...)
 
 	if err == nil {
 		svr.fiber.Use(metricMiddleware)

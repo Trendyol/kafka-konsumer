@@ -10,7 +10,6 @@ import (
 
 type batchConsumer struct {
 	*base
-	metric *ConsumerMetric
 
 	consumeFn func([]Message) error
 
@@ -26,7 +25,6 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 
 	c := batchConsumer{
 		base:                 consumerBase,
-		metric:               &ConsumerMetric{},
 		consumeFn:            cfg.BatchConfiguration.BatchConsumeFn,
 		messageGroupLimit:    cfg.BatchConfiguration.MessageGroupLimit,
 		messageGroupDuration: cfg.BatchConfiguration.MessageGroupDuration,
@@ -39,7 +37,7 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	}
 
 	if cfg.APIEnabled {
-		c.base.setupAPI(cfg, &c, c.base.cronsumer.GetMetricCollectors()...)
+		c.base.setupAPI(cfg, *c.metric, c.base.cronsumer.GetMetricCollectors()...)
 	}
 
 	return &c, nil

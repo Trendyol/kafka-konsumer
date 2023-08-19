@@ -9,7 +9,6 @@ import (
 
 type consumer struct {
 	*base
-	metric *ConsumerMetric
 
 	consumeFn func(Message) error
 }
@@ -22,7 +21,6 @@ func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 
 	c := consumer{
 		base:      consumerBase,
-		metric:    &ConsumerMetric{},
 		consumeFn: cfg.ConsumeFn,
 	}
 
@@ -33,7 +31,7 @@ func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	}
 
 	if cfg.APIEnabled {
-		c.base.setupAPI(cfg, &c, c.base.cronsumer.GetMetricCollectors()...)
+		c.base.setupAPI(cfg, *c.metric, c.base.cronsumer.GetMetricCollectors()...)
 	}
 
 	return &c, nil
@@ -53,10 +51,6 @@ func (c *consumer) Consume() {
 			}
 		}()
 	}
-}
-
-func (c *consumer) GetMetric() *ConsumerMetric {
-	return c.metric
 }
 
 func (c *consumer) process(message Message) {
