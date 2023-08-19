@@ -26,6 +26,7 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 
 	c := batchConsumer{
 		base:                 consumerBase,
+		metric:               &ConsumerMetric{},
 		consumeFn:            cfg.BatchConfiguration.BatchConsumeFn,
 		messageGroupLimit:    cfg.BatchConfiguration.MessageGroupLimit,
 		messageGroupDuration: cfg.BatchConfiguration.MessageGroupDuration,
