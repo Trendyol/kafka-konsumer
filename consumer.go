@@ -31,7 +31,7 @@ func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	}
 
 	if cfg.APIEnabled {
-		c.base.setupAPI(cfg, *c.metric, c.base.cronsumer.GetMetricCollectors()...)
+		c.base.setupAPI(cfg, c.metric, c.base.cronsumer.GetMetricCollectors()...)
 	}
 
 	return &c, nil
