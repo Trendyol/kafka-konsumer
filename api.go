@@ -3,9 +3,9 @@ package kafka
 import (
 	"fmt"
 
-	"github.com/gofiber/adaptor/v2"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type API interface {
@@ -19,7 +19,7 @@ type server struct {
 	logger LoggerInterface
 }
 
-func NewAPI(cfg *ConsumerConfig) API {
+func NewAPI(cfg *ConsumerConfig, consumerMetric *ConsumerMetric, metricCollectors ...prometheus.Collector) API {
 	setDefaults(cfg)
 
 	svr := server{
@@ -34,7 +34,14 @@ func NewAPI(cfg *ConsumerConfig) API {
 		),
 	}
 
-	svr.fiber.Get(*cfg.MetricConfiguration.Path, adaptor.HTTPHandler(promhttp.Handler()))
+	metricMiddleware, err := NewMetricMiddleware(cfg, svr.fiber, consumerMetric, metricCollectors...)
+
+	if err == nil {
+		svr.fiber.Use(metricMiddleware)
+	} else {
+		svr.logger.Errorf("metric middleware cannot be initialized: %v", err)
+	}
+
 	svr.fiber.Get(*cfg.APIConfiguration.HealthCheckPath, svr.HealthCheckHandler)
 
 	return &svr

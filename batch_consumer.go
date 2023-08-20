@@ -5,7 +5,6 @@ import (
 	"time"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
-	"github.com/Trendyol/kafka-konsumer/instrumentation"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -38,7 +37,7 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	}
 
 	if cfg.APIEnabled {
-		c.base.setupAPI(cfg)
+		c.base.setupAPI(cfg, c.metric, c.base.cronsumer.GetMetricCollectors()...)
 	}
 
 	return &c, nil
@@ -52,6 +51,10 @@ func (b *batchConsumer) Consume() {
 		b.wg.Add(1)
 		go b.startBatch()
 	}
+}
+
+func (b *batchConsumer) GetMetric() *ConsumerMetric {
+	return b.metric
 }
 
 func (b *batchConsumer) startBatch() {
@@ -111,10 +114,10 @@ func (b *batchConsumer) process(messages []Message) {
 
 	commitErr := b.r.CommitMessages(context.Background(), segmentioMessages...)
 	if commitErr != nil {
-		instrumentation.TotalUnprocessedBatchMessagesCounter.Inc()
+		b.metric.TotalUnprocessedBatchMessagesCounter++
 		b.logger.Error("Error Committing messages %s", commitErr.Error())
 		return
 	}
 
-	instrumentation.TotalProcessedBatchMessagesCounter.Inc()
+	b.metric.TotalProcessedBatchMessagesCounter++
 }

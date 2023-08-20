@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	cronsumer "github.com/Trendyol/kafka-cronsumer"
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"github.com/segmentio/kafka-go"
@@ -19,6 +21,7 @@ type base struct {
 	cronsumer    kcronsumer.Cronsumer
 	api          API
 	logger       LoggerInterface
+	metric       *ConsumerMetric
 	context      context.Context
 	messageCh    chan Message
 	quit         chan struct{}
@@ -50,6 +53,7 @@ func newBase(cfg *ConsumerConfig) (*base, error) {
 	}
 
 	c := base{
+		metric:       &ConsumerMetric{},
 		messageCh:    make(chan Message, cfg.Concurrency),
 		quit:         make(chan struct{}),
 		concurrency:  cfg.Concurrency,
@@ -71,9 +75,9 @@ func (c *base) setupCronsumer(cfg *ConsumerConfig, retryFn func(kcronsumer.Messa
 	c.subprocesses.Add(c.cronsumer)
 }
 
-func (c *base) setupAPI(cfg *ConsumerConfig) {
+func (c *base) setupAPI(cfg *ConsumerConfig, consumerMetric *ConsumerMetric, metricCollectors ...prometheus.Collector) {
 	c.logger.Debug("Initializing API")
-	c.api = NewAPI(cfg)
+	c.api = NewAPI(cfg, consumerMetric, metricCollectors...)
 	c.subprocesses.Add(c.api)
 }
 

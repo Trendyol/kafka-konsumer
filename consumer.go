@@ -4,7 +4,6 @@ import (
 	"context"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
-	"github.com/Trendyol/kafka-konsumer/instrumentation"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -32,7 +31,7 @@ func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	}
 
 	if cfg.APIEnabled {
-		c.base.setupAPI(cfg)
+		c.base.setupAPI(cfg, c.metric, c.base.cronsumer.GetMetricCollectors()...)
 	}
 
 	return &c, nil
@@ -74,10 +73,10 @@ func (c *consumer) process(message Message) {
 
 	commitErr := c.r.CommitMessages(context.Background(), kafka.Message(message))
 	if commitErr != nil {
-		instrumentation.TotalUnprocessedMessagesCounter.Inc()
+		c.metric.TotalUnprocessedMessagesCounter++
 		c.logger.Errorf("Error Committing message %s, %s", string(message.Value), commitErr.Error())
 		return
 	}
 
-	instrumentation.TotalProcessedMessagesCounter.Inc()
+	c.metric.TotalProcessedMessagesCounter++
 }
