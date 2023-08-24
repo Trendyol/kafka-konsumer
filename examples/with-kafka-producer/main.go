@@ -12,9 +12,24 @@ func main() {
 		},
 	})
 
+	const topicName = "standart-topic"
+
 	_ = producer.Produce(context.Background(), kafka.Message{
-		Topic: "standart-topic",
+		Topic: topicName,
 		Key:   []byte("1"),
 		Value: []byte(`{ "foo": "bar" }`),
+	})
+
+	_ = producer.ProduceBatch(context.Background(), []kafka.Message{
+		{
+			Topic: topicName,
+			Key:   []byte("1"),
+			Value: []byte(`{ "foo": "bar" }`),
+		},
+		{
+			Topic: topicName,
+			Key:   []byte("2"),
+			Value: []byte(`{ "foo2": "bar2" }`),
+		},
 	})
 }
