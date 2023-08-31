@@ -85,6 +85,7 @@ func Test_Should_Consume_Message_Successfully(t *testing.T) {
 
 	// When
 	produceMessages(t, conn, segmentio.Message{
+		Topic: topic,
 		Key:   []byte("1"),
 		Value: []byte(`foo`),
 	})
@@ -129,11 +130,11 @@ func Test_Should_Batch_Consume_Messages_Successfully(t *testing.T) {
 
 	// When
 	produceMessages(t, conn,
-		segmentio.Message{Key: []byte("1"), Value: []byte(`foo1`)},
-		segmentio.Message{Key: []byte("2"), Value: []byte(`foo2`)},
-		segmentio.Message{Key: []byte("3"), Value: []byte(`foo3`)},
-		segmentio.Message{Key: []byte("4"), Value: []byte(`foo4`)},
-		segmentio.Message{Key: []byte("5"), Value: []byte(`foo5`)},
+		segmentio.Message{Topic: topic, Key: []byte("1"), Value: []byte(`foo1`)},
+		segmentio.Message{Topic: topic, Key: []byte("2"), Value: []byte(`foo2`)},
+		segmentio.Message{Topic: topic, Key: []byte("3"), Value: []byte(`foo3`)},
+		segmentio.Message{Topic: topic, Key: []byte("4"), Value: []byte(`foo4`)},
+		segmentio.Message{Topic: topic, Key: []byte("5"), Value: []byte(`foo5`)},
 	)
 
 	// Then
@@ -179,7 +180,7 @@ func Test_Should_Integrate_With_Kafka_Cronsumer_Successfully(t *testing.T) {
 	consumer.Consume()
 
 	// When
-	produceMessages(t, conn, segmentio.Message{Key: []byte("1"), Value: []byte(`foo`)})
+	produceMessages(t, conn, segmentio.Message{Topic: topic, Key: []byte("1"), Value: []byte(`foo`)})
 
 	// Then
 	var expectedOffset int64 = 1
