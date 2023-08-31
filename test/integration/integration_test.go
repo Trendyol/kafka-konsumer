@@ -40,6 +40,44 @@ func Test_Should_Produce_Successfully(t *testing.T) {
 	assertEventually(t, conditionFunc, 30*time.Second, time.Second)
 }
 
+func Test_Should_Batch_Produce_Successfully(t *testing.T) {
+	// Given
+	topic := "batch-produce-topic"
+	brokerAddress := "localhost:9092"
+
+	conn, cleanUp := createTopic(t, topic)
+	defer cleanUp()
+
+	producer, _ := kafka.NewProducer(kafka.ProducerConfig{
+		Writer: kafka.WriterConfig{Topic: topic, Brokers: []string{brokerAddress}}})
+
+	// When
+	msgs := []kafka.Message{
+		{
+			Key:   []byte("1"),
+			Value: []byte(`foo`),
+		},
+		{
+			Key:   []byte("2"),
+			Value: []byte(`bar`),
+		},
+	}
+
+	err := producer.ProduceBatch(context.Background(), msgs)
+	if err != nil {
+		t.Fatalf("Error Produce %s", err.Error())
+	}
+
+	// Then
+	var expectedOffset int64 = 2
+	conditionFunc := func() bool {
+		lastOffset, _ := conn.ReadLastOffset()
+		return lastOffset == expectedOffset
+	}
+
+	assertEventually(t, conditionFunc, 30*time.Second, time.Second)
+}
+
 func Test_Should_Consume_Message_Successfully(t *testing.T) {
 	// Given
 	topic := "topic"
