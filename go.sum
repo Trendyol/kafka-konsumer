@@ -1,5 +1,5 @@
-github.com/Trendyol/kafka-cronsumer v1.2.3 h1:NGZRvFs/RjyK7voCMWbyg17/H1n2OF3Yt8sVwsAyw/E=
-github.com/Trendyol/kafka-cronsumer v1.2.3/go.mod h1:VpweJmKY+6dppFhzWOZDbZfxBNuJkSxB12CcuZWBNFU=
+github.com/Trendyol/kafka-cronsumer v1.3.3 h1:KNlX/L4bDkpNAXTqHUQNrnkC/kauL6djKp0tuOFny8Y=
+github.com/Trendyol/kafka-cronsumer v1.3.3/go.mod h1:VpweJmKY+6dppFhzWOZDbZfxBNuJkSxB12CcuZWBNFU=
 github.com/andybalholm/brotli v1.0.5 h1:8uQZIdzKmjc/iuPu7O2ioW48L81FgatrcpfFmiq/cCs=
 github.com/andybalholm/brotli v1.0.5/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
 github.com/ansrivas/fiberprometheus/v2 v2.6.1 h1:wac3pXaE6BYYTF04AC6K0ktk6vCD+MnDOJZ3SK66kXM=
