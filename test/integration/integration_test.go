@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/Trendyol/kafka-konsumer"
 	segmentio "github.com/segmentio/kafka-go"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
@@ -26,7 +25,9 @@ func Test_Should_Produce_Successfully(t *testing.T) {
 	})
 
 	// Then
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatalf("Error while producing err %s", err.Error())
+	}
 }
 
 func Test_Should_Batch_Produce_Successfully(t *testing.T) {
@@ -53,7 +54,9 @@ func Test_Should_Batch_Produce_Successfully(t *testing.T) {
 	err := producer.ProduceBatch(context.Background(), msgs)
 
 	// Then
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatalf("Error while producing err %s", err.Error())
+	}
 }
 
 func Test_Should_Consume_Message_Successfully(t *testing.T) {
