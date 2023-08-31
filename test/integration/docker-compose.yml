@@ -1,7 +1,7 @@
 version: "3.8"
 services:
   redpanda:
-    image: docker.redpanda.com/redpandadata/redpanda
+    image: docker.redpanda.com/redpandadata/redpanda:v23.2.4
     container_name: redpanda-1
     command:
       - redpanda
