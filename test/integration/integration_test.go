@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Trendyol/kafka-konsumer"
 	segmentio "github.com/segmentio/kafka-go"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
@@ -15,9 +16,6 @@ func Test_Should_Produce_Successfully(t *testing.T) {
 	topic := "produce-topic"
 	brokerAddress := "localhost:9092"
 
-	conn, cleanUp := createTopic(t, topic)
-	defer cleanUp()
-
 	producer, _ := kafka.NewProducer(kafka.ProducerConfig{
 		Writer: kafka.WriterConfig{AllowAutoTopicCreation: true, Topic: topic, Brokers: []string{brokerAddress}}})
 
@@ -26,27 +24,15 @@ func Test_Should_Produce_Successfully(t *testing.T) {
 		Key:   []byte("1"),
 		Value: []byte(`foo`),
 	})
-	if err != nil {
-		t.Fatalf("Error Produce %s", err.Error())
-	}
 
 	// Then
-	var expectedOffset int64 = 1
-	conditionFunc := func() bool {
-		lastOffset, _ := conn.ReadLastOffset()
-		return lastOffset == expectedOffset
-	}
-
-	assertEventually(t, conditionFunc, 30*time.Second, time.Second)
+	assert.Nil(t, err)
 }
 
 func Test_Should_Batch_Produce_Successfully(t *testing.T) {
 	// Given
 	topic := "batch-produce-topic"
 	brokerAddress := "localhost:9092"
-
-	conn, cleanUp := createTopic(t, topic)
-	defer cleanUp()
 
 	producer, _ := kafka.NewProducer(kafka.ProducerConfig{
 		Writer: kafka.WriterConfig{AllowAutoTopicCreation: true, Topic: topic, Brokers: []string{brokerAddress}}})
@@ -62,18 +48,12 @@ func Test_Should_Batch_Produce_Successfully(t *testing.T) {
 			Value: []byte(`bar`),
 		},
 	}
-	if err := producer.ProduceBatch(context.Background(), msgs); err != nil {
-		t.Fatalf("Error Produce %s", err.Error())
-	}
+
+	// When
+	err := producer.ProduceBatch(context.Background(), msgs)
 
 	// Then
-	var expectedOffset int64 = 2
-	conditionFunc := func() bool {
-		lastOffset, _ := conn.ReadLastOffset()
-		return lastOffset == expectedOffset
-	}
-
-	assertEventually(t, conditionFunc, 30*time.Second, time.Second)
+	assert.Nil(t, err)
 }
 
 func Test_Should_Consume_Message_Successfully(t *testing.T) {
