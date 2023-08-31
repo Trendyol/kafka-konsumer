@@ -19,7 +19,7 @@ func Test_Should_Produce_Successfully(t *testing.T) {
 	defer cleanUp()
 
 	producer, _ := kafka.NewProducer(kafka.ProducerConfig{
-		Writer: kafka.WriterConfig{Topic: topic, Brokers: []string{brokerAddress}}})
+		Writer: kafka.WriterConfig{AllowAutoTopicCreation: true, Topic: topic, Brokers: []string{brokerAddress}}})
 
 	// When
 	err := producer.Produce(context.Background(), kafka.Message{
@@ -49,7 +49,7 @@ func Test_Should_Batch_Produce_Successfully(t *testing.T) {
 	defer cleanUp()
 
 	producer, _ := kafka.NewProducer(kafka.ProducerConfig{
-		Writer: kafka.WriterConfig{Topic: topic, Brokers: []string{brokerAddress}}})
+		Writer: kafka.WriterConfig{AllowAutoTopicCreation: true, Topic: topic, Brokers: []string{brokerAddress}}})
 
 	// When
 	msgs := []kafka.Message{
@@ -62,9 +62,8 @@ func Test_Should_Batch_Produce_Successfully(t *testing.T) {
 			Value: []byte(`bar`),
 		},
 	}
-
-	err := producer.ProduceBatch(context.Background(), msgs)
-	if err != nil {
+	time.Sleep(3 * time.Second)
+	if err := producer.ProduceBatch(context.Background(), msgs); err != nil {
 		t.Fatalf("Error Produce %s", err.Error())
 	}
 
