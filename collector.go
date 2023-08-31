@@ -6,7 +6,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const Name = "kafka_konsumer_"
+const Name = "kafka_konsumer"
 
 type metricCollector struct {
 	consumerMetric *ConsumerMetric

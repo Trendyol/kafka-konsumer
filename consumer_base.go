@@ -75,8 +75,14 @@ func (c *base) setupCronsumer(cfg *ConsumerConfig, retryFn func(kcronsumer.Messa
 	c.subprocesses.Add(c.cronsumer)
 }
 
-func (c *base) setupAPI(cfg *ConsumerConfig, consumerMetric *ConsumerMetric, metricCollectors ...prometheus.Collector) {
+func (c *base) setupAPI(cfg *ConsumerConfig, consumerMetric *ConsumerMetric) {
 	c.logger.Debug("Initializing API")
+
+	var metricCollectors []prometheus.Collector
+	if cfg.RetryEnabled {
+		metricCollectors = c.cronsumer.GetMetricCollectors()
+	}
+
 	c.api = NewAPI(cfg, consumerMetric, metricCollectors...)
 	c.subprocesses.Add(c.api)
 }

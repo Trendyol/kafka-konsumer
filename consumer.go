@@ -3,8 +3,9 @@ package kafka
 import (
 	"context"
 
-	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"github.com/segmentio/kafka-go"
+
+	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 )
 
 type consumer struct {
@@ -31,7 +32,7 @@ func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	}
 
 	if cfg.APIEnabled {
-		c.base.setupAPI(cfg, c.metric, c.base.cronsumer.GetMetricCollectors()...)
+		c.base.setupAPI(cfg, c.metric)
 	}
 
 	return &c, nil
