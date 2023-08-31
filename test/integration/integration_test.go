@@ -62,7 +62,6 @@ func Test_Should_Batch_Produce_Successfully(t *testing.T) {
 			Value: []byte(`bar`),
 		},
 	}
-	time.Sleep(3 * time.Second)
 	if err := producer.ProduceBatch(context.Background(), msgs); err != nil {
 		t.Fatalf("Error Produce %s", err.Error())
 	}
