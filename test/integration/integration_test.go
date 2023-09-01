@@ -16,7 +16,13 @@ func Test_Should_Produce_Successfully(t *testing.T) {
 	brokerAddress := "localhost:9092"
 
 	producer, _ := kafka.NewProducer(kafka.ProducerConfig{
-		Writer: kafka.WriterConfig{AllowAutoTopicCreation: true, Topic: topic, Brokers: []string{brokerAddress}}})
+		Writer: kafka.WriterConfig{AllowAutoTopicCreation: true, Topic: topic, Brokers: []string{brokerAddress}},
+		Transport: &kafka.TransportConfig{
+			MetadataTopics: []string{
+				topic,
+			},
+		},
+	})
 
 	// When
 	err := producer.Produce(context.Background(), kafka.Message{
@@ -76,6 +82,7 @@ func Test_Should_Consume_Message_Successfully(t *testing.T) {
 			messageCh <- message
 			return nil
 		},
+		Dial: &kafka.DialConfig{KeepAlive: 150 * time.Second, Timeout: 30 * time.Second},
 	}
 
 	consumer, _ := kafka.NewConsumer(consumerCfg)
@@ -168,10 +175,12 @@ func Test_Should_Integrate_With_Kafka_Cronsumer_Successfully(t *testing.T) {
 			StartTimeCron: "*/1 * * * *",
 			WorkDuration:  50 * time.Second,
 			MaxRetry:      3,
+			LogLevel:      "error",
 		},
 		ConsumeFn: func(message kafka.Message) error {
 			return errors.New("err occurred")
 		},
+		LogLevel: kafka.LogLevelError,
 	}
 
 	consumer, _ := kafka.NewConsumer(consumerCfg)

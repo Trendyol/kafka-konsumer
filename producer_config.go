@@ -27,11 +27,19 @@ type WriterConfig struct {
 	AllowAutoTopicCreation bool
 }
 
+type TransportConfig struct {
+	DialTimeout    time.Duration
+	IdleTimeout    time.Duration
+	MetadataTTL    time.Duration
+	MetadataTopics []string
+}
+
 type ProducerConfig struct {
-	SASL     *SASLConfig
-	TLS      *TLSConfig
-	ClientID string
-	Writer   WriterConfig
+	Transport *TransportConfig
+	SASL      *SASLConfig
+	TLS       *TLSConfig
+	ClientID  string
+	Writer    WriterConfig
 }
 
 func (c ProducerConfig) newKafkaWriter() (*kafka.Writer, error) {
@@ -72,6 +80,13 @@ func (c ProducerConfig) newKafkaTransport() (*kafka.Transport, error) {
 		Transport: &kafka.Transport{
 			ClientID: c.ClientID,
 		},
+	}
+
+	if c.Transport != nil {
+		transport.Transport.DialTimeout = c.Transport.DialTimeout
+		transport.Transport.IdleTimeout = c.Transport.IdleTimeout
+		transport.Transport.MetadataTTL = c.Transport.MetadataTTL
+		transport.Transport.MetadataTopics = c.Transport.MetadataTopics
 	}
 
 	if err := fillLayer(transport, c.SASL, c.TLS); err != nil {

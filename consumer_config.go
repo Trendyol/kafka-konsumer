@@ -15,12 +15,18 @@ type BatchConsumeFn func([]Message) error
 
 type ConsumeFn func(Message) error
 
+type DialConfig struct {
+	Timeout   time.Duration
+	KeepAlive time.Duration
+}
+
 type ConsumerConfig struct {
 	APIConfiguration    APIConfiguration
 	Logger              LoggerInterface
 	MetricConfiguration MetricConfiguration
 	SASL                *SASLConfig
 	TLS                 *TLSConfig
+	Dial                *DialConfig
 	BatchConfiguration  *BatchConfiguration
 	ConsumeFn           ConsumeFn
 	ClientID            string
@@ -111,6 +117,11 @@ func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
 		Dialer: &kafka.Dialer{
 			ClientID: cfg.ClientID,
 		},
+	}
+
+	if cfg.Dial != nil {
+		dialer.Dialer.Timeout = cfg.Dial.Timeout
+		dialer.Dialer.KeepAlive = cfg.Dial.KeepAlive
 	}
 
 	if cfg.SASL == nil && cfg.TLS == nil {

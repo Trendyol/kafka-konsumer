@@ -1,4 +1,4 @@
-name: IntegrationTest
+name: 🔨IntegrationTest
 
 on:
   push:
