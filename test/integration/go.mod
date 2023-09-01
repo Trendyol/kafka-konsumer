@@ -2,6 +2,8 @@ module integration-test
 
 go 1.19
 
+replace github.com/Trendyol/kafka-konsumer => ../..
+
 require (
 	github.com/Trendyol/kafka-konsumer v1.3.4
 	github.com/segmentio/kafka-go v0.4.42

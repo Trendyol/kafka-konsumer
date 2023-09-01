@@ -26,6 +26,12 @@ godoc:
 	@if ! test -f `go env GOPATH`/bin/godoc; then go install golang.org/x/tools/cmd/godoc; fi
 	godoc -http=127.0.0.1:6060
 
+## integration-compose: up compose for integration test suite
 .PHONY: integration-compose
 integration-compose:
 	docker compose -f test/integration/docker-compose.yml up --wait --build --force-recreate --remove-orphans
+
+## integration-test: run integration test
+.PHONE: integration-test
+integration-test:
+	go test -v test/integration/integration_test.go
