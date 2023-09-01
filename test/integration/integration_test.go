@@ -175,10 +175,12 @@ func Test_Should_Integrate_With_Kafka_Cronsumer_Successfully(t *testing.T) {
 			StartTimeCron: "*/1 * * * *",
 			WorkDuration:  50 * time.Second,
 			MaxRetry:      3,
+			LogLevel:      "error",
 		},
 		ConsumeFn: func(message kafka.Message) error {
 			return errors.New("err occurred")
 		},
+		LogLevel: kafka.LogLevelError,
 	}
 
 	consumer, _ := kafka.NewConsumer(consumerCfg)
