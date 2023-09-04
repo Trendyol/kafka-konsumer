@@ -45,7 +45,8 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 
 func (b *batchConsumer) Consume() {
 	go b.base.subprocesses.Start()
-	go b.startConsume()
+	b.base.wg.Add(1)
+	go b.base.startConsume()
 
 	for i := 0; i < b.concurrency; i++ {
 		b.wg.Add(1)

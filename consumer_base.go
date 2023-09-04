@@ -88,7 +88,6 @@ func (c *base) setupAPI(cfg *ConsumerConfig, consumerMetric *ConsumerMetric) {
 }
 
 func (c *base) startConsume() {
-	c.wg.Add(1)
 	defer c.wg.Done()
 
 	for {
