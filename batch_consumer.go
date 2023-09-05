@@ -43,25 +43,29 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	return &c, nil
 }
 
+func (b *batchConsumer) GetMetric() *ConsumerMetric {
+	return b.metric
+}
+
 func (b *batchConsumer) Consume() {
 	go b.base.subprocesses.Start()
-	b.base.wg.Add(1)
-	go b.base.startConsume()
+	b.wg.Add(1)
+	go b.startConsume()
 
 	for i := 0; i < b.concurrency; i++ {
 		b.wg.Add(1)
 		go b.startBatch()
 	}
-}
 
-func (b *batchConsumer) GetMetric() *ConsumerMetric {
-	return b.metric
+	go b.handleCommit()
 }
 
 func (b *batchConsumer) startBatch() {
 	defer b.wg.Done()
 
 	ticker := time.NewTicker(b.messageGroupDuration)
+	defer ticker.Stop()
+
 	messages := make([]Message, 0, b.messageGroupLimit)
 
 	for {
@@ -113,12 +117,43 @@ func (b *batchConsumer) process(messages []Message) {
 		segmentioMessages = append(segmentioMessages, kafka.Message(messages[i]))
 	}
 
-	commitErr := b.r.CommitMessages(context.Background(), segmentioMessages...)
-	if commitErr != nil {
-		b.metric.TotalUnprocessedBatchMessagesCounter++
-		b.logger.Error("Error Committing messages %s", commitErr.Error())
-		return
-	}
+	b.commitReqCh <- segmentioMessages
+}
 
-	b.metric.TotalProcessedBatchMessagesCounter++
+func (b *batchConsumer) handleCommit() {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	// it is used for tracking the latest committed offsets by topic => partition => offset
+	offsets := offsetStash{}
+
+	for {
+		select {
+		case <-ticker.C:
+			b.logger.Debug(offsets)
+			continue
+		case msgs, ok := <-b.commitReqCh:
+			if !ok {
+				return
+			}
+
+			// Extract messages which needed to commit
+			willBeCommitted := offsets.IgnoreAlreadyCommittedMessages(msgs)
+			if len(willBeCommitted) == 0 {
+				continue
+			}
+
+			commitErr := b.r.CommitMessages(context.Background(), willBeCommitted...)
+			if commitErr != nil {
+				b.metric.TotalUnprocessedBatchMessagesCounter++
+				b.logger.Error("Error Committing messages %s", commitErr.Error())
+				continue
+			}
+
+			// Update the latest offsets with recently committed messages
+			offsets.UpdateWithNewestCommittedOffsets(willBeCommitted)
+
+			b.metric.TotalProcessedBatchMessagesCounter++
+		}
+	}
 }

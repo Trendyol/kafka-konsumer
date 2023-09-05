@@ -82,7 +82,6 @@ func Test_Should_Consume_Message_Successfully(t *testing.T) {
 			messageCh <- message
 			return nil
 		},
-		Dial: &kafka.DialConfig{KeepAlive: 150 * time.Second, Timeout: 30 * time.Second},
 	}
 
 	consumer, _ := kafka.NewConsumer(consumerCfg)
@@ -92,9 +91,10 @@ func Test_Should_Consume_Message_Successfully(t *testing.T) {
 
 	// When
 	produceMessages(t, conn, segmentio.Message{
-		Topic: topic,
-		Key:   []byte("1"),
-		Value: []byte(`foo`),
+		Topic:     topic,
+		Partition: 0,
+		Key:       []byte("1"),
+		Value:     []byte(`foo`),
 	})
 
 	// Then
@@ -104,6 +104,11 @@ func Test_Should_Consume_Message_Successfully(t *testing.T) {
 	}
 	if string(actual.Key) != "1" {
 		t.Fatalf("Key does not equal %s", actual.Key)
+	}
+
+	o, _ := conn.ReadLastOffset()
+	if o != 1 {
+		t.Fatalf("offset %v must be equal to 1", o)
 	}
 }
 
@@ -137,11 +142,11 @@ func Test_Should_Batch_Consume_Messages_Successfully(t *testing.T) {
 
 	// When
 	produceMessages(t, conn,
-		segmentio.Message{Topic: topic, Key: []byte("1"), Value: []byte(`foo1`)},
-		segmentio.Message{Topic: topic, Key: []byte("2"), Value: []byte(`foo2`)},
-		segmentio.Message{Topic: topic, Key: []byte("3"), Value: []byte(`foo3`)},
-		segmentio.Message{Topic: topic, Key: []byte("4"), Value: []byte(`foo4`)},
-		segmentio.Message{Topic: topic, Key: []byte("5"), Value: []byte(`foo5`)},
+		segmentio.Message{Topic: topic, Partition: 0, Offset: 1, Key: []byte("1"), Value: []byte(`foo1`)},
+		segmentio.Message{Topic: topic, Partition: 0, Offset: 2, Key: []byte("2"), Value: []byte(`foo2`)},
+		segmentio.Message{Topic: topic, Partition: 0, Offset: 3, Key: []byte("3"), Value: []byte(`foo3`)},
+		segmentio.Message{Topic: topic, Partition: 0, Offset: 4, Key: []byte("4"), Value: []byte(`foo4`)},
+		segmentio.Message{Topic: topic, Partition: 0, Offset: 5, Key: []byte("5"), Value: []byte(`foo5`)},
 	)
 
 	// Then
@@ -149,6 +154,11 @@ func Test_Should_Batch_Consume_Messages_Successfully(t *testing.T) {
 
 	if actual != 5 {
 		t.Fatalf("Message length does not equal %d", actual)
+	}
+
+	o, _ := conn.ReadLastOffset()
+	if o != 5 {
+		t.Fatalf("offset %v must be equal to 5", o)
 	}
 }
 

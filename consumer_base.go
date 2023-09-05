@@ -25,6 +25,7 @@ type base struct {
 	context      context.Context
 	messageCh    chan Message
 	quit         chan struct{}
+	commitReqCh  chan []kafka.Message
 	cancelFn     context.CancelFunc
 	r            *kafka.Reader
 	retryTopic   string
@@ -56,6 +57,7 @@ func newBase(cfg *ConsumerConfig) (*base, error) {
 		metric:       &ConsumerMetric{},
 		messageCh:    make(chan Message, cfg.Concurrency),
 		quit:         make(chan struct{}),
+		commitReqCh:  make(chan []kafka.Message),
 		concurrency:  cfg.Concurrency,
 		retryEnabled: cfg.RetryEnabled,
 		logger:       log,
@@ -122,6 +124,7 @@ func (c *base) Stop() error {
 		c.quit <- struct{}{}
 		close(c.messageCh)
 		c.wg.Wait()
+		close(c.commitReqCh)
 		err = c.r.Close()
 	})
 
