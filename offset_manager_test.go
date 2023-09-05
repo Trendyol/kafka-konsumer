@@ -1,9 +1,10 @@
 package kafka
 
 import (
-	segmentio "github.com/segmentio/kafka-go"
 	"reflect"
 	"testing"
+
+	segmentio "github.com/segmentio/kafka-go"
 )
 
 func Test_offsetStash_SetWithNewestCommittedOffsets(t *testing.T) {
