@@ -143,6 +143,7 @@ under [the specified folder](examples/with-sasl-plaintext) and then start the ap
 | `logLevel`                                  | Describes log level; valid options are `debug`, `info`, `warn`, and `error`                                                           | info                  |
 | `concurrency`                               | Number of goroutines used at listeners                                                                                                | 1                     |
 | `retryEnabled`                              | Retry/Exception consumer is working or not                                                                                            | false                 |
+| `commitInterval`                            | indicates the interval at which offsets are committed to the broker.                                                                  | 1s                    |
 | `rack`                                      | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go#RackAffinityGroupBalancer)                                                 |                       |
 | `clientId`                                  | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Dialer)                                                            |                       |
 | `dial.Timeout`                              | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Dialer)                                                            | no timeout            |
@@ -181,9 +182,13 @@ Kafka Konsumer offers an API that handles exposing several metrics.
 
 ### Exposed Metrics
 
-| Metric Name                                     | Description                                 | Value Type |
-|-------------------------------------------------|---------------------------------------------|------------|
-| kafka_konsumer_processed_messages_total         | Total number of processed messages.         | Counter    |
-| kafka_konsumer_processed_batch_messages_total   | Total number of processed batch messages.   | Counter    |
-| kafka_konsumer_unprocessed_messages_total       | Total number of unprocessed messages.       | Counter    |
-| kafka_konsumer_unprocessed_batch_messages_total | Total number of unprocessed batch messages. | Counter    |
+| Metric Name                                             | Description                                 | Value Type |
+|---------------------------------------------------------|---------------------------------------------|------------|
+| kafka_konsumer_processed_messages_total_current         | Total number of processed messages.         | Counter    |
+| kafka_konsumer_processed_batch_messages_total_current   | Total number of processed batch messages.   | Counter    |
+| kafka_konsumer_unprocessed_messages_total_current       | Total number of unprocessed messages.       | Counter    |
+| kafka_konsumer_unprocessed_batch_messages_total_current | Total number of unprocessed batch messages. | Counter    |
+
+**NOTE:** `kafka_konsumer_processed_batch_messages_total_current` and `kafka_konsumer_unprocessed_batch_messages_total_current` will
+be deprecated in the next releases. 
+Please use `kafka_konsumer_processed_messages_total_current` and `kafka_konsumer_unprocessed_messages_total_current` instead.

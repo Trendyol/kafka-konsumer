@@ -5,9 +5,9 @@ import "github.com/segmentio/kafka-go"
 // offsetStash holds the latest committed offsets by topic => partition => offset.
 type offsetStash map[string]map[int]int64
 
-// UpdateWithNewestCommittedOffsets calculates latest committed, and it
+// Update calculates the latest committed, and it
 // updates the latest offset value by looking topic => partition => offset
-func (o offsetStash) UpdateWithNewestCommittedOffsets(messages []kafka.Message) {
+func (o offsetStash) Update(messages []kafka.Message) {
 	for i := range messages {
 		offsetsByPartition, ok := o[messages[i].Topic]
 		if !ok {
@@ -35,7 +35,7 @@ func (o offsetStash) IgnoreAlreadyCommittedMessages(messages []kafka.Message) []
 		offset := offsetsByPartition[messages[i].Partition]
 
 		// it means, we already committed this message, so we can safely ignore it
-		if messages[i].Offset <= offset {
+		if messages[i].Offset+1 <= offset {
 			continue
 		}
 

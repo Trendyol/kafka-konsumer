@@ -1,11 +1,8 @@
 package kafka
 
 import (
-	"context"
-
-	"github.com/segmentio/kafka-go"
-
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
+	"github.com/segmentio/kafka-go"
 )
 
 type consumer struct {
@@ -39,9 +36,9 @@ func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 }
 
 func (c *consumer) Consume() {
-	go c.base.subprocesses.Start()
+	go c.subprocesses.Start()
 	c.wg.Add(1)
-	go c.base.startConsume()
+	go c.startConsume()
 
 	for i := 0; i < c.concurrency; i++ {
 		c.wg.Add(1)
@@ -53,11 +50,12 @@ func (c *consumer) Consume() {
 			}
 		}()
 	}
+
+	go c.handleCommit()
 }
 
 func (c *consumer) process(message Message) {
 	consumeErr := c.consumeFn(message)
-
 	if consumeErr != nil && c.retryEnabled {
 		c.logger.Warnf("Consume Function Err %s, Message will be retried", consumeErr.Error())
 
@@ -73,12 +71,5 @@ func (c *consumer) process(message Message) {
 		}
 	}
 
-	commitErr := c.r.CommitMessages(context.Background(), kafka.Message(message))
-	if commitErr != nil {
-		c.metric.TotalUnprocessedMessagesCounter++
-		c.logger.Errorf("Error Committing message %s, %s", string(message.Value), commitErr.Error())
-		return
-	}
-
-	c.metric.TotalProcessedMessagesCounter++
+	c.commitReq <- []kafka.Message{kafka.Message(message)}
 }

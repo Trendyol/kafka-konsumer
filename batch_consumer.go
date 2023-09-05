@@ -1,7 +1,6 @@
 package kafka
 
 import (
-	"context"
 	"time"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
@@ -48,7 +47,7 @@ func (b *batchConsumer) GetMetric() *ConsumerMetric {
 }
 
 func (b *batchConsumer) Consume() {
-	go b.base.subprocesses.Start()
+	go b.subprocesses.Start()
 	b.wg.Add(1)
 	go b.startConsume()
 
@@ -117,43 +116,5 @@ func (b *batchConsumer) process(messages []Message) {
 		segmentioMessages = append(segmentioMessages, kafka.Message(messages[i]))
 	}
 
-	b.batchCommitReq <- segmentioMessages
-}
-
-func (b *batchConsumer) handleCommit() {
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	// it is used for tracking the latest committed offsets by topic => partition => offset
-	offsets := offsetStash{}
-
-	for {
-		select {
-		case <-ticker.C:
-			b.logger.Debug(offsets)
-			continue
-		case msgs, ok := <-b.batchCommitReq:
-			if !ok {
-				return
-			}
-
-			// Extract messages which needed to commit
-			willBeCommitted := offsets.IgnoreAlreadyCommittedMessages(msgs)
-			if len(willBeCommitted) == 0 {
-				continue
-			}
-
-			commitErr := b.r.CommitMessages(context.Background(), willBeCommitted...)
-			if commitErr != nil {
-				b.metric.TotalUnprocessedBatchMessagesCounter++
-				b.logger.Error("Error Committing messages %s", commitErr.Error())
-				continue
-			}
-
-			// Update the latest offsets with recently committed messages
-			offsets.UpdateWithNewestCommittedOffsets(willBeCommitted)
-
-			b.metric.TotalProcessedBatchMessagesCounter++
-		}
-	}
+	b.commitReq <- segmentioMessages
 }

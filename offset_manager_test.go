@@ -28,7 +28,7 @@ func Test_offsetStash_SetWithNewestCommittedOffsets(t *testing.T) {
 	}
 
 	// When
-	offsets.UpdateWithNewestCommittedOffsets(messages)
+	offsets.Update(messages)
 
 	// Then
 	assertFunc := func(actual map[int]int64, expected map[int]int64) {
@@ -59,7 +59,7 @@ func Test_offsetStash_IgnoreAlreadyCommittedMessages(t *testing.T) {
 	messages := []segmentio.Message{
 		{Topic: "a", Partition: 0, Offset: 8},  // ignore
 		{Topic: "a", Partition: 0, Offset: 9},  // ignore
-		{Topic: "a", Partition: 0, Offset: 10}, // ignore
+		{Topic: "a", Partition: 0, Offset: 10}, // update, cause in committing offset will increase by 1
 
 		{Topic: "b", Partition: 0, Offset: 15}, // update
 		{Topic: "b", Partition: 1, Offset: 5},  // ignore
@@ -72,8 +72,8 @@ func Test_offsetStash_IgnoreAlreadyCommittedMessages(t *testing.T) {
 	actual := offsets.IgnoreAlreadyCommittedMessages(messages)
 
 	// Then
-	if len(actual) != 2 {
-		t.Fatal("Actual must be length of 2")
+	if len(actual) != 3 {
+		t.Fatal("Actual must be length of 3")
 	}
 
 	if actual[0].Topic != "b" && actual[0].Partition == 0 && actual[0].Offset == 15 {

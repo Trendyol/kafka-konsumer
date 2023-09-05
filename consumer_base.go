@@ -18,22 +18,22 @@ type Consumer interface {
 }
 
 type base struct {
-	cronsumer      kcronsumer.Cronsumer
-	api            API
-	logger         LoggerInterface
-	metric         *ConsumerMetric
-	context        context.Context
-	messageCh      chan Message
-	quit           chan struct{}
-	batchCommitReq chan []kafka.Message
-	cancelFn       context.CancelFunc
-	r              *kafka.Reader
-	retryTopic     string
-	subprocesses   subprocesses
-	wg             sync.WaitGroup
-	concurrency    int
-	once           sync.Once
-	retryEnabled   bool
+	cronsumer    kcronsumer.Cronsumer
+	api          API
+	logger       LoggerInterface
+	metric       *ConsumerMetric
+	context      context.Context
+	messageCh    chan Message
+	quit         chan struct{}
+	commitReq    chan []kafka.Message
+	cancelFn     context.CancelFunc
+	r            *kafka.Reader
+	retryTopic   string
+	subprocesses subprocesses
+	wg           sync.WaitGroup
+	concurrency  int
+	once         sync.Once
+	retryEnabled bool
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -54,15 +54,15 @@ func newBase(cfg *ConsumerConfig) (*base, error) {
 	}
 
 	c := base{
-		metric:         &ConsumerMetric{},
-		messageCh:      make(chan Message, cfg.Concurrency),
-		quit:           make(chan struct{}),
-		batchCommitReq: make(chan []kafka.Message),
-		concurrency:    cfg.Concurrency,
-		retryEnabled:   cfg.RetryEnabled,
-		logger:         log,
-		subprocesses:   newSubProcesses(),
-		r:              reader,
+		metric:       &ConsumerMetric{},
+		messageCh:    make(chan Message, cfg.Concurrency),
+		quit:         make(chan struct{}),
+		commitReq:    make(chan []kafka.Message),
+		concurrency:  cfg.Concurrency,
+		retryEnabled: cfg.RetryEnabled,
+		logger:       log,
+		subprocesses: newSubProcesses(),
+		r:            reader,
 	}
 
 	c.context, c.cancelFn = context.WithCancel(context.Background())
@@ -111,6 +111,33 @@ func (c *base) startConsume() {
 	}
 }
 
+func (c *base) handleCommit() {
+	// it is used for tracking the latest committed offsets by topic => partition => offset
+	offsets := offsetStash{}
+
+	for msgs := range c.commitReq {
+		// Extract messages which needed to commit
+		willBeCommitted := offsets.IgnoreAlreadyCommittedMessages(msgs)
+		if len(willBeCommitted) == 0 {
+			continue
+		}
+
+		commitErr := c.r.CommitMessages(context.Background(), willBeCommitted...)
+		if commitErr != nil {
+			c.logger.Error("Error Committing messages %s", commitErr.Error())
+			c.metric.TotalUnprocessedMessagesCounter++
+			continue
+		}
+
+		// Update the latest offsets with recently committed messages
+		offsets.Update(willBeCommitted)
+
+		c.metric.TotalProcessedMessagesCounter++
+
+		c.logger.Debug(offsets)
+	}
+}
+
 func (c *base) WithLogger(logger LoggerInterface) {
 	c.logger = logger
 }
@@ -124,7 +151,7 @@ func (c *base) Stop() error {
 		c.quit <- struct{}{}
 		close(c.messageCh)
 		c.wg.Wait()
-		close(c.batchCommitReq)
+		close(c.commitReq)
 		err = c.r.Close()
 	})
 
