@@ -13,9 +13,9 @@ type metricCollector struct {
 
 	totalUnprocessedMessagesCounter *prometheus.Desc
 	totalProcessedMessagesCounter   *prometheus.Desc
-	// Deprecated, it will be removed next releases
+	// Deprecated: it will be removed next releases
 	totalUnprocessedBatchMessagesCounter *prometheus.Desc
-	// Deprecated, it will be removed next releases
+	// Deprecated: it will be removed next releases
 	totalProcessedBatchMessagesCounter *prometheus.Desc
 }
 
