@@ -18,22 +18,22 @@ type Consumer interface {
 }
 
 type base struct {
-	cronsumer    kcronsumer.Cronsumer
-	api          API
-	logger       LoggerInterface
-	metric       *ConsumerMetric
-	context      context.Context
-	messageCh    chan Message
-	quit         chan struct{}
-	commitReqCh  chan []kafka.Message
-	cancelFn     context.CancelFunc
-	r            *kafka.Reader
-	retryTopic   string
-	subprocesses subprocesses
-	wg           sync.WaitGroup
-	concurrency  int
-	once         sync.Once
-	retryEnabled bool
+	cronsumer      kcronsumer.Cronsumer
+	api            API
+	logger         LoggerInterface
+	metric         *ConsumerMetric
+	context        context.Context
+	messageCh      chan Message
+	quit           chan struct{}
+	batchCommitReq chan []kafka.Message
+	cancelFn       context.CancelFunc
+	r              *kafka.Reader
+	retryTopic     string
+	subprocesses   subprocesses
+	wg             sync.WaitGroup
+	concurrency    int
+	once           sync.Once
+	retryEnabled   bool
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -54,15 +54,15 @@ func newBase(cfg *ConsumerConfig) (*base, error) {
 	}
 
 	c := base{
-		metric:       &ConsumerMetric{},
-		messageCh:    make(chan Message, cfg.Concurrency),
-		quit:         make(chan struct{}),
-		commitReqCh:  make(chan []kafka.Message),
-		concurrency:  cfg.Concurrency,
-		retryEnabled: cfg.RetryEnabled,
-		logger:       log,
-		subprocesses: newSubProcesses(),
-		r:            reader,
+		metric:         &ConsumerMetric{},
+		messageCh:      make(chan Message, cfg.Concurrency),
+		quit:           make(chan struct{}),
+		batchCommitReq: make(chan []kafka.Message),
+		concurrency:    cfg.Concurrency,
+		retryEnabled:   cfg.RetryEnabled,
+		logger:         log,
+		subprocesses:   newSubProcesses(),
+		r:              reader,
 	}
 
 	c.context, c.cancelFn = context.WithCancel(context.Background())
@@ -124,7 +124,7 @@ func (c *base) Stop() error {
 		c.quit <- struct{}{}
 		close(c.messageCh)
 		c.wg.Wait()
-		close(c.commitReqCh)
+		close(c.batchCommitReq)
 		err = c.r.Close()
 	})
 

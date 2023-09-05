@@ -117,7 +117,7 @@ func (b *batchConsumer) process(messages []Message) {
 		segmentioMessages = append(segmentioMessages, kafka.Message(messages[i]))
 	}
 
-	b.commitReqCh <- segmentioMessages
+	b.batchCommitReq <- segmentioMessages
 }
 
 func (b *batchConsumer) handleCommit() {
@@ -132,7 +132,7 @@ func (b *batchConsumer) handleCommit() {
 		case <-ticker.C:
 			b.logger.Debug(offsets)
 			continue
-		case msgs, ok := <-b.commitReqCh:
+		case msgs, ok := <-b.batchCommitReq:
 			if !ok {
 				return
 			}
