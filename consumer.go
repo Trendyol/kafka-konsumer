@@ -1,10 +1,6 @@
 package kafka
 
 import (
-	"context"
-
-	"github.com/segmentio/kafka-go"
-
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 )
 
@@ -39,9 +35,9 @@ func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 }
 
 func (c *consumer) Consume() {
-	go c.base.subprocesses.Start()
+	go c.subprocesses.Start()
 	c.wg.Add(1)
-	go c.base.startConsume()
+	go c.startConsume()
 
 	for i := 0; i < c.concurrency; i++ {
 		c.wg.Add(1)
@@ -57,12 +53,12 @@ func (c *consumer) Consume() {
 
 func (c *consumer) process(message Message) {
 	consumeErr := c.consumeFn(message)
-
 	if consumeErr != nil && c.retryEnabled {
 		c.logger.Warnf("Consume Function Err %s, Message will be retried", consumeErr.Error())
 
 		// Try to process same message again
 		if consumeErr = c.consumeFn(message); consumeErr != nil {
+			c.metric.TotalUnprocessedMessagesCounter++
 			c.logger.Warnf("Consume Function Again Err %s, message is sending to exception/retry topic %s", consumeErr.Error(), c.retryTopic)
 
 			retryableMsg := message.toRetryableMessage(c.retryTopic)
@@ -71,13 +67,6 @@ func (c *consumer) process(message Message) {
 					string(retryableMsg.Value), produceErr.Error())
 			}
 		}
-	}
-
-	commitErr := c.r.CommitMessages(context.Background(), kafka.Message(message))
-	if commitErr != nil {
-		c.metric.TotalUnprocessedMessagesCounter++
-		c.logger.Errorf("Error Committing message %s, %s", string(message.Value), commitErr.Error())
-		return
 	}
 
 	c.metric.TotalProcessedMessagesCounter++

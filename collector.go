@@ -11,10 +11,12 @@ const Name = "kafka_konsumer"
 type metricCollector struct {
 	consumerMetric *ConsumerMetric
 
-	totalUnprocessedMessagesCounter      *prometheus.Desc
-	totalProcessedMessagesCounter        *prometheus.Desc
+	totalUnprocessedMessagesCounter *prometheus.Desc
+	totalProcessedMessagesCounter   *prometheus.Desc
+	// Deprecated: it will be removed next releases
 	totalUnprocessedBatchMessagesCounter *prometheus.Desc
-	totalProcessedBatchMessagesCounter   *prometheus.Desc
+	// Deprecated: it will be removed next releases
+	totalProcessedBatchMessagesCounter *prometheus.Desc
 }
 
 func (s *metricCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -38,14 +40,14 @@ func (s *metricCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(
 		s.totalProcessedBatchMessagesCounter,
 		prometheus.CounterValue,
-		float64(s.consumerMetric.TotalProcessedBatchMessagesCounter),
+		float64(s.consumerMetric.TotalProcessedMessagesCounter),
 		[]string{}...,
 	)
 
 	ch <- prometheus.MustNewConstMetric(
 		s.totalUnprocessedBatchMessagesCounter,
 		prometheus.CounterValue,
-		float64(s.consumerMetric.TotalUnprocessedBatchMessagesCounter),
+		float64(s.consumerMetric.TotalUnprocessedMessagesCounter),
 		[]string{}...,
 	)
 }

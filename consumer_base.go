@@ -95,7 +95,7 @@ func (c *base) startConsume() {
 		case <-c.quit:
 			return
 		default:
-			message, err := c.r.FetchMessage(c.context)
+			message, err := c.r.ReadMessage(c.context)
 			if err != nil {
 				if c.context.Err() != nil {
 					continue

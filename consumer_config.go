@@ -34,6 +34,7 @@ type ConsumerConfig struct {
 	LogLevel            LogLevel
 	Reader              ReaderConfig
 	RetryConfiguration  RetryConfiguration
+	CommitInterval      time.Duration
 	Concurrency         int
 	RetryEnabled        bool
 	APIEnabled          bool
@@ -155,5 +156,13 @@ func (cfg *ConsumerConfig) newKafkaReader() (*kafka.Reader, error) {
 func (cfg *ConsumerConfig) validate() {
 	if cfg.Concurrency == 0 {
 		cfg.Concurrency = 1
+	}
+
+	if cfg.CommitInterval == 0 {
+		cfg.CommitInterval = time.Second
+		// Kafka-go library default value is 0, we need to also change this.
+		cfg.Reader.CommitInterval = time.Second
+	} else {
+		cfg.Reader.CommitInterval = cfg.CommitInterval
 	}
 }

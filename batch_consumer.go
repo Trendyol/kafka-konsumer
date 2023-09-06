@@ -1,11 +1,9 @@
 package kafka
 
 import (
-	"context"
 	"time"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
-	"github.com/segmentio/kafka-go"
 )
 
 type batchConsumer struct {
@@ -43,10 +41,14 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	return &c, nil
 }
 
+func (b *batchConsumer) GetMetric() *ConsumerMetric {
+	return b.metric
+}
+
 func (b *batchConsumer) Consume() {
-	go b.base.subprocesses.Start()
-	b.base.wg.Add(1)
-	go b.base.startConsume()
+	go b.subprocesses.Start()
+	b.wg.Add(1)
+	go b.startConsume()
 
 	for i := 0; i < b.concurrency; i++ {
 		b.wg.Add(1)
@@ -54,14 +56,12 @@ func (b *batchConsumer) Consume() {
 	}
 }
 
-func (b *batchConsumer) GetMetric() *ConsumerMetric {
-	return b.metric
-}
-
 func (b *batchConsumer) startBatch() {
 	defer b.wg.Done()
 
 	ticker := time.NewTicker(b.messageGroupDuration)
+	defer ticker.Stop()
+
 	messages := make([]Message, 0, b.messageGroupLimit)
 
 	for {
@@ -95,6 +95,8 @@ func (b *batchConsumer) process(messages []Message) {
 
 		// Try to process same message again
 		if consumeErr = b.consumeFn(messages); consumeErr != nil {
+			b.metric.TotalUnprocessedMessagesCounter += int64(len(messages))
+
 			b.logger.Warnf("Consume Function Again Err %s, messages are sending to exception/retry topic %s", consumeErr.Error(), b.retryTopic)
 
 			cronsumerMessages := make([]kcronsumer.Message, 0, len(messages))
@@ -108,17 +110,5 @@ func (b *batchConsumer) process(messages []Message) {
 		}
 	}
 
-	segmentioMessages := make([]kafka.Message, 0, len(messages))
-	for i := range messages {
-		segmentioMessages = append(segmentioMessages, kafka.Message(messages[i]))
-	}
-
-	commitErr := b.r.CommitMessages(context.Background(), segmentioMessages...)
-	if commitErr != nil {
-		b.metric.TotalUnprocessedBatchMessagesCounter++
-		b.logger.Error("Error Committing messages %s", commitErr.Error())
-		return
-	}
-
-	b.metric.TotalProcessedBatchMessagesCounter++
+	b.metric.TotalProcessedMessagesCounter += int64(len(messages))
 }
