@@ -25,7 +25,6 @@ type base struct {
 	context      context.Context
 	messageCh    chan Message
 	quit         chan struct{}
-	commitReq    chan []kafka.Message
 	cancelFn     context.CancelFunc
 	r            *kafka.Reader
 	retryTopic   string
@@ -57,7 +56,6 @@ func newBase(cfg *ConsumerConfig) (*base, error) {
 		metric:       &ConsumerMetric{},
 		messageCh:    make(chan Message, cfg.Concurrency),
 		quit:         make(chan struct{}),
-		commitReq:    make(chan []kafka.Message),
 		concurrency:  cfg.Concurrency,
 		retryEnabled: cfg.RetryEnabled,
 		logger:       log,
@@ -97,7 +95,7 @@ func (c *base) startConsume() {
 		case <-c.quit:
 			return
 		default:
-			message, err := c.r.FetchMessage(c.context)
+			message, err := c.r.ReadMessage(c.context)
 			if err != nil {
 				if c.context.Err() != nil {
 					continue
@@ -108,33 +106,6 @@ func (c *base) startConsume() {
 
 			c.messageCh <- Message(message)
 		}
-	}
-}
-
-func (c *base) handleCommit() {
-	// it is used for tracking the latest committed offsets by topic => partition => offset
-	offsets := offsetStash{}
-
-	for msgs := range c.commitReq {
-		// Extract messages which needed to commit
-		willBeCommitted := offsets.IgnoreAlreadyCommittedMessages(msgs)
-		if len(willBeCommitted) == 0 {
-			continue
-		}
-
-		commitErr := c.r.CommitMessages(context.Background(), willBeCommitted...)
-		if commitErr != nil {
-			c.logger.Error("Error Committing messages %s", commitErr.Error())
-			c.metric.TotalUnprocessedMessagesCounter++
-			continue
-		}
-
-		// Update the latest offsets with recently committed messages
-		offsets.Update(willBeCommitted)
-
-		c.metric.TotalProcessedMessagesCounter++
-
-		c.logger.Debug(offsets)
 	}
 }
 
@@ -151,7 +122,6 @@ func (c *base) Stop() error {
 		c.quit <- struct{}{}
 		close(c.messageCh)
 		c.wg.Wait()
-		close(c.commitReq)
 		err = c.r.Close()
 	})
 

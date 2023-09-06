@@ -4,7 +4,6 @@ import (
 	"time"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
-	"github.com/segmentio/kafka-go"
 )
 
 type batchConsumer struct {
@@ -55,8 +54,6 @@ func (b *batchConsumer) Consume() {
 		b.wg.Add(1)
 		go b.startBatch()
 	}
-
-	go b.handleCommit()
 }
 
 func (b *batchConsumer) startBatch() {
@@ -98,6 +95,8 @@ func (b *batchConsumer) process(messages []Message) {
 
 		// Try to process same message again
 		if consumeErr = b.consumeFn(messages); consumeErr != nil {
+			b.metric.TotalUnprocessedMessagesCounter += int64(len(messages))
+
 			b.logger.Warnf("Consume Function Again Err %s, messages are sending to exception/retry topic %s", consumeErr.Error(), b.retryTopic)
 
 			cronsumerMessages := make([]kcronsumer.Message, 0, len(messages))
@@ -111,10 +110,5 @@ func (b *batchConsumer) process(messages []Message) {
 		}
 	}
 
-	segmentioMessages := make([]kafka.Message, 0, len(messages))
-	for i := range messages {
-		segmentioMessages = append(segmentioMessages, kafka.Message(messages[i]))
-	}
-
-	b.commitReq <- segmentioMessages
+	b.metric.TotalProcessedMessagesCounter += int64(len(messages))
 }

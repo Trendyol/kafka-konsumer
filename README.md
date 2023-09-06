@@ -185,10 +185,8 @@ Kafka Konsumer offers an API that handles exposing several metrics.
 | Metric Name                                             | Description                                 | Value Type |
 |---------------------------------------------------------|---------------------------------------------|------------|
 | kafka_konsumer_processed_messages_total_current         | Total number of processed messages.         | Counter    |
-| kafka_konsumer_processed_batch_messages_total_current   | Total number of processed batch messages.   | Counter    |
 | kafka_konsumer_unprocessed_messages_total_current       | Total number of unprocessed messages.       | Counter    |
+| kafka_konsumer_processed_batch_messages_total_current   | Total number of processed batch messages.   | Counter    |
 | kafka_konsumer_unprocessed_batch_messages_total_current | Total number of unprocessed batch messages. | Counter    |
 
-**NOTE:** `kafka_konsumer_processed_batch_messages_total_current` and `kafka_konsumer_unprocessed_batch_messages_total_current` will
-be deprecated in the next releases. 
-Please use `kafka_konsumer_processed_messages_total_current` and `kafka_konsumer_unprocessed_messages_total_current` instead.
+**NOTE:** `kafka_konsumer_processed_batch_messages_total_current` and `kafka_konsumer_unprocessed_batch_messages_total_current` will be deprecated in the next releases. Please use `kafka_konsumer_processed_messages_total_current` and `kafka_konsumer_unprocessed_messages_total_current` instead.

@@ -2,7 +2,6 @@ package kafka
 
 import (
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
-	"github.com/segmentio/kafka-go"
 )
 
 type consumer struct {
@@ -50,8 +49,6 @@ func (c *consumer) Consume() {
 			}
 		}()
 	}
-
-	go c.handleCommit()
 }
 
 func (c *consumer) process(message Message) {
@@ -61,6 +58,7 @@ func (c *consumer) process(message Message) {
 
 		// Try to process same message again
 		if consumeErr = c.consumeFn(message); consumeErr != nil {
+			c.metric.TotalUnprocessedMessagesCounter++
 			c.logger.Warnf("Consume Function Again Err %s, message is sending to exception/retry topic %s", consumeErr.Error(), c.retryTopic)
 
 			retryableMsg := message.toRetryableMessage(c.retryTopic)
@@ -71,5 +69,5 @@ func (c *consumer) process(message Message) {
 		}
 	}
 
-	c.commitReq <- []kafka.Message{kafka.Message(message)}
+	c.metric.TotalProcessedMessagesCounter++
 }
