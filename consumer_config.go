@@ -48,6 +48,7 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 			ClientID:          cfg.ClientID,
 			GroupID:           cfg.Reader.GroupID,
 			Topic:             cfg.RetryConfiguration.Topic,
+			DeadLetterTopic:   cfg.RetryConfiguration.DeadLetterTopic,
 			Cron:              cfg.RetryConfiguration.StartTimeCron,
 			Duration:          cfg.RetryConfiguration.WorkDuration,
 			Concurrency:       cfg.Concurrency,
@@ -95,16 +96,17 @@ type MetricConfiguration struct {
 }
 
 type RetryConfiguration struct {
-	SASL          *SASLConfig
-	TLS           *TLSConfig
-	ClientID      string
-	StartTimeCron string
-	Topic         string
-	Rack          string
-	Brokers       []string
-	MaxRetry      int
-	WorkDuration  time.Duration
-	LogLevel      LogLevel
+	SASL            *SASLConfig
+	TLS             *TLSConfig
+	ClientID        string
+	StartTimeCron   string
+	Topic           string
+	DeadLetterTopic string
+	Rack            string
+	Brokers         []string
+	MaxRetry        int
+	WorkDuration    time.Duration
+	LogLevel        LogLevel
 }
 
 type BatchConfiguration struct {
