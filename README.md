@@ -1,4 +1,4 @@
-# Kafka Konsumer
+# Kafka Konsumer [![🔨Build And Test](https://github.com/Trendyol/kafka-konsumer/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/Trendyol/kafka-konsumer/actions/workflows/test.yml)
 
 <div style="text-align:center"><img src=".github/images/konsumer.png"/></div>
 
