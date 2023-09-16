@@ -53,21 +53,25 @@ func (c *consumer) Consume() {
 
 func (c *consumer) process(message Message) {
 	consumeErr := c.consumeFn(message)
-	if consumeErr != nil && c.retryEnabled {
-		c.logger.Warnf("Consume Function Err %s, Message will be retried", consumeErr.Error())
 
+	if consumeErr != nil {
+		c.logger.Warnf("Consume Function Err %s, Message will be retried", consumeErr.Error())
 		// Try to process same message again
 		if consumeErr = c.consumeFn(message); consumeErr != nil {
-			c.metric.TotalUnprocessedMessagesCounter++
 			c.logger.Warnf("Consume Function Again Err %s, message is sending to exception/retry topic %s", consumeErr.Error(), c.retryTopic)
-
-			retryableMsg := message.toRetryableMessage(c.retryTopic)
-			if produceErr := c.cronsumer.Produce(retryableMsg); produceErr != nil {
-				c.logger.Errorf("Error producing message %s to exception/retry topic %s",
-					string(retryableMsg.Value), produceErr.Error())
-			}
+			c.metric.TotalUnprocessedMessagesCounter++
 		}
 	}
 
-	c.metric.TotalProcessedMessagesCounter++
+	if consumeErr != nil && c.retryEnabled {
+		retryableMsg := message.toRetryableMessage(c.retryTopic)
+		if produceErr := c.cronsumer.Produce(retryableMsg); produceErr != nil {
+			c.logger.Errorf("Error producing message %s to exception/retry topic %s",
+				string(retryableMsg.Value), produceErr.Error())
+		}
+	}
+
+	if consumeErr == nil {
+		c.metric.TotalProcessedMessagesCounter++
+	}
 }

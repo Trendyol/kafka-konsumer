@@ -12,8 +12,13 @@ import (
 )
 
 type Consumer interface {
+	// Consume starts consuming
 	Consume()
+
+	// WithLogger for injecting custom log implementation
 	WithLogger(logger LoggerInterface)
+
+	// Stop for graceful shutdown. In order to avoid data loss, you have to call it!
 	Stop() error
 }
 

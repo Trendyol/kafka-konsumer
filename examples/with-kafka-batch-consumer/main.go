@@ -15,14 +15,6 @@ func main() {
 			Topic:   "standart-topic",
 			GroupID: "standart-cg",
 		},
-		RetryEnabled: true,
-		RetryConfiguration: kafka.RetryConfiguration{
-			Brokers:       []string{"localhost:29092"},
-			Topic:         "retry-topic",
-			StartTimeCron: "*/1 * * * *",
-			WorkDuration:  50 * time.Second,
-			MaxRetry:      3,
-		},
 		BatchConfiguration: &kafka.BatchConfiguration{
 			MessageGroupLimit:    1000,
 			MessageGroupDuration: time.Second,
