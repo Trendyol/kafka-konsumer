@@ -35,3 +35,7 @@ integration-compose:
 .PHONE: integration-test
 integration-test:
 	go test -v test/integration/integration_test.go
+
+## run-act: act for running github actions on your local machine
+run-act:
+	act -j test --container-architecture linux/arm64 -v

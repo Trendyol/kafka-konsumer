@@ -91,10 +91,9 @@ func Test_Should_Consume_Message_Successfully(t *testing.T) {
 
 	// When
 	produceMessages(t, conn, segmentio.Message{
-		Topic:     topic,
-		Partition: 0,
-		Key:       []byte("1"),
-		Value:     []byte(`foo`),
+		Topic: topic,
+		Key:   []byte("1"),
+		Value: []byte(`foo`),
 	})
 
 	// Then
