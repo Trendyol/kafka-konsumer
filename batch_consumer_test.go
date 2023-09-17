@@ -2,12 +2,62 @@ package kafka
 
 import (
 	"errors"
+	"sync"
 	"testing"
+	"time"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	lcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/logger"
 	"github.com/prometheus/client_golang/prometheus"
 )
+
+func Test_batchConsumer_startBatch(t *testing.T) {
+	// Given
+	var numberOfBatch int
+
+	bc := batchConsumer{
+		base: &base{
+			messageCh: make(chan Message),
+			metric:    &ConsumerMetric{},
+			wg:        sync.WaitGroup{},
+		},
+		messageGroupLimit:    3,
+		messageGroupDuration: 500 * time.Millisecond,
+		consumeFn: func(messages []Message) error {
+			numberOfBatch++
+			return nil
+		},
+	}
+	go func() {
+		// Simulate messageGroupLimit
+		bc.base.messageCh <- Message{}
+		bc.base.messageCh <- Message{}
+		bc.base.messageCh <- Message{}
+
+		time.Sleep(1 * time.Second)
+
+		// Simulate messageGroupDuration
+		bc.base.messageCh <- Message{}
+
+		time.Sleep(1 * time.Second)
+
+		// Return from startBatch
+		close(bc.base.messageCh)
+	}()
+
+	bc.base.wg.Add(1)
+
+	// When
+	bc.startBatch()
+
+	// Then
+	if numberOfBatch != 2 {
+		t.Fatalf("Number of batch group must equal to 2")
+	}
+	if bc.metric.TotalProcessedMessagesCounter != 4 {
+		t.Fatalf("Total Processed Message Counter must equal to 4")
+	}
+}
 
 func Test_batchConsumer_process(t *testing.T) {
 	t.Run("When_Processing_Is_Successful", func(t *testing.T) {
