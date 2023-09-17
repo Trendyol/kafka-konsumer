@@ -42,7 +42,7 @@ type ProducerConfig struct {
 	Writer    WriterConfig
 }
 
-func (c ProducerConfig) newKafkaWriter() (*kafka.Writer, error) {
+func (c ProducerConfig) newKafkaWriter() (Writer, error) {
 	kafkaWriter := &kafka.Writer{
 		Addr:                   kafka.TCP(c.Writer.Brokers...),
 		Topic:                  c.Writer.Topic,

@@ -12,8 +12,13 @@ type Producer interface {
 	Close() error
 }
 
+type Writer interface {
+	WriteMessages(context.Context, ...kafka.Message) error
+	Close() error
+}
+
 type producer struct {
-	w *kafka.Writer
+	w Writer
 }
 
 func NewProducer(cfg ProducerConfig) (Producer, error) {
