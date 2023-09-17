@@ -138,7 +138,7 @@ func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
 	return dialer.Dialer, nil
 }
 
-func (cfg *ConsumerConfig) newKafkaReader() (*kafka.Reader, error) {
+func (cfg *ConsumerConfig) newKafkaReader() (Reader, error) {
 	cfg.validate()
 
 	dialer, err := cfg.newKafkaDialer()
@@ -146,13 +146,15 @@ func (cfg *ConsumerConfig) newKafkaReader() (*kafka.Reader, error) {
 		return nil, err
 	}
 
-	reader := kafka.ReaderConfig(cfg.Reader)
-	reader.Dialer = dialer
+	readerCfg := kafka.ReaderConfig(cfg.Reader)
+	readerCfg.Dialer = dialer
 	if cfg.Rack != "" {
-		reader.GroupBalancers = []kafka.GroupBalancer{kafka.RackAffinityGroupBalancer{Rack: cfg.Rack}}
+		readerCfg.GroupBalancers = []kafka.GroupBalancer{kafka.RackAffinityGroupBalancer{Rack: cfg.Rack}}
 	}
 
-	return kafka.NewReader(reader), nil
+	reader := kafka.NewReader(readerCfg)
+
+	return NewReaderWrapper(reader), nil
 }
 
 func (cfg *ConsumerConfig) validate() {

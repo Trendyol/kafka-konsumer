@@ -22,6 +22,11 @@ type Consumer interface {
 	Stop() error
 }
 
+type Reader interface {
+	ReadMessage(ctx context.Context) (*kafka.Message, error)
+	Close() error
+}
+
 type base struct {
 	cronsumer    kcronsumer.Cronsumer
 	api          API
@@ -31,7 +36,7 @@ type base struct {
 	messageCh    chan Message
 	quit         chan struct{}
 	cancelFn     context.CancelFunc
-	r            *kafka.Reader
+	r            Reader
 	retryTopic   string
 	subprocesses subprocesses
 	wg           sync.WaitGroup
@@ -109,7 +114,17 @@ func (c *base) startConsume() {
 				continue
 			}
 
-			c.messageCh <- Message(message)
+			c.messageCh <- Message{
+				Topic:         message.Topic,
+				Partition:     message.Partition,
+				Offset:        message.Offset,
+				HighWaterMark: message.HighWaterMark,
+				Key:           message.Key,
+				Value:         message.Value,
+				Headers:       message.Headers,
+				WriterData:    message.WriterData,
+				Time:          message.Time,
+			}
 		}
 	}
 }
