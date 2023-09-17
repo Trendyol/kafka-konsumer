@@ -38,4 +38,4 @@ integration-test:
 
 ## run-act: act for running github actions on your local machine
 run-act:
-	act -j test --container-architecture linux/arm64 -v
+	act -j test --container-architecture linux/arm64
