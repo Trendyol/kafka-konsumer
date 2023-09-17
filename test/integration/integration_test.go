@@ -214,7 +214,12 @@ func createTopicAndWriteMessages(t *testing.T, topicName string, messages []segm
 	}
 
 	if messages != nil {
-		_, err = conn.WriteMessages(messages...)
+		producer := &segmentio.Writer{
+			Addr:                   segmentio.TCP("localhost:9092"),
+			AllowAutoTopicCreation: true,
+		}
+
+		err = producer.WriteMessages(context.Background(), messages...)
 		if err != nil {
 			t.Fatalf("err during write message %s", err.Error())
 		}
