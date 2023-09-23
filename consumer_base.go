@@ -4,6 +4,9 @@ import (
 	"context"
 	"sync"
 
+	"github.com/Abdulsametileri/otel-kafka-konsumer"
+	"go.opentelemetry.io/otel/propagation"
+
 	"github.com/prometheus/client_golang/prometheus"
 
 	cronsumer "github.com/Trendyol/kafka-cronsumer"
@@ -28,21 +31,23 @@ type Reader interface {
 }
 
 type base struct {
-	cronsumer    kcronsumer.Cronsumer
-	api          API
-	logger       LoggerInterface
-	metric       *ConsumerMetric
-	context      context.Context
-	messageCh    chan Message
-	quit         chan struct{}
-	cancelFn     context.CancelFunc
-	r            Reader
-	retryTopic   string
-	subprocesses subprocesses
-	wg           sync.WaitGroup
-	concurrency  int
-	once         sync.Once
-	retryEnabled bool
+	cronsumer                 kcronsumer.Cronsumer
+	api                       API
+	logger                    LoggerInterface
+	metric                    *ConsumerMetric
+	context                   context.Context
+	messageCh                 chan Message
+	quit                      chan struct{}
+	cancelFn                  context.CancelFunc
+	r                         Reader
+	retryTopic                string
+	subprocesses              subprocesses
+	wg                        sync.WaitGroup
+	concurrency               int
+	once                      sync.Once
+	retryEnabled              bool
+	distributedTracingEnabled bool
+	propagator                propagation.TextMapPropagator
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -63,14 +68,19 @@ func newBase(cfg *ConsumerConfig) (*base, error) {
 	}
 
 	c := base{
-		metric:       &ConsumerMetric{},
-		messageCh:    make(chan Message, cfg.Concurrency),
-		quit:         make(chan struct{}),
-		concurrency:  cfg.Concurrency,
-		retryEnabled: cfg.RetryEnabled,
-		logger:       log,
-		subprocesses: newSubProcesses(),
-		r:            reader,
+		metric:                    &ConsumerMetric{},
+		messageCh:                 make(chan Message, cfg.Concurrency),
+		quit:                      make(chan struct{}),
+		concurrency:               cfg.Concurrency,
+		retryEnabled:              cfg.RetryEnabled,
+		distributedTracingEnabled: cfg.DistributedTracingEnabled,
+		logger:                    log,
+		subprocesses:              newSubProcesses(),
+		r:                         reader,
+	}
+
+	if cfg.DistributedTracingEnabled {
+		c.propagator = cfg.DistributedTracingConfiguration.Propagator
 	}
 
 	c.context, c.cancelFn = context.WithCancel(context.Background())
@@ -114,17 +124,12 @@ func (c *base) startConsume() {
 				continue
 			}
 
-			c.messageCh <- Message{
-				Topic:         message.Topic,
-				Partition:     message.Partition,
-				Offset:        message.Offset,
-				HighWaterMark: message.HighWaterMark,
-				Key:           message.Key,
-				Value:         message.Value,
-				Headers:       message.Headers,
-				WriterData:    message.WriterData,
-				Time:          message.Time,
+			consumedMessage := fromKafkaMessage(message)
+			if c.distributedTracingEnabled {
+				consumedMessage.Context = c.propagator.Extract(context.Background(), otelkafkakonsumer.NewMessageCarrier(message))
 			}
+
+			c.messageCh <- consumedMessage
 		}
 	}
 }

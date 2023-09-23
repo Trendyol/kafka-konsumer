@@ -3,6 +3,8 @@ package kafka
 import (
 	"time"
 
+	"go.opentelemetry.io/otel"
+
 	"github.com/segmentio/kafka-go"
 )
 
@@ -35,63 +37,41 @@ type TransportConfig struct {
 }
 
 type ProducerConfig struct {
-	Transport *TransportConfig
-	SASL      *SASLConfig
-	TLS       *TLSConfig
-	ClientID  string
-	Writer    WriterConfig
+	Transport                       *TransportConfig
+	SASL                            *SASLConfig
+	TLS                             *TLSConfig
+	ClientID                        string
+	Writer                          WriterConfig
+	DistributedTracingEnabled       bool
+	DistributedTracingConfiguration DistributedTracingConfiguration
 }
 
-func (c ProducerConfig) newKafkaWriter() (Writer, error) {
-	kafkaWriter := &kafka.Writer{
-		Addr:                   kafka.TCP(c.Writer.Brokers...),
-		Topic:                  c.Writer.Topic,
-		Balancer:               c.Writer.Balancer,
-		MaxAttempts:            c.Writer.MaxAttempts,
-		WriteBackoffMin:        c.Writer.WriteBackoffMin,
-		WriteBackoffMax:        c.Writer.WriteBackoffMax,
-		BatchSize:              c.Writer.BatchSize,
-		BatchBytes:             c.Writer.BatchBytes,
-		BatchTimeout:           c.Writer.BatchTimeout,
-		ReadTimeout:            c.Writer.ReadTimeout,
-		WriteTimeout:           c.Writer.WriteTimeout,
-		RequiredAcks:           c.Writer.RequiredAcks,
-		Async:                  c.Writer.Async,
-		Completion:             c.Writer.Completion,
-		Compression:            c.Writer.Compression,
-		Logger:                 c.Writer.Logger,
-		ErrorLogger:            c.Writer.ErrorLogger,
-		AllowAutoTopicCreation: c.Writer.AllowAutoTopicCreation,
-	}
-
-	if c.SASL != nil || c.TLS != nil {
-		transport, err := c.newKafkaTransport()
-		if err != nil {
-			return nil, err
-		}
-		kafkaWriter.Transport = transport
-	}
-
-	return kafkaWriter, nil
-}
-
-func (c ProducerConfig) newKafkaTransport() (*kafka.Transport, error) {
+func (cfg ProducerConfig) newKafkaTransport() (*kafka.Transport, error) {
 	transport := &Transport{
 		Transport: &kafka.Transport{
-			ClientID: c.ClientID,
+			ClientID: cfg.ClientID,
 		},
 	}
 
-	if c.Transport != nil {
-		transport.Transport.DialTimeout = c.Transport.DialTimeout
-		transport.Transport.IdleTimeout = c.Transport.IdleTimeout
-		transport.Transport.MetadataTTL = c.Transport.MetadataTTL
-		transport.Transport.MetadataTopics = c.Transport.MetadataTopics
+	if cfg.Transport != nil {
+		transport.Transport.DialTimeout = cfg.Transport.DialTimeout
+		transport.Transport.IdleTimeout = cfg.Transport.IdleTimeout
+		transport.Transport.MetadataTTL = cfg.Transport.MetadataTTL
+		transport.Transport.MetadataTopics = cfg.Transport.MetadataTopics
 	}
 
-	if err := fillLayer(transport, c.SASL, c.TLS); err != nil {
+	if err := fillLayer(transport, cfg.SASL, cfg.TLS); err != nil {
 		return nil, err
 	}
 
 	return transport.Transport, nil
+}
+
+func (cfg *ProducerConfig) setDefaults() {
+	if cfg.DistributedTracingConfiguration.TracerProvider == nil {
+		cfg.DistributedTracingConfiguration.TracerProvider = otel.GetTracerProvider()
+	}
+	if cfg.DistributedTracingConfiguration.Propagator == nil {
+		cfg.DistributedTracingConfiguration.Propagator = otel.GetTextMapPropagator()
+	}
 }

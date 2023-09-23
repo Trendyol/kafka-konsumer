@@ -1,12 +1,55 @@
 package kafka
 
 import (
+	"context"
+	"time"
+
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/protocol"
 )
 
-type Message kafka.Message
+type Message struct {
+	Topic         string
+	Partition     int
+	Offset        int64
+	HighWaterMark int64
+	Key           []byte
+	Value         []byte
+	Headers       []kafka.Header
+	WriterData    interface{}
+	Time          time.Time
+	Context       context.Context
+}
+
+func (m *Message) toKafkaMessage() kafka.Message {
+	return kafka.Message{
+		Topic:         m.Topic,
+		Partition:     m.Partition,
+		Offset:        m.Offset,
+		HighWaterMark: m.HighWaterMark,
+		Key:           m.Key,
+		Value:         m.Value,
+		Headers:       m.Headers,
+		WriterData:    m.WriterData,
+		Time:          m.Time,
+	}
+}
+
+func fromKafkaMessage(message *kafka.Message) Message {
+	return Message{
+		Topic:         message.Topic,
+		Partition:     message.Partition,
+		Offset:        message.Offset,
+		HighWaterMark: message.HighWaterMark,
+		Key:           message.Key,
+		Value:         message.Value,
+		Headers:       message.Headers,
+		WriterData:    message.WriterData,
+		Time:          message.Time,
+		Context:       context.TODO(),
+	}
+}
 
 func (m *Message) toRetryableMessage(retryTopic string) kcronsumer.Message {
 	headers := make([]kcronsumer.Header, 0, len(m.Headers))
