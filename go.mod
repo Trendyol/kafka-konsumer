@@ -3,6 +3,7 @@ module github.com/Trendyol/kafka-konsumer
 go 1.19
 
 require (
+	github.com/Abdulsametileri/otel-kafka-konsumer v0.0.1
 	github.com/Trendyol/kafka-cronsumer v1.3.3
 	github.com/ansrivas/fiberprometheus/v2 v2.6.1
 	github.com/gofiber/fiber/v2 v2.48.0
@@ -16,7 +17,6 @@ require (
 )
 
 require (
-	github.com/Abdulsametileri/otel-kafka-konsumer v0.0.0 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect

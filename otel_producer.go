@@ -38,7 +38,7 @@ func NewOtelProducer(cfg *ProducerConfig, writer *segmentio.Writer) (Writer, err
 // TODO: we need to take care of batch producing performance
 func (o *otelProducer) WriteMessages(ctx context.Context, messages ...segmentio.Message) error {
 	for i := range messages {
-		if err := o.w.WriteMessages(ctx, &messages[i]); err != nil {
+		if err := o.w.WriteMessages(ctx, messages[i]); err != nil {
 			return fmt.Errorf("error during producing %w", err)
 		}
 	}
