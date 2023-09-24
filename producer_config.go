@@ -1,8 +1,9 @@
 package kafka
 
 import (
-	"go.opentelemetry.io/otel"
 	"time"
+
+	"go.opentelemetry.io/otel"
 
 	"github.com/segmentio/kafka-go"
 )
