@@ -21,7 +21,7 @@ type producer struct {
 	w Writer
 }
 
-func NewProducer(cfg ProducerConfig) (Producer, error) {
+func NewProducer(cfg *ProducerConfig) (Producer, error) {
 	kafkaWriter := &kafka.Writer{
 		Addr:                   kafka.TCP(cfg.Writer.Brokers...),
 		Topic:                  cfg.Writer.Topic,
@@ -54,7 +54,7 @@ func NewProducer(cfg ProducerConfig) (Producer, error) {
 	p := &producer{w: kafkaWriter}
 
 	if cfg.DistributedTracingEnabled {
-		otelWriter, err := NewOtelProducer(&cfg, kafkaWriter)
+		otelWriter, err := NewOtelProducer(cfg, kafkaWriter)
 		if err != nil {
 			return nil, err
 		}

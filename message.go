@@ -19,7 +19,8 @@ type Message struct {
 	Headers       []kafka.Header
 	WriterData    interface{}
 	Time          time.Time
-	Context       context.Context
+	// Context To enable distributed tracing support
+	Context context.Context
 }
 
 func (m *Message) toKafkaMessage() kafka.Message {

@@ -150,7 +150,7 @@ func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
 }
 
 func (cfg *ConsumerConfig) newKafkaReader() (Reader, error) {
-	cfg.validate()
+	cfg.setDefaults()
 
 	dialer, err := cfg.newKafkaDialer()
 	if err != nil {
@@ -172,8 +172,7 @@ func (cfg *ConsumerConfig) newKafkaReader() (Reader, error) {
 	return NewReaderWrapper(reader), nil
 }
 
-// TODO: tests
-func (cfg *ConsumerConfig) validate() {
+func (cfg *ConsumerConfig) setDefaults() {
 	if cfg.Concurrency == 0 {
 		cfg.Concurrency = 1
 	}

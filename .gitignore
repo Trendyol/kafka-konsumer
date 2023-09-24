@@ -1,2 +1,4 @@
 .idea
 dist/
+unit_coverage.out
+unit_coverage.html

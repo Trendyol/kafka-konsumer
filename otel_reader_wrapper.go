@@ -14,6 +14,8 @@ type otelReaderWrapper struct {
 }
 
 func NewOtelReaderWrapper(cfg *ConsumerConfig, reader *segmentio.Reader) (Reader, error) {
+	cfg.setDefaults()
+
 	newReader, err := otelkafkakonsumer.NewReader(
 		reader,
 		otelkafkakonsumer.WithTracerProvider(cfg.DistributedTracingConfiguration.TracerProvider),

@@ -15,7 +15,7 @@ func Test_Should_Produce_Successfully(t *testing.T) {
 	topic := "produce-topic"
 	brokerAddress := "localhost:9092"
 
-	producer, _ := kafka.NewProducer(kafka.ProducerConfig{
+	producer, _ := kafka.NewProducer(&kafka.ProducerConfig{
 		Writer: kafka.WriterConfig{AllowAutoTopicCreation: true, Topic: topic, Brokers: []string{brokerAddress}},
 		Transport: &kafka.TransportConfig{
 			MetadataTopics: []string{
@@ -41,7 +41,7 @@ func Test_Should_Batch_Produce_Successfully(t *testing.T) {
 	topic := "batch-produce-topic"
 	brokerAddress := "localhost:9092"
 
-	producer, _ := kafka.NewProducer(kafka.ProducerConfig{
+	producer, _ := kafka.NewProducer(&kafka.ProducerConfig{
 		Writer: kafka.WriterConfig{AllowAutoTopicCreation: true, Topic: topic, Brokers: []string{brokerAddress}}})
 
 	// When

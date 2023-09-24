@@ -35,7 +35,7 @@ func NewOtelProducer(cfg *ProducerConfig, writer *segmentio.Writer) (Writer, err
 	}, nil
 }
 
-// TODO: batch durumlarını düşünmek lazım, sürekli broker'a gitmesi problem bu noktada!
+// TODO: we need to take care of batch producing performance
 func (o *otelProducer) WriteMessages(ctx context.Context, messages ...segmentio.Message) error {
 	for i := range messages {
 		if err := o.w.WriteMessages(ctx, &messages[i]); err != nil {

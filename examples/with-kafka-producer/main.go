@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	producer, _ := kafka.NewProducer(kafka.ProducerConfig{
+	producer, _ := kafka.NewProducer(&kafka.ProducerConfig{
 		Writer: kafka.WriterConfig{
 			Brokers: []string{"localhost:29092"},
 		},

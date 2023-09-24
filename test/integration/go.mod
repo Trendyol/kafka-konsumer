@@ -4,12 +4,14 @@ go 1.19
 
 replace github.com/Trendyol/kafka-konsumer => ../..
 
-require github.com/segmentio/kafka-go v0.4.42
+require (
+	github.com/Trendyol/kafka-konsumer v0.0.0-00010101000000-000000000000
+	github.com/segmentio/kafka-go v0.4.43
+)
 
 require (
-	github.com/Abdulsametileri/otel-kafka-konsumer v0.0.0-20230923154521-0e0626331cfe // indirect
+	github.com/Abdulsametileri/otel-kafka-konsumer v0.0.0 // indirect
 	github.com/Trendyol/kafka-cronsumer v1.3.3 // indirect
-	github.com/Trendyol/kafka-konsumer v0.0.0-00010101000000-000000000000 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/ansrivas/fiberprometheus/v2 v2.6.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -20,12 +22,12 @@ require (
 	github.com/gofiber/fiber/v2 v2.48.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.3.0 // indirect
-	github.com/klauspost/compress v1.16.6 // indirect
+	github.com/klauspost/compress v1.17.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
-	github.com/pierrec/lz4/v4 v4.1.17 // indirect
+	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/prometheus/client_golang v1.16.0 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect

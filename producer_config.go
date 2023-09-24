@@ -1,9 +1,8 @@
 package kafka
 
 import (
-	"time"
-
 	"go.opentelemetry.io/otel"
+	"time"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -46,7 +45,7 @@ type ProducerConfig struct {
 	DistributedTracingConfiguration DistributedTracingConfiguration
 }
 
-func (cfg ProducerConfig) newKafkaTransport() (*kafka.Transport, error) {
+func (cfg *ProducerConfig) newKafkaTransport() (*kafka.Transport, error) {
 	transport := &Transport{
 		Transport: &kafka.Transport{
 			ClientID: cfg.ClientID,
@@ -68,10 +67,12 @@ func (cfg ProducerConfig) newKafkaTransport() (*kafka.Transport, error) {
 }
 
 func (cfg *ProducerConfig) setDefaults() {
-	if cfg.DistributedTracingConfiguration.TracerProvider == nil {
-		cfg.DistributedTracingConfiguration.TracerProvider = otel.GetTracerProvider()
-	}
-	if cfg.DistributedTracingConfiguration.Propagator == nil {
-		cfg.DistributedTracingConfiguration.Propagator = otel.GetTextMapPropagator()
+	if cfg.DistributedTracingEnabled {
+		if cfg.DistributedTracingConfiguration.TracerProvider == nil {
+			cfg.DistributedTracingConfiguration.TracerProvider = otel.GetTracerProvider()
+		}
+		if cfg.DistributedTracingConfiguration.Propagator == nil {
+			cfg.DistributedTracingConfiguration.Propagator = otel.GetTextMapPropagator()
+		}
 	}
 }

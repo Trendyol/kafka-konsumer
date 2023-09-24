@@ -11,7 +11,7 @@ func TestConsumerConfig_validate(t *testing.T) {
 		cfg := ConsumerConfig{Reader: ReaderConfig{}}
 
 		// When
-		cfg.validate()
+		cfg.setDefaults()
 
 		// Then
 		if cfg.Concurrency != 1 {
@@ -29,7 +29,7 @@ func TestConsumerConfig_validate(t *testing.T) {
 		cfg := ConsumerConfig{Reader: ReaderConfig{}, DistributedTracingEnabled: true}
 
 		// When
-		cfg.validate()
+		cfg.setDefaults()
 
 		// Then
 		if cfg.DistributedTracingConfiguration.TracerProvider == nil {
@@ -44,7 +44,7 @@ func TestConsumerConfig_validate(t *testing.T) {
 		cfg := ConsumerConfig{CommitInterval: 5 * time.Second, Reader: ReaderConfig{}}
 
 		// When
-		cfg.validate()
+		cfg.setDefaults()
 
 		// Then
 		if cfg.CommitInterval != 5*time.Second {
