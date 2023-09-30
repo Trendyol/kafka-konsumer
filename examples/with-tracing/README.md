@@ -16,14 +16,17 @@ Two settings are significant.
 
 If you have not specified its values, kafka-konsumer uses global.TraceProvider and Propagation.
 
-### Getting started
+### Demo overview
+
+![Tracing Example](../../.github/images/tracing.png)
+
+### How to run demo?
 
 You should run [docker-compose.yml](../docker-compose.yml) by
 
 ```sh
 docker-compose up build
 ```
-
 
 You should run jaeger by
 
