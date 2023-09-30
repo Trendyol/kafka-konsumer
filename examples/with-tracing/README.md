@@ -28,12 +28,6 @@ You should run [docker-compose.yml](../docker-compose.yml) by
 docker-compose up build
 ```
 
-You should run jaeger by
-
-```sh
-docker run -d --name jaeger -e COLLECTOR_OTLP_ENABLED=true -p 14268:14268 -p 16686:16686 -p 4318:4318 jaegertracing/all-in-one:latest
-```
-
 You can access the jaeger dashboard as [jaeger dashboard](http://localhost:16686/search)
 
 You can run the demo as `go run main.go`
