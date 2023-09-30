@@ -17,11 +17,6 @@ import (
 	"github.com/Trendyol/kafka-konsumer"
 )
 
-/*
-docker run -d --name jaeger -e COLLECTOR_OTLP_ENABLED=true -p 14268:14268 -p 16686:16686 -p 4318:4318 jaegertracing/all-in-one:latest
-http://localhost:16686/search => jaeger dashboard
-*/
-
 func main() {
 	jaegerUrl := "http://localhost:14268/api/traces"
 	tp := initJaegerTracer(jaegerUrl)
