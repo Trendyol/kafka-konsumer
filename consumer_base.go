@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/Abdulsametileri/otel-kafka-konsumer"
+	"github.com/Trendyol/otel-kafka-konsumer"
 	"go.opentelemetry.io/otel/propagation"
 
 	"github.com/prometheus/client_golang/prometheus"

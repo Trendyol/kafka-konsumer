@@ -2,7 +2,7 @@
 
 [segmentio/kafka-go](https://github.com/segmentio/kafka-go) has no support for open telemetry. 
 There is also an [issue](https://github.com/segmentio/kafka-go/issues/1025) about it.
-Based on some work on that issue, we created a project called [otel-kafka-konsumer](https://github.com/Abdulsametileri/otel-kafka-konsumer).
+Based on some work on that issue, we created a project called [otel-kafka-konsumer](https://github.com/Trendyol/otel-kafka-konsumer).
 
 By integrating this project with kafka-konsumer, we successfully implemented distributed tracing in consuming
 and producing operations. You can run demo. 

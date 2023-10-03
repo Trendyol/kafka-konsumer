@@ -1,5 +1,5 @@
-github.com/Abdulsametileri/otel-kafka-konsumer v0.0.0 h1:5iLegl3ZoOVAIgua/ne5OrTwYITLz+4EhbK7i/orXOw=
-github.com/Abdulsametileri/otel-kafka-konsumer v0.0.0/go.mod h1:SOtgXp7znhCuI/+F4by91/0JWLfFqcZyYd1x9EtoxUU=
+github.com/Trendyol/otel-kafka-konsumer v0.0.0 h1:5iLegl3ZoOVAIgua/ne5OrTwYITLz+4EhbK7i/orXOw=
+github.com/Trendyol/otel-kafka-konsumer v0.0.0/go.mod h1:SOtgXp7znhCuI/+F4by91/0JWLfFqcZyYd1x9EtoxUU=
 github.com/Trendyol/kafka-cronsumer v1.3.3 h1:KNlX/L4bDkpNAXTqHUQNrnkC/kauL6djKp0tuOFny8Y=
 github.com/Trendyol/kafka-cronsumer v1.3.3/go.mod h1:VpweJmKY+6dppFhzWOZDbZfxBNuJkSxB12CcuZWBNFU=
 github.com/andybalholm/brotli v1.0.5 h1:8uQZIdzKmjc/iuPu7O2ioW48L81FgatrcpfFmiq/cCs=

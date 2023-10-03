@@ -3,7 +3,7 @@ package kafka
 import (
 	"context"
 
-	"github.com/Abdulsametileri/otel-kafka-konsumer"
+	"github.com/Trendyol/otel-kafka-konsumer"
 	segmentio "github.com/segmentio/kafka-go"
 	"go.opentelemetry.io/otel/attribute"
 	semconv "go.opentelemetry.io/otel/semconv/v1.19.0"
