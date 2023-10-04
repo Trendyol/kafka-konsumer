@@ -38,6 +38,7 @@ type ConsumerConfig struct {
 	Concurrency         int
 	RetryEnabled        bool
 	APIEnabled          bool
+	ManuelRetryEnabled  bool
 }
 
 func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {

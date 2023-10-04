@@ -20,9 +20,11 @@ func main() {
 			MessageGroupDuration: time.Second,
 			BatchConsumeFn:       batchConsumeFn,
 		},
+		ManuelRetryEnabled: true,
 	}
 
 	consumer, _ := kafka.NewConsumer(consumerCfg)
+	_ = consumer.WithRetryFunc()
 	defer consumer.Stop()
 
 	consumer.Consume()
