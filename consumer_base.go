@@ -14,25 +14,28 @@ import (
 type Consumer interface {
 	Consume()
 	WithLogger(logger LoggerInterface)
+	WithRetryFunc() func([]Message)
 	Stop() error
 }
 
 type base struct {
-	cronsumer    kcronsumer.Cronsumer
-	api          API
-	logger       LoggerInterface
-	metric       *ConsumerMetric
-	context      context.Context
-	messageCh    chan Message
-	quit         chan struct{}
-	cancelFn     context.CancelFunc
-	r            *kafka.Reader
-	retryTopic   string
-	subprocesses subprocesses
-	wg           sync.WaitGroup
-	concurrency  int
-	once         sync.Once
-	retryEnabled bool
+	cronsumer          kcronsumer.Cronsumer
+	api                API
+	logger             LoggerInterface
+	metric             *ConsumerMetric
+	context            context.Context
+	messageCh          chan Message
+	quit               chan struct{}
+	cancelFn           context.CancelFunc
+	r                  *kafka.Reader
+	retryTopic         string
+	subprocesses       subprocesses
+	wg                 sync.WaitGroup
+	concurrency        int
+	once               sync.Once
+	retryEnabled       bool
+	manuelRetryEnabled bool
+	retryFunc          func([]Message)
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -106,6 +109,10 @@ func (c *base) startConsume() {
 
 func (c *base) WithLogger(logger LoggerInterface) {
 	c.logger = logger
+}
+
+func (c *base) WithRetryFunc() func([]Message) {
+	return c.retryFunc
 }
 
 func (c *base) Stop() error {

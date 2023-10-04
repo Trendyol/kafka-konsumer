@@ -34,6 +34,8 @@ func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		c.base.setupAPI(cfg, c.metric, c.base.cronsumer.GetMetricCollectors()...)
 	}
 
+	consumerBase.retryFunc = c.retry
+
 	return &c, nil
 }
 
@@ -79,4 +81,10 @@ func (c *consumer) process(message Message) {
 	}
 
 	c.metric.TotalProcessedMessagesCounter++
+}
+
+func (c *consumer) retry(_ []Message) {
+	c.logger.Warnf("Manuel retry not implemented in non batch consumers")
+
+	return
 }

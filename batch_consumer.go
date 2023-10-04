@@ -40,6 +40,8 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		c.base.setupAPI(cfg, c.metric, c.base.cronsumer.GetMetricCollectors()...)
 	}
 
+	consumerBase.retryFunc = c.retry
+
 	return &c, nil
 }
 
@@ -89,22 +91,8 @@ func (b *batchConsumer) startBatch() {
 
 func (b *batchConsumer) process(messages []Message) {
 	consumeErr := b.consumeFn(messages)
-	if consumeErr != nil && b.retryEnabled {
-		b.logger.Warnf("Consume Function Err %s, Messages will be retried", consumeErr.Error())
-
-		// Try to process same message again
-		if consumeErr = b.consumeFn(messages); consumeErr != nil {
-			b.logger.Warnf("Consume Function Again Err %s, messages are sending to exception/retry topic %s", consumeErr.Error(), b.retryTopic)
-
-			cronsumerMessages := make([]kcronsumer.Message, 0, len(messages))
-			for i := range messages {
-				cronsumerMessages = append(cronsumerMessages, messages[i].toRetryableMessage(b.retryTopic))
-			}
-
-			if produceErr := b.base.cronsumer.ProduceBatch(cronsumerMessages); produceErr != nil {
-				b.logger.Errorf("Error producing messages to exception/retry topic %s", produceErr.Error())
-			}
-		}
+	if consumeErr != nil && b.retryEnabled && !b.manuelRetryEnabled {
+		b.retry(messages)
 	}
 
 	segmentioMessages := make([]kafka.Message, 0, len(messages))
@@ -120,4 +108,24 @@ func (b *batchConsumer) process(messages []Message) {
 	}
 
 	b.metric.TotalProcessedBatchMessagesCounter++
+}
+
+func (b *batchConsumer) retry(messages []Message) {
+	b.logger.Warnf("Messages will be retried")
+
+	// Try to process same message again
+	if consumeErr := b.consumeFn(messages); consumeErr != nil {
+		b.logger.Warnf("Consume Function Again Err %s, messages are sending to exception/retry topic %s", consumeErr.Error(), b.retryTopic)
+
+		cronsumerMessages := make([]kcronsumer.Message, 0, len(messages))
+		for i := range messages {
+			cronsumerMessages = append(cronsumerMessages, messages[i].toRetryableMessage(b.retryTopic))
+		}
+
+		if produceErr := b.base.cronsumer.ProduceBatch(cronsumerMessages); produceErr != nil {
+			b.logger.Errorf("Error producing messages to exception/retry topic %s", produceErr.Error())
+		}
+	}
+
+	return
 }
