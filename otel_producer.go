@@ -48,6 +48,7 @@ func (o *otelProducer) WriteMessages(ctx context.Context, messages ...segmentio.
 		if err := o.w.WriteMessage(ctx, messages[0]); err != nil {
 			return fmt.Errorf("error during producing %w", err)
 		}
+		return nil
 	}
 
 	if err := o.w.WriteMessages(ctx, messages); err != nil {
