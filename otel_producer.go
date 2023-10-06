@@ -35,13 +35,20 @@ func NewOtelProducer(cfg *ProducerConfig, writer *segmentio.Writer) (Writer, err
 	}, nil
 }
 
-// TODO: we need to take care of batch producing performance
+// Currently, we are not support tracing on batch producing.
+// You can create custom span.
+// There is an issue about it: https://github.com/Trendyol/otel-kafka-konsumer/issues/4
 func (o *otelProducer) WriteMessages(ctx context.Context, messages ...segmentio.Message) error {
-	for i := range messages {
-		if err := o.w.WriteMessages(ctx, messages[i]); err != nil {
+	if len(messages) == 1 {
+		if err := o.w.WriteMessage(ctx, messages[0]); err != nil {
 			return fmt.Errorf("error during producing %w", err)
 		}
 	}
+
+	if err := o.w.WriteMessages(ctx, messages); err != nil {
+		return fmt.Errorf("error during batch producing %w", err)
+	}
+
 	return nil
 }
 
