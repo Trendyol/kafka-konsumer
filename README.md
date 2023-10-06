@@ -140,45 +140,48 @@ under [the specified folder](examples/with-sasl-plaintext) and then start the ap
 
 ## Configurations
 
-| config                                      | description                                                                                                                           | default               |
-|---------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|-----------------------|
-| `reader`                                    | [Describes all segmentio kafka reader configurations](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#ReaderConfig)          |                       |
-| `consumeFn`                                 | Kafka consumer function, if retry enabled it, is also used to consume retriable messages                                              |                       |
-| `logLevel`                                  | Describes log level; valid options are `debug`, `info`, `warn`, and `error`                                                           | info                  |
-| `concurrency`                               | Number of goroutines used at listeners                                                                                                | 1                     |
-| `retryEnabled`                              | Retry/Exception consumer is working or not                                                                                            | false                 |
-| `commitInterval`                            | indicates the interval at which offsets are committed to the broker.                                                                  | 1s                    |
-| `rack`                                      | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go#RackAffinityGroupBalancer)                                                 |                       |
-| `clientId`                                  | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Dialer)                                                            |                       |
-| `dial.Timeout`                              | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Dialer)                                                            | no timeout            |
-| `dial.KeepAlive`                            | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Dialer)                                                            | not enabled           |
-| `transport.DialTimeout `                    | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Transport)                                                         | 5s                    |
-| `transport.IdleTimeout `                    | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Transport)                                                         | 30s                   |
-| `transport.MetadataTTL `                    | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Transport)                                                         | 6s                    |
-| `transport.MetadataTopics `                 | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Transport)                                                         | all topics in cluster |
-| `retryConfiguration.clientId`               | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Transport)                                                         |                       |
-| `retryConfiguration.startTimeCron`          | Cron expression when retry consumer ([kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer#configurations)) starts to work at |                       |
-| `retryConfiguration.workDuration`           | Work duration exception consumer actively consuming messages                                                                          |                       |
-| `retryConfiguration.topic`                  | Retry/Exception topic names                                                                                                           |                       |
-| `retryConfiguration.brokers`                | Retry topic brokers urls                                                                                                              |                       |
-| `retryConfiguration.maxRetry`               | Maximum retry value for attempting to retry a message                                                                                 | 3                     |
-| `retryConfiguration.tls.rootCAPath`         | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                               | ""                    |
-| `retryConfiguration.tls.intermediateCAPath` | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                    | ""                    |
-| `retryConfiguration.sasl.authType`          | `SCRAM` or `PLAIN`                                                                                                                    |                       |
-| `retryConfiguration.sasl.username`          | SCRAM OR PLAIN username                                                                                                               |                       |
-| `retryConfiguration.sasl.password`          | SCRAM OR PLAIN password                                                                                                               |                       |
-| `batchConfiguration.messageGroupLimit`      | Maximum number of messages in a batch                                                                                                 |                       |
-| `batchConfiguration.messageGroupDuration`   | Maximum time to wait for a batch                                                                                                      |                       |
-| `tls.rootCAPath`                            | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                               | ""                    |
-| `tls.intermediateCAPath`                    | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                    | ""                    |
-| `sasl.authType`                             | `SCRAM` or `PLAIN`                                                                                                                    |                       |
-| `sasl.username`                             | SCRAM OR PLAIN username                                                                                                               |                       |
-| `sasl.password`                             | SCRAM OR PLAIN password                                                                                                               |                       |
-| `logger`                                    | If you want to custom logger                                                                                                          | info                  |
-| `apiEnabled`                                | Enabled metrics                                                                                                                       | false                 |
-| `apiConfiguration.port`                     | Set API port                                                                                                                          | 8090                  |
-| `apiConfiguration.healtCheckPath`           | Set Health check path                                                                                                                 | healthcheck           |
-| `metricConfiguration.path`                  | Set metric endpoint path                                                                                                              | /metrics              |
+| config                                           | description                                                                                                                           | default                     |
+|--------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|
+| `reader`                                         | [Describes all segmentio kafka reader configurations](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#ReaderConfig)          |                             |
+| `consumeFn`                                      | Kafka consumer function, if retry enabled it, is also used to consume retriable messages                                              |                             |
+| `logLevel`                                       | Describes log level; valid options are `debug`, `info`, `warn`, and `error`                                                           | info                        |
+| `concurrency`                                    | Number of goroutines used at listeners                                                                                                | 1                           |
+| `retryEnabled`                                   | Retry/Exception consumer is working or not                                                                                            | false                       |
+| `commitInterval`                                 | indicates the interval at which offsets are committed to the broker.                                                                  | 1s                          |
+| `rack`                                           | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go#RackAffinityGroupBalancer)                                                 |                             |
+| `clientId`                                       | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Dialer)                                                            |                             |
+| `dial.Timeout`                                   | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Dialer)                                                            | no timeout                  |
+| `dial.KeepAlive`                                 | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Dialer)                                                            | not enabled                 |
+| `transport.DialTimeout `                         | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Transport)                                                         | 5s                          |
+| `transport.IdleTimeout `                         | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Transport)                                                         | 30s                         |
+| `transport.MetadataTTL `                         | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Transport)                                                         | 6s                          |
+| `transport.MetadataTopics `                      | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Transport)                                                         | all topics in cluster       |
+| `distributedTracingEnabled`                      | indicates open telemetry support on/off for consume and produce operations.                                                           | false                       |
+| `distributedTracingConfiguration.TracerProvider` | [see doc](https://opentelemetry.io/docs/specs/otel/trace/api/)                                                                        | otel.GetTracerProvider()    |
+| `distributedTracingConfiguration.Propagator`     | [see doc](https://opentelemetry.io/docs/specs/otel/trace/api/)                                                                        | otel.GetTextMapPropagator() |
+| `retryConfiguration.clientId`                    | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Transport)                                                         |                             |
+| `retryConfiguration.startTimeCron`               | Cron expression when retry consumer ([kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer#configurations)) starts to work at |                             |
+| `retryConfiguration.workDuration`                | Work duration exception consumer actively consuming messages                                                                          |                             |
+| `retryConfiguration.topic`                       | Retry/Exception topic names                                                                                                           |                             |
+| `retryConfiguration.brokers`                     | Retry topic brokers urls                                                                                                              |                             |
+| `retryConfiguration.maxRetry`                    | Maximum retry value for attempting to retry a message                                                                                 | 3                           |
+| `retryConfiguration.tls.rootCAPath`              | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                               | ""                          |
+| `retryConfiguration.tls.intermediateCAPath`      | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                    | ""                          |
+| `retryConfiguration.sasl.authType`               | `SCRAM` or `PLAIN`                                                                                                                    |                             |
+| `retryConfiguration.sasl.username`               | SCRAM OR PLAIN username                                                                                                               |                             |
+| `retryConfiguration.sasl.password`               | SCRAM OR PLAIN password                                                                                                               |                             |
+| `batchConfiguration.messageGroupLimit`           | Maximum number of messages in a batch                                                                                                 |                             |
+| `batchConfiguration.messageGroupDuration`        | Maximum time to wait for a batch                                                                                                      |                             |
+| `tls.rootCAPath`                                 | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                               | ""                          |
+| `tls.intermediateCAPath`                         | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                    | ""                          |
+| `sasl.authType`                                  | `SCRAM` or `PLAIN`                                                                                                                    |                             |
+| `sasl.username`                                  | SCRAM OR PLAIN username                                                                                                               |                             |
+| `sasl.password`                                  | SCRAM OR PLAIN password                                                                                                               |                             |
+| `logger`                                         | If you want to custom logger                                                                                                          | info                        |
+| `apiEnabled`                                     | Enabled metrics                                                                                                                       | false                       |
+| `apiConfiguration.port`                          | Set API port                                                                                                                          | 8090                        |
+| `apiConfiguration.healtCheckPath`                | Set Health check path                                                                                                                 | healthcheck                 |
+| `metricConfiguration.path`                       | Set metric endpoint path                                                                                                              | /metrics                    |
 
 ## Monitoring
 
