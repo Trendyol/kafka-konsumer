@@ -117,8 +117,12 @@ After running `docker-compose up` command, you can run any application you want.
         fmt.Printf("%d\n comes first %s", len(messages), messages[0].Value)
         return nil
     }
-
 </details>
+
+
+#### With Distributed Tracing Support
+
+Please refer to [Tracing Example](examples/with-tracing/README.md)
 
 #### With Grafana & Prometheus
 

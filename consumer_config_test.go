@@ -11,7 +11,7 @@ func TestConsumerConfig_validate(t *testing.T) {
 		cfg := ConsumerConfig{Reader: ReaderConfig{}}
 
 		// When
-		cfg.validate()
+		cfg.setDefaults()
 
 		// Then
 		if cfg.Concurrency != 1 {
@@ -24,12 +24,27 @@ func TestConsumerConfig_validate(t *testing.T) {
 			t.Fatalf("Reader Commit Interval default value must equal to 1s")
 		}
 	})
+	t.Run("Set_Defaults_When_Distributed_Tracing_Enabled", func(t *testing.T) {
+		// Given
+		cfg := ConsumerConfig{Reader: ReaderConfig{}, DistributedTracingEnabled: true}
+
+		// When
+		cfg.setDefaults()
+
+		// Then
+		if cfg.DistributedTracingConfiguration.TracerProvider == nil {
+			t.Fatal("Traceprovider cannot be null")
+		}
+		if cfg.DistributedTracingConfiguration.Propagator == nil {
+			t.Fatal("Propagator cannot be null")
+		}
+	})
 	t.Run("Set_Commit_Interval_Value_To_The_Internal_Reader", func(t *testing.T) {
 		// Given
 		cfg := ConsumerConfig{CommitInterval: 5 * time.Second, Reader: ReaderConfig{}}
 
 		// When
-		cfg.validate()
+		cfg.setDefaults()
 
 		// Then
 		if cfg.CommitInterval != 5*time.Second {

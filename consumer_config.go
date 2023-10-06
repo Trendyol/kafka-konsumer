@@ -3,6 +3,10 @@ package kafka
 import (
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
+
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	lcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/logger"
 
@@ -21,23 +25,25 @@ type DialConfig struct {
 }
 
 type ConsumerConfig struct {
-	APIConfiguration    APIConfiguration
-	Logger              LoggerInterface
-	MetricConfiguration MetricConfiguration
-	SASL                *SASLConfig
-	TLS                 *TLSConfig
-	Dial                *DialConfig
-	BatchConfiguration  *BatchConfiguration
-	ConsumeFn           ConsumeFn
-	ClientID            string
-	Rack                string
-	LogLevel            LogLevel
-	Reader              ReaderConfig
-	RetryConfiguration  RetryConfiguration
-	CommitInterval      time.Duration
-	Concurrency         int
-	RetryEnabled        bool
-	APIEnabled          bool
+	APIConfiguration                APIConfiguration
+	Logger                          LoggerInterface
+	MetricConfiguration             MetricConfiguration
+	SASL                            *SASLConfig
+	TLS                             *TLSConfig
+	Dial                            *DialConfig
+	BatchConfiguration              *BatchConfiguration
+	ConsumeFn                       ConsumeFn
+	ClientID                        string
+	Rack                            string
+	LogLevel                        LogLevel
+	Reader                          ReaderConfig
+	RetryConfiguration              RetryConfiguration
+	CommitInterval                  time.Duration
+	DistributedTracingEnabled       bool
+	DistributedTracingConfiguration DistributedTracingConfiguration
+	Concurrency                     int
+	RetryEnabled                    bool
+	APIEnabled                      bool
 }
 
 func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
@@ -95,6 +101,11 @@ type MetricConfiguration struct {
 	Path *string
 }
 
+type DistributedTracingConfiguration struct {
+	TracerProvider trace.TracerProvider
+	Propagator     propagation.TextMapPropagator
+}
+
 type RetryConfiguration struct {
 	SASL            *SASLConfig
 	TLS             *TLSConfig
@@ -139,7 +150,7 @@ func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
 }
 
 func (cfg *ConsumerConfig) newKafkaReader() (Reader, error) {
-	cfg.validate()
+	cfg.setDefaults()
 
 	dialer, err := cfg.newKafkaDialer()
 	if err != nil {
@@ -154,10 +165,14 @@ func (cfg *ConsumerConfig) newKafkaReader() (Reader, error) {
 
 	reader := kafka.NewReader(readerCfg)
 
+	if cfg.DistributedTracingEnabled {
+		return NewOtelReaderWrapper(cfg, reader)
+	}
+
 	return NewReaderWrapper(reader), nil
 }
 
-func (cfg *ConsumerConfig) validate() {
+func (cfg *ConsumerConfig) setDefaults() {
 	if cfg.Concurrency == 0 {
 		cfg.Concurrency = 1
 	}
@@ -168,5 +183,14 @@ func (cfg *ConsumerConfig) validate() {
 		cfg.Reader.CommitInterval = time.Second
 	} else {
 		cfg.Reader.CommitInterval = cfg.CommitInterval
+	}
+
+	if cfg.DistributedTracingEnabled {
+		if cfg.DistributedTracingConfiguration.Propagator == nil {
+			cfg.DistributedTracingConfiguration.Propagator = otel.GetTextMapPropagator()
+		}
+		if cfg.DistributedTracingConfiguration.TracerProvider == nil {
+			cfg.DistributedTracingConfiguration.TracerProvider = otel.GetTracerProvider()
+		}
 	}
 }
