@@ -78,6 +78,5 @@ func (m mockOtelKafkaKonsumerWriter) WriteMessages(ctx context.Context, msgs []k
 }
 
 func (m mockOtelKafkaKonsumerWriter) Close() error {
-
 	panic("implement me")
 }
