@@ -10,8 +10,14 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.19.0"
 )
 
+type OtelKafkaKonsumerWriter interface {
+	WriteMessage(ctx context.Context, msg segmentio.Message) error
+	WriteMessages(ctx context.Context, msgs []segmentio.Message) error
+	Close() error
+}
+
 type otelProducer struct {
-	w *otelkafkakonsumer.Writer
+	w OtelKafkaKonsumerWriter
 }
 
 func NewOtelProducer(cfg *ProducerConfig, writer *segmentio.Writer) (Writer, error) {
@@ -35,8 +41,7 @@ func NewOtelProducer(cfg *ProducerConfig, writer *segmentio.Writer) (Writer, err
 	}, nil
 }
 
-// Currently, we are not support tracing on batch producing.
-// You can create custom span.
+// Currently, we are not support tracing on batch producing. You can create custom span.
 // There is an issue about it: https://github.com/Trendyol/otel-kafka-konsumer/issues/4
 func (o *otelProducer) WriteMessages(ctx context.Context, messages ...segmentio.Message) error {
 	if len(messages) == 1 {
