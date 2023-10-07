@@ -5,6 +5,13 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore: bump"
+    ignore:
+      - dependency-name: go.opentelemetry.io/otel/exporters/jaeger
+      - dependency-name: github.com/prometheus/client_golang
+      - dependency-name: github.com/gofiber/fiber/v2
+      - dependency-name: go.uber.org/zap
   - package-ecosystem: gomod
     directory: "/"
     schedule:
