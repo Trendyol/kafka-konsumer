@@ -20,7 +20,8 @@ type Message struct {
 	WriterData    interface{}
 	Time          time.Time
 	// Context To enable distributed tracing support
-	Context context.Context
+	Context      context.Context
+	isSuccessful bool
 }
 
 func (m *Message) toKafkaMessage() kafka.Message {
@@ -49,6 +50,7 @@ func fromKafkaMessage(message *kafka.Message) Message {
 		WriterData:    message.WriterData,
 		Time:          message.Time,
 		Context:       context.TODO(),
+		isSuccessful: true,
 	}
 }
 

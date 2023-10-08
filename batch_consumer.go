@@ -13,6 +13,7 @@ type batchConsumer struct {
 
 	messageGroupLimit    int
 	messageGroupDuration time.Duration
+	manuelRetry          bool
 }
 
 func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -26,6 +27,7 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		consumeFn:            cfg.BatchConfiguration.BatchConsumeFn,
 		messageGroupLimit:    cfg.BatchConfiguration.MessageGroupLimit,
 		messageGroupDuration: cfg.BatchConfiguration.MessageGroupDuration,
+		manuelRetry:          cfg.ManuelRetryEnabled,
 	}
 
 	if cfg.RetryEnabled {
@@ -93,11 +95,11 @@ func (b *batchConsumer) process(messages []Message) {
 
 	if consumeErr != nil {
 		b.logger.Warnf("Consume Function Err %s, Messages will be retried", consumeErr.Error())
-		// Try to process same messages again
-		if consumeErr = b.consumeFn(messages); consumeErr != nil {
-			b.logger.Warnf("Consume Function Again Err %s, messages are sending to exception/retry topic %s", consumeErr.Error(), b.retryTopic)
-			b.metric.TotalUnprocessedMessagesCounter += int64(len(messages))
+		// if manuel retry enabled
+		if b.manuelRetry {
+			b.retry(getUnsuccessfulMessages(messages))
 		}
+		b.retry(messages)
 
 		if consumeErr != nil && b.retryEnabled {
 			cronsumerMessages := make([]kcronsumer.Message, 0, len(messages))
@@ -114,4 +116,24 @@ func (b *batchConsumer) process(messages []Message) {
 	if consumeErr == nil {
 		b.metric.TotalProcessedMessagesCounter += int64(len(messages))
 	}
+}
+
+func (b *batchConsumer) retry(messages []Message) {
+	// Try to process same messages again
+	if consumeErr := b.consumeFn(messages); consumeErr != nil {
+		b.logger.Warnf("Consume Function Again Err %s, messages are sending to exception/retry topic %s", consumeErr.Error(), b.retryTopic)
+		b.metric.TotalUnprocessedMessagesCounter += int64(len(messages))
+	}
+	return
+}
+
+func getUnsuccessfulMessages(messages []Message) []Message {
+	var unsuccessfulMessages []Message
+	for _, message := range messages {
+		if !message.isSuccessful {
+			unsuccessfulMessages = append(unsuccessfulMessages, message)
+		}
+	}
+
+	return unsuccessfulMessages
 }
