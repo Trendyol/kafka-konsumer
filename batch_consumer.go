@@ -9,7 +9,7 @@ import (
 type batchConsumer struct {
 	*base
 
-	consumeFn func([]Message) error
+	consumeFn func(*[]Message) error
 
 	messageGroupLimit    int
 	messageGroupDuration time.Duration
@@ -32,7 +32,7 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 
 	if cfg.RetryEnabled {
 		c.base.setupCronsumer(cfg, func(message kcronsumer.Message) error {
-			return c.consumeFn([]Message{toMessage(message)})
+			return c.consumeFn(&[]Message{toMessage(message)})
 		})
 	}
 
@@ -91,7 +91,7 @@ func (b *batchConsumer) startBatch() {
 }
 
 func (b *batchConsumer) process(messages []Message) {
-	consumeErr := b.consumeFn(messages)
+	consumeErr := b.consumeFn(&messages)
 
 	if consumeErr != nil {
 		b.logger.Warnf("Consume Function Err %s, Messages will be retried", consumeErr.Error())
