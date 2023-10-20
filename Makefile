@@ -32,7 +32,7 @@ integration-compose:
 	docker compose -f test/integration/docker-compose.yml up --wait --build --force-recreate --remove-orphans
 
 ## integration-test: run integration test
-.PHONE: integration-test
+.PHONY: integration-test
 integration-test:
 	go test -v test/integration/integration_test.go
 
