@@ -7,7 +7,7 @@ import (
 type consumer struct {
 	*base
 
-	consumeFn func(Message) error
+	consumeFn func(*Message) error
 }
 
 func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -51,7 +51,7 @@ func (c *consumer) Consume() {
 	}
 }
 
-func (c *consumer) process(message Message) {
+func (c *consumer) process(message *Message) {
 	consumeErr := c.consumeFn(message)
 
 	if consumeErr != nil {

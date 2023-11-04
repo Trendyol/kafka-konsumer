@@ -9,7 +9,7 @@ import (
 type batchConsumer struct {
 	*base
 
-	consumeFn func([]Message) error
+	consumeFn func([]*Message) error
 
 	messageGroupLimit    int
 	messageGroupDuration time.Duration
@@ -30,7 +30,7 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 
 	if cfg.RetryEnabled {
 		c.base.setupCronsumer(cfg, func(message kcronsumer.Message) error {
-			return c.consumeFn([]Message{toMessage(message)})
+			return c.consumeFn([]*Message{toMessage(message)})
 		})
 	}
 
@@ -62,7 +62,7 @@ func (b *batchConsumer) startBatch() {
 	ticker := time.NewTicker(b.messageGroupDuration)
 	defer ticker.Stop()
 
-	messages := make([]Message, 0, b.messageGroupLimit)
+	messages := make([]*Message, 0, b.messageGroupLimit)
 
 	for {
 		select {
@@ -88,7 +88,7 @@ func (b *batchConsumer) startBatch() {
 	}
 }
 
-func (b *batchConsumer) process(messages []Message) {
+func (b *batchConsumer) process(messages []*Message) {
 	consumeErr := b.consumeFn(messages)
 
 	if consumeErr != nil {

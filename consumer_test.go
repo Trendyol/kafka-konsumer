@@ -10,13 +10,13 @@ func Test_consumer_process(t *testing.T) {
 		// Given
 		c := consumer{
 			base: &base{metric: &ConsumerMetric{}},
-			consumeFn: func(Message) error {
+			consumeFn: func(*Message) error {
 				return nil
 			},
 		}
 
 		// When
-		c.process(Message{})
+		c.process(&Message{})
 
 		// Then
 		if c.metric.TotalProcessedMessagesCounter != 1 {
@@ -31,7 +31,7 @@ func Test_consumer_process(t *testing.T) {
 		gotOnlyOneTimeException := true
 		c := consumer{
 			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug)},
-			consumeFn: func(Message) error {
+			consumeFn: func(*Message) error {
 				if gotOnlyOneTimeException {
 					gotOnlyOneTimeException = false
 					return errors.New("simulate only one time exception")
@@ -41,7 +41,7 @@ func Test_consumer_process(t *testing.T) {
 		}
 
 		// When
-		c.process(Message{})
+		c.process(&Message{})
 
 		// Then
 		if c.metric.TotalProcessedMessagesCounter != 1 {
@@ -55,13 +55,13 @@ func Test_consumer_process(t *testing.T) {
 		// Given
 		c := consumer{
 			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug)},
-			consumeFn: func(Message) error {
+			consumeFn: func(*Message) error {
 				return errors.New("error case")
 			},
 		}
 
 		// When
-		c.process(Message{})
+		c.process(&Message{})
 
 		// Then
 		if c.metric.TotalProcessedMessagesCounter != 0 {
@@ -76,13 +76,13 @@ func Test_consumer_process(t *testing.T) {
 		mc := mockCronsumer{}
 		c := consumer{
 			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), retryEnabled: true, cronsumer: &mc},
-			consumeFn: func(Message) error {
+			consumeFn: func(*Message) error {
 				return errors.New("error case")
 			},
 		}
 
 		// When
-		c.process(Message{})
+		c.process(&Message{})
 
 		// Then
 		if c.metric.TotalProcessedMessagesCounter != 0 {
@@ -97,13 +97,13 @@ func Test_consumer_process(t *testing.T) {
 		mc := mockCronsumer{wantErr: true}
 		c := consumer{
 			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), retryEnabled: true, cronsumer: &mc},
-			consumeFn: func(Message) error {
+			consumeFn: func(*Message) error {
 				return errors.New("error case")
 			},
 		}
 
 		// When
-		c.process(Message{})
+		c.process(&Message{})
 
 		// Then
 		if c.metric.TotalProcessedMessagesCounter != 0 {
