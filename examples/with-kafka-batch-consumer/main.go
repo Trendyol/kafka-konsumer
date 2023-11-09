@@ -20,6 +20,14 @@ func main() {
 			MessageGroupDuration: time.Second,
 			BatchConsumeFn:       batchConsumeFn,
 		},
+		RetryEnabled: true,
+		RetryConfiguration: kafka.RetryConfiguration{
+			Brokers:       []string{"localhost:29092"},
+			Topic:         "retry-topic",
+			StartTimeCron: "*/1 * * * *",
+			WorkDuration:  50 * time.Second,
+			MaxRetry:      3,
+		},
 	}
 
 	consumer, _ := kafka.NewConsumer(consumerCfg)
@@ -35,7 +43,7 @@ func main() {
 
 // In order to load topic with data, use:
 // kafka-console-producer --broker-list localhost:29092 --topic standart-topic < examples/with-kafka-batch-consumer/load.txt
-func batchConsumeFn(messages []kafka.Message) error {
+func batchConsumeFn(messages []*kafka.Message) error {
 	fmt.Printf("%d\n comes first %s", len(messages), messages[0].Value)
 	return nil
 }

@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -74,11 +75,11 @@ func Test_Should_Consume_Message_Successfully(t *testing.T) {
 	conn, cleanUp := createTopicAndWriteMessages(t, topic, []segmentio.Message{{Topic: topic, Key: []byte("1"), Value: []byte(`foo`)}})
 	defer cleanUp()
 
-	messageCh := make(chan kafka.Message)
+	messageCh := make(chan *kafka.Message)
 
 	consumerCfg := &kafka.ConsumerConfig{
 		Reader: kafka.ReaderConfig{Brokers: []string{brokerAddress}, Topic: topic, GroupID: consumerGroup},
-		ConsumeFn: func(message kafka.Message) error {
+		ConsumeFn: func(message *kafka.Message) error {
 			messageCh <- message
 			return nil
 		},
@@ -128,7 +129,7 @@ func Test_Should_Batch_Consume_Messages_Successfully(t *testing.T) {
 		BatchConfiguration: &kafka.BatchConfiguration{
 			MessageGroupLimit:    100,
 			MessageGroupDuration: time.Second,
-			BatchConsumeFn: func(messages []kafka.Message) error {
+			BatchConsumeFn: func(messages []*kafka.Message) error {
 				messagesLen <- len(messages)
 				return nil
 			},
@@ -178,7 +179,7 @@ func Test_Should_Integrate_With_Kafka_Cronsumer_Successfully(t *testing.T) {
 			MaxRetry:      3,
 			LogLevel:      "error",
 		},
-		ConsumeFn: func(message kafka.Message) error {
+		ConsumeFn: func(message *kafka.Message) error {
 			return errors.New("err occurred")
 		},
 		LogLevel: kafka.LogLevelError,
@@ -197,6 +198,70 @@ func Test_Should_Integrate_With_Kafka_Cronsumer_Successfully(t *testing.T) {
 	}
 
 	assertEventually(t, conditionFunc, 45*time.Second, time.Second)
+}
+
+func Test_Should_Progate_Custom_Headers_With_Kafka_Cronsumer_Successfully(t *testing.T) {
+	// Given
+	topic := "cronsumer-header-topic"
+	consumerGroup := "cronsumer-header-cg"
+	brokerAddress := "localhost:9092"
+
+	retryTopic := "exception-topic"
+
+	_, cleanUp := createTopicAndWriteMessages(t, topic, []segmentio.Message{
+		{Topic: topic, Key: []byte("1"), Value: []byte(`foo`)}},
+	)
+	defer cleanUp()
+
+	retryConn, cleanUpThisToo := createTopicAndWriteMessages(t, retryTopic, nil)
+	defer cleanUpThisToo()
+
+	consumerCfg := &kafka.ConsumerConfig{
+		Reader:       kafka.ReaderConfig{Brokers: []string{brokerAddress}, Topic: topic, GroupID: consumerGroup},
+		RetryEnabled: true,
+		RetryConfiguration: kafka.RetryConfiguration{
+			Brokers:       []string{brokerAddress},
+			Topic:         retryTopic,
+			StartTimeCron: "*/1 * * * *",
+			WorkDuration:  50 * time.Second,
+			MaxRetry:      3,
+			LogLevel:      "error",
+		},
+		ConsumeFn: func(message *kafka.Message) error {
+			message.AddHeader(kafka.Header{Key: "custom_exception_header", Value: []byte("custom_exception_value")})
+
+			return errors.New("err occurred")
+		},
+		LogLevel: kafka.LogLevelError,
+	}
+
+	consumer, _ := kafka.NewConsumer(consumerCfg)
+	defer consumer.Stop()
+
+	consumer.Consume()
+
+	// Then
+	var expectedOffset int64 = 1
+	conditionFunc := func() bool {
+		lastOffset, _ := retryConn.ReadLastOffset()
+		return lastOffset == expectedOffset
+	}
+
+	assertEventually(t, conditionFunc, 45*time.Second, time.Second)
+	msg, err := retryConn.ReadMessage(10_000)
+	if err != nil {
+		t.Fatalf("error reading message")
+	}
+	if len(msg.Headers) != 1 {
+		t.Fatalf("msg header must be length of 1")
+	}
+	if msg.Headers[0].Key != "custom_exception_header" {
+		t.Fatalf("key must be custom_exception_header")
+	}
+	if !bytes.Equal(msg.Headers[0].Value, []byte("custom_exception_value")) {
+		t.Fatalf("value must be custom_exception_value")
+	}
+	_ = msg
 }
 
 func createTopicAndWriteMessages(t *testing.T, topicName string, messages []segmentio.Message) (*segmentio.Conn, func()) {

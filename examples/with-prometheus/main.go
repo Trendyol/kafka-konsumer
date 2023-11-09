@@ -41,7 +41,7 @@ func main() {
 	<-c
 }
 
-func consumeFn(message kafka.Message) error {
+func consumeFn(message *kafka.Message) error {
 	fmt.Printf("Message From %s with value %s", message.Topic, string(message.Value))
 	return nil
 }

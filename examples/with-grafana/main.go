@@ -70,7 +70,7 @@ func main() {
 			WorkDuration:  50 * time.Second,
 			MaxRetry:      3,
 		},
-		ConsumeFn: func(message kafka.Message) error {
+		ConsumeFn: func(message *kafka.Message) error {
 			// mocking some background task
 			time.Sleep(1 * time.Second)
 

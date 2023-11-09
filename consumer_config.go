@@ -15,9 +15,9 @@ import (
 
 type ReaderConfig kafka.ReaderConfig
 
-type BatchConsumeFn func([]Message) error
+type BatchConsumeFn func([]*Message) error
 
-type ConsumeFn func(Message) error
+type ConsumeFn func(*Message) error
 
 type DialConfig struct {
 	Timeout   time.Duration

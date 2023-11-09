@@ -36,7 +36,7 @@ type base struct {
 	logger                    LoggerInterface
 	metric                    *ConsumerMetric
 	context                   context.Context
-	messageCh                 chan Message
+	messageCh                 chan *Message
 	quit                      chan struct{}
 	cancelFn                  context.CancelFunc
 	r                         Reader
@@ -69,7 +69,7 @@ func newBase(cfg *ConsumerConfig) (*base, error) {
 
 	c := base{
 		metric:                    &ConsumerMetric{},
-		messageCh:                 make(chan Message, cfg.Concurrency),
+		messageCh:                 make(chan *Message, cfg.Concurrency),
 		quit:                      make(chan struct{}),
 		concurrency:               cfg.Concurrency,
 		retryEnabled:              cfg.RetryEnabled,

@@ -17,27 +17,27 @@ func Test_batchConsumer_startBatch(t *testing.T) {
 
 	bc := batchConsumer{
 		base: &base{
-			messageCh: make(chan Message),
+			messageCh: make(chan *Message),
 			metric:    &ConsumerMetric{},
 			wg:        sync.WaitGroup{},
 		},
 		messageGroupLimit:    3,
 		messageGroupDuration: 500 * time.Millisecond,
-		consumeFn: func(messages []Message) error {
+		consumeFn: func(messages []*Message) error {
 			numberOfBatch++
 			return nil
 		},
 	}
 	go func() {
 		// Simulate messageGroupLimit
-		bc.base.messageCh <- Message{}
-		bc.base.messageCh <- Message{}
-		bc.base.messageCh <- Message{}
+		bc.base.messageCh <- &Message{}
+		bc.base.messageCh <- &Message{}
+		bc.base.messageCh <- &Message{}
 
 		time.Sleep(1 * time.Second)
 
 		// Simulate messageGroupDuration
-		bc.base.messageCh <- Message{}
+		bc.base.messageCh <- &Message{}
 
 		time.Sleep(1 * time.Second)
 
@@ -64,13 +64,13 @@ func Test_batchConsumer_process(t *testing.T) {
 		// Given
 		bc := batchConsumer{
 			base: &base{metric: &ConsumerMetric{}},
-			consumeFn: func([]Message) error {
+			consumeFn: func([]*Message) error {
 				return nil
 			},
 		}
 
 		// When
-		bc.process([]Message{{}, {}, {}})
+		bc.process([]*Message{{}, {}, {}})
 
 		// Then
 		if bc.metric.TotalProcessedMessagesCounter != 3 {
@@ -85,7 +85,7 @@ func Test_batchConsumer_process(t *testing.T) {
 		gotOnlyOneTimeException := true
 		bc := batchConsumer{
 			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug)},
-			consumeFn: func(messages []Message) error {
+			consumeFn: func(messages []*Message) error {
 				if gotOnlyOneTimeException {
 					gotOnlyOneTimeException = false
 					return errors.New("simulate only one time exception")
@@ -95,7 +95,7 @@ func Test_batchConsumer_process(t *testing.T) {
 		}
 
 		// When
-		bc.process([]Message{{}, {}, {}})
+		bc.process([]*Message{{}, {}, {}})
 
 		// Then
 		if bc.metric.TotalProcessedMessagesCounter != 3 {
@@ -109,13 +109,13 @@ func Test_batchConsumer_process(t *testing.T) {
 		// Given
 		bc := batchConsumer{
 			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug)},
-			consumeFn: func(messages []Message) error {
+			consumeFn: func(messages []*Message) error {
 				return errors.New("error case")
 			},
 		}
 
 		// When
-		bc.process([]Message{{}, {}, {}})
+		bc.process([]*Message{{}, {}, {}})
 
 		// Then
 		if bc.metric.TotalProcessedMessagesCounter != 0 {
@@ -130,13 +130,13 @@ func Test_batchConsumer_process(t *testing.T) {
 		mc := mockCronsumer{}
 		bc := batchConsumer{
 			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), retryEnabled: true, cronsumer: &mc},
-			consumeFn: func(messages []Message) error {
+			consumeFn: func(messages []*Message) error {
 				return errors.New("error case")
 			},
 		}
 
 		// When
-		bc.process([]Message{{}, {}, {}})
+		bc.process([]*Message{{}, {}, {}})
 
 		// Then
 		if bc.metric.TotalProcessedMessagesCounter != 0 {
@@ -151,13 +151,13 @@ func Test_batchConsumer_process(t *testing.T) {
 		mc := mockCronsumer{wantErr: true}
 		bc := batchConsumer{
 			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), retryEnabled: true, cronsumer: &mc},
-			consumeFn: func(messages []Message) error {
+			consumeFn: func(messages []*Message) error {
 				return errors.New("error case")
 			},
 		}
 
 		// When
-		bc.process([]Message{{}, {}, {}})
+		bc.process([]*Message{{}, {}, {}})
 
 		// Then
 		if bc.metric.TotalProcessedMessagesCounter != 0 {

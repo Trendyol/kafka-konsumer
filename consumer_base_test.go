@@ -15,8 +15,9 @@ func Test_base_startConsume(t *testing.T) {
 		mc := mockReader{wantErr: true}
 		b := base{
 			wg: sync.WaitGroup{}, r: &mc,
-			messageCh: make(chan Message), quit: make(chan struct{}),
-			logger: NewZapLogger(LogLevelDebug),
+			messageCh: make(chan *Message),
+			quit:      make(chan struct{}),
+			logger:    NewZapLogger(LogLevelDebug),
 		}
 		b.context, b.cancelFn = context.WithCancel(context.Background())
 
@@ -33,7 +34,7 @@ func Test_base_startConsume(t *testing.T) {
 	t.Run("Read_Incoming_Messages_Successfully", func(t *testing.T) {
 		// Given
 		mc := mockReader{}
-		b := base{wg: sync.WaitGroup{}, r: &mc, messageCh: make(chan Message)}
+		b := base{wg: sync.WaitGroup{}, r: &mc, messageCh: make(chan *Message)}
 		b.wg.Add(1)
 
 		// When

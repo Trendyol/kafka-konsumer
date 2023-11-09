@@ -9,6 +9,8 @@ import (
 	"github.com/segmentio/kafka-go/protocol"
 )
 
+type Header = protocol.Header
+
 type Message struct {
 	Topic         string
 	Partition     int
@@ -16,7 +18,7 @@ type Message struct {
 	HighWaterMark int64
 	Key           []byte
 	Value         []byte
-	Headers       []kafka.Header
+	Headers       []Header
 	WriterData    interface{}
 	Time          time.Time
 	// Context To enable distributed tracing support
@@ -37,8 +39,8 @@ func (m *Message) toKafkaMessage() kafka.Message {
 	}
 }
 
-func fromKafkaMessage(message *kafka.Message) Message {
-	return Message{
+func fromKafkaMessage(message *kafka.Message) *Message {
+	return &Message{
 		Topic:         message.Topic,
 		Partition:     message.Partition,
 		Offset:        message.Offset,
@@ -71,7 +73,7 @@ func (m *Message) toRetryableMessage(retryTopic string) kcronsumer.Message {
 		Build()
 }
 
-func toMessage(message kcronsumer.Message) Message {
+func toMessage(message kcronsumer.Message) *Message {
 	headers := make([]protocol.Header, 0, len(message.Headers))
 	for i := range message.Headers {
 		headers = append(headers, protocol.Header{
@@ -80,7 +82,7 @@ func toMessage(message kcronsumer.Message) Message {
 		})
 	}
 
-	return Message{
+	return &Message{
 		Topic:         message.Topic,
 		Partition:     message.Partition,
 		Offset:        message.Offset,
@@ -102,11 +104,19 @@ func (m *Message) Header(key string) *kafka.Header {
 	return nil
 }
 
-func (m *Message) AddHeader(header ...kafka.Header) {
-	m.Headers = append(m.Headers, header...)
+// AddHeader works as a idempotent function
+func (m *Message) AddHeader(header Header) {
+	for i := range m.Headers {
+		if m.Headers[i].Key == header.Key {
+			m.Headers[i].Value = header.Value
+			return
+		}
+	}
+
+	m.Headers = append(m.Headers, header)
 }
 
-func (m *Message) RemoveHeader(header kafka.Header) {
+func (m *Message) RemoveHeader(header Header) {
 	for i, h := range m.Headers {
 		if h.Key == header.Key {
 			m.Headers = append(m.Headers[:i], m.Headers[i+1:]...)
