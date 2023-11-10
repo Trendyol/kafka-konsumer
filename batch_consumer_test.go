@@ -173,7 +173,10 @@ func Test_batchConsumer_process_ReprocessingFailedWithRetryEnabled(t *testing.T)
 	// Given
 	mc := &mockCronsumer{wantErr: true}
 	bc := batchConsumer{
-		base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), retryEnabled: true, nonTransactionalBatchRetryEnabled: true, cronsumer: mc},
+		base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug),
+			retryEnabled:                      true,
+			nonTransactionalBatchRetryEnabled: true,
+			cronsumer:                         mc},
 		consumeFn: func(messages []*Message) error {
 			return errors.New("error case")
 		},
