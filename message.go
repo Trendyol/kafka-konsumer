@@ -16,6 +16,7 @@ type Message struct {
 	Partition     int
 	Offset        int64
 	HighWaterMark int64
+	IsFailed      bool
 	Key           []byte
 	Value         []byte
 	Headers       []Header

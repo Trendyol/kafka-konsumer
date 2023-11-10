@@ -25,25 +25,26 @@ type DialConfig struct {
 }
 
 type ConsumerConfig struct {
-	APIConfiguration                APIConfiguration
-	Logger                          LoggerInterface
-	MetricConfiguration             MetricConfiguration
-	SASL                            *SASLConfig
-	TLS                             *TLSConfig
-	Dial                            *DialConfig
-	BatchConfiguration              *BatchConfiguration
-	ConsumeFn                       ConsumeFn
-	ClientID                        string
-	Rack                            string
-	LogLevel                        LogLevel
-	Reader                          ReaderConfig
-	RetryConfiguration              RetryConfiguration
-	CommitInterval                  time.Duration
-	DistributedTracingEnabled       bool
-	DistributedTracingConfiguration DistributedTracingConfiguration
-	Concurrency                     int
-	RetryEnabled                    bool
-	APIEnabled                      bool
+	APIConfiguration                  APIConfiguration
+	Logger                            LoggerInterface
+	MetricConfiguration               MetricConfiguration
+	SASL                              *SASLConfig
+	TLS                               *TLSConfig
+	Dial                              *DialConfig
+	BatchConfiguration                *BatchConfiguration
+	ConsumeFn                         ConsumeFn
+	ClientID                          string
+	Rack                              string
+	LogLevel                          LogLevel
+	Reader                            ReaderConfig
+	RetryConfiguration                RetryConfiguration
+	CommitInterval                    time.Duration
+	DistributedTracingEnabled         bool
+	DistributedTracingConfiguration   DistributedTracingConfiguration
+	Concurrency                       int
+	RetryEnabled                      bool
+	APIEnabled                        bool
+	NonTransactionalBatchRetryEnabled bool
 }
 
 func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
