@@ -169,6 +169,28 @@ func Test_batchConsumer_process(t *testing.T) {
 	})
 }
 
+func Test_batchConsumer_process_ReprocessingFailedWithRetryEnabled(t *testing.T) {
+	// Given
+	mc := &mockCronsumer{wantErr: true}
+	bc := batchConsumer{
+		base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), retryEnabled: true, nonTransactionalBatchRetryEnabled: true, cronsumer: mc},
+		consumeFn: func(messages []*Message) error {
+			return errors.New("error case")
+		},
+	}
+
+	// When
+	bc.process([]*Message{{IsFailed: true}, {IsFailed: true}, {}})
+
+	// Then
+	if bc.metric.TotalProcessedMessagesCounter != 0 {
+		t.Fatalf("Total Processed Message Counter must equal to 0")
+	}
+	if bc.metric.TotalUnprocessedMessagesCounter != 3 {
+		t.Fatalf("Total Unprocessed Message Counter must equal to 3")
+	}
+}
+
 type mockCronsumer struct {
 	wantErr bool
 }
