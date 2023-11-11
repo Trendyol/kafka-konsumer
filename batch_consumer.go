@@ -101,7 +101,7 @@ func (b *batchConsumer) process(messages []*Message) {
 			break
 		}
 
-		b.logger.Warnf("Consume Function Err %s, Messages will be retried at attempt %d", consumeErr.Error(), attempt)
+		b.logger.Warnf("Consume Function Err: %s, at attempt %d", consumeErr.Error(), attempt)
 
 		time.Sleep(exponentialBackoff)
 		exponentialBackoff *= 2
@@ -110,7 +110,7 @@ func (b *batchConsumer) process(messages []*Message) {
 	if consumeErr != nil {
 		b.metric.TotalUnprocessedMessagesCounter += int64(len(messages))
 		if b.retryEnabled {
-			b.logger.Warnf("Consume Function Err %s After %d tries, messages are sending to exception/retry topic %s", consumeErr.Error(), maxRetries, b.retryTopic)
+			b.logger.Warnf("Consume Function Err: %s, after %d tries, messages are sending to exception/retry topic %s", consumeErr.Error(), maxRetries, b.retryTopic)
 			cronsumerMessages := make([]kcronsumer.Message, 0, len(messages))
 			for i := range messages {
 				cronsumerMessages = append(cronsumerMessages, messages[i].toRetryableMessage(b.retryTopic))
@@ -120,7 +120,7 @@ func (b *batchConsumer) process(messages []*Message) {
 				b.logger.Errorf("Error producing messages to exception/retry topic %s", produceErr.Error())
 			}
 		}
-	} else {
-		b.metric.TotalProcessedMessagesCounter += int64(len(messages))
+		return
 	}
+	b.metric.TotalProcessedMessagesCounter += int64(len(messages))
 }
