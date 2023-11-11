@@ -57,25 +57,26 @@ func (c *consumer) process(message *Message) {
 	var consumeErr error
 
 	exponentialBackoff := time.Second
-	maxRetries := 3
+	maxAttempt := 3
 
-	for attempt := 1; attempt <= maxRetries; attempt++ {
+	for attempt := 1; attempt <= maxAttempt; attempt++ {
 		consumeErr = c.consumeFn(message)
 
 		if consumeErr == nil {
 			break
 		}
-
 		c.logger.Warnf("Consume Function Err: %s, at attempt %d", consumeErr.Error(), attempt)
 
-		time.Sleep(exponentialBackoff)
-		exponentialBackoff *= 2
+		if attempt != maxAttempt {
+			time.Sleep(exponentialBackoff)
+			exponentialBackoff *= 2
+		}
 	}
 
 	if consumeErr != nil {
 		c.metric.TotalUnprocessedMessagesCounter++
 		if c.retryEnabled {
-			c.logger.Warnf("Consume Function Again Err: %s, after %d tries, message is sending to exception/retry topic %s", consumeErr.Error(), maxRetries, c.retryTopic)
+			c.logger.Warnf("Consume Function Again Err: %s, after %d attempts, message is sending to exception/retry topic %s", consumeErr.Error(), maxAttempt, c.retryTopic)
 			retryableMsg := message.toRetryableMessage(c.retryTopic)
 			if produceErr := c.cronsumer.Produce(retryableMsg); produceErr != nil {
 				c.logger.Errorf("Error producing message %s to exception/retry topic %s",
