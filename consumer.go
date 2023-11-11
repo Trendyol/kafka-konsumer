@@ -1,6 +1,8 @@
 package kafka
 
 import (
+	"time"
+
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 )
 
@@ -52,26 +54,35 @@ func (c *consumer) Consume() {
 }
 
 func (c *consumer) process(message *Message) {
-	consumeErr := c.consumeFn(message)
+	var consumeErr error
+
+	exponentialBackoff := time.Second
+	maxRetries := 3
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		consumeErr = c.consumeFn(message)
+
+		if consumeErr == nil {
+			break
+		}
+
+		c.logger.Warnf("Consume Function Err %s, Message will be retried at attempt %d", consumeErr.Error(), attempt)
+
+		time.Sleep(exponentialBackoff)
+		exponentialBackoff *= 2
+	}
 
 	if consumeErr != nil {
-		c.logger.Warnf("Consume Function Err %s, Message will be retried", consumeErr.Error())
-		// Try to process same message again
-		if consumeErr = c.consumeFn(message); consumeErr != nil {
-			c.logger.Warnf("Consume Function Again Err %s, message is sending to exception/retry topic %s", consumeErr.Error(), c.retryTopic)
-			c.metric.TotalUnprocessedMessagesCounter++
+		c.metric.TotalUnprocessedMessagesCounter++
+		if c.retryEnabled {
+			c.logger.Warnf("Consume Function Again Err %s after %d tries, message is sending to exception/retry topic %s", consumeErr.Error(), maxRetries, c.retryTopic)
+			retryableMsg := message.toRetryableMessage(c.retryTopic)
+			if produceErr := c.cronsumer.Produce(retryableMsg); produceErr != nil {
+				c.logger.Errorf("Error producing message %s to exception/retry topic %s",
+					string(retryableMsg.Value), produceErr.Error())
+			}
 		}
-	}
-
-	if consumeErr != nil && c.retryEnabled {
-		retryableMsg := message.toRetryableMessage(c.retryTopic)
-		if produceErr := c.cronsumer.Produce(retryableMsg); produceErr != nil {
-			c.logger.Errorf("Error producing message %s to exception/retry topic %s",
-				string(retryableMsg.Value), produceErr.Error())
-		}
-	}
-
-	if consumeErr == nil {
+	} else {
 		c.metric.TotalProcessedMessagesCounter++
 	}
 }
