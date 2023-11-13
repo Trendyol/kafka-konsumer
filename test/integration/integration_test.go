@@ -156,38 +156,42 @@ func Test_Should_Batch_Consume_Messages_Successfully(t *testing.T) {
 
 func Test_Should_Batch_Retry_Only_Failed_Messages(t *testing.T) {
 	// Given
-	topic := "batch-topic"
-	consumerGroup := "batch-topic-cg"
+	topic := "cronsumer-topic"
+	consumerGroup := "cronsumer-cg"
 	brokerAddress := "localhost:9092"
-
-	messages := []segmentio.Message{
-		{Topic: topic, Partition: 0, Offset: 1, Key: []byte("1"), Value: []byte(`foo1`)},
-		{Topic: topic, Partition: 0, Offset: 2, Key: []byte("2"), Value: []byte(`foo2`)},
-		{Topic: topic, Partition: 0, Offset: 3, Key: []byte("3"), Value: []byte(`foo3`)},
-		{Topic: topic, Partition: 0, Offset: 4, Key: []byte("4"), Value: []byte(`foo4`)},
-		{Topic: topic, Partition: 0, Offset: 5, Key: []byte("5"), Value: []byte(`foo5`)},
-	}
-
-	conn, cleanUp := createTopicAndWriteMessages(t, topic, messages)
-	defer cleanUp()
 
 	messagesLen := make(chan int)
 
+	retryTopic := "retry-topic"
+
+	_, cleanUp := createTopicAndWriteMessages(t, topic, []segmentio.Message{{Topic: topic, Key: []byte("1"), Value: []byte(`foo`)}})
+	defer cleanUp()
+
+	retryConn, cleanUpThisToo := createTopicAndWriteMessages(t, retryTopic, nil)
+	defer cleanUpThisToo()
+
 	consumerCfg := &kafka.ConsumerConfig{
-		Reader: kafka.ReaderConfig{Brokers: []string{brokerAddress}, Topic: topic, GroupID: consumerGroup},
+		TransactionalRetry: false,
+		Reader:             kafka.ReaderConfig{Brokers: []string{brokerAddress}, Topic: topic, GroupID: consumerGroup},
+		RetryEnabled:       true,
+		RetryConfiguration: kafka.RetryConfiguration{
+			Brokers:       []string{brokerAddress},
+			Topic:         retryTopic,
+			StartTimeCron: "*/1 * * * *",
+			WorkDuration:  50 * time.Second,
+			MaxRetry:      3,
+			LogLevel:      "error",
+		},
 		BatchConfiguration: &kafka.BatchConfiguration{
 			MessageGroupLimit:    100,
 			MessageGroupDuration: time.Second,
 			BatchConsumeFn: func(messages []*kafka.Message) error {
-				for i := range messages {
-					if i%2 == 0 {
-						messages[i].IsFailed = true
-					}
-				}
-
-				return errors.New("error")
+				messagesLen <- len(messages)
+				messages[1].IsFailed = true
+				return errors.New("err")
 			},
 		},
+		LogLevel: kafka.LogLevelError,
 	}
 
 	consumer, _ := kafka.NewConsumer(consumerCfg)
@@ -196,16 +200,13 @@ func Test_Should_Batch_Retry_Only_Failed_Messages(t *testing.T) {
 	consumer.Consume()
 
 	// Then
-	actual := <-messagesLen
-
-	if actual != 5 {
-		t.Fatalf("Message length does not equal %d", actual)
+	var expectedOffset int64 = 1
+	conditionFunc := func() bool {
+		lastOffset, _ := retryConn.ReadLastOffset()
+		return lastOffset == expectedOffset
 	}
 
-	o, _ := conn.ReadLastOffset()
-	if o != 5 {
-		t.Fatalf("offset %v must be equal to 5", o)
-	}
+	assertEventually(t, conditionFunc, 45*time.Second, time.Second)
 }
 
 func Test_Should_Integrate_With_Kafka_Cronsumer_Successfully(t *testing.T) {

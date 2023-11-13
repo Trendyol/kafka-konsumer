@@ -22,7 +22,7 @@ func main() {
 			BatchConsumeFn:       batchConsumeFn,
 		},
 		RetryEnabled:       true,
-		TransactionalRetry: true,
+		TransactionalRetry: false,
 		RetryConfiguration: kafka.RetryConfiguration{
 			Brokers:       []string{"localhost:29092"},
 			Topic:         "retry-topic",
