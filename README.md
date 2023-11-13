@@ -153,8 +153,15 @@ After running `docker-compose up` command, you can run any application you want.
     }
     
     func batchConsumeFn(messages []kafka.Message) error {
-        fmt.Printf("%d\n comes first %s", len(messages), messages[0].Value)
-        return nil
+        // you can add custom error handling here & flag messages
+        for i := range messages {
+            if i%2 == 0 {
+                messages[i].IsFailed = true
+            }
+        }
+    
+        // you should return error here to retry failed messages
+        return errors.New("err")
     }
 </details>
 

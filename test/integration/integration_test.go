@@ -154,6 +154,60 @@ func Test_Should_Batch_Consume_Messages_Successfully(t *testing.T) {
 	}
 }
 
+func Test_Should_Batch_Retry_Only_Failed_Messages(t *testing.T) {
+	// Given
+	topic := "batch-topic"
+	consumerGroup := "batch-topic-cg"
+	brokerAddress := "localhost:9092"
+
+	messages := []segmentio.Message{
+		{Topic: topic, Partition: 0, Offset: 1, Key: []byte("1"), Value: []byte(`foo1`)},
+		{Topic: topic, Partition: 0, Offset: 2, Key: []byte("2"), Value: []byte(`foo2`)},
+		{Topic: topic, Partition: 0, Offset: 3, Key: []byte("3"), Value: []byte(`foo3`)},
+		{Topic: topic, Partition: 0, Offset: 4, Key: []byte("4"), Value: []byte(`foo4`)},
+		{Topic: topic, Partition: 0, Offset: 5, Key: []byte("5"), Value: []byte(`foo5`)},
+	}
+
+	conn, cleanUp := createTopicAndWriteMessages(t, topic, messages)
+	defer cleanUp()
+
+	messagesLen := make(chan int)
+
+	consumerCfg := &kafka.ConsumerConfig{
+		Reader: kafka.ReaderConfig{Brokers: []string{brokerAddress}, Topic: topic, GroupID: consumerGroup},
+		BatchConfiguration: &kafka.BatchConfiguration{
+			MessageGroupLimit:    100,
+			MessageGroupDuration: time.Second,
+			BatchConsumeFn: func(messages []*kafka.Message) error {
+				for i := range messages {
+					if i%2 == 0 {
+						messages[i].IsFailed = true
+					}
+				}
+
+				return errors.New("error")
+			},
+		},
+	}
+
+	consumer, _ := kafka.NewConsumer(consumerCfg)
+	defer consumer.Stop()
+
+	consumer.Consume()
+
+	// Then
+	actual := <-messagesLen
+
+	if actual != 5 {
+		t.Fatalf("Message length does not equal %d", actual)
+	}
+
+	o, _ := conn.ReadLastOffset()
+	if o != 5 {
+		t.Fatalf("offset %v must be equal to 5", o)
+	}
+}
+
 func Test_Should_Integrate_With_Kafka_Cronsumer_Successfully(t *testing.T) {
 	// Given
 	topic := "cronsumer-topic"

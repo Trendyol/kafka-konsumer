@@ -21,8 +21,8 @@ func main() {
 			MessageGroupDuration: time.Second,
 			BatchConsumeFn:       batchConsumeFn,
 		},
-		RetryEnabled:                      true,
-		NonTransactionalBatchRetryEnabled: true,
+		RetryEnabled:       true,
+		TransactionalRetry: true,
 		RetryConfiguration: kafka.RetryConfiguration{
 			Brokers:       []string{"localhost:29092"},
 			Topic:         "retry-topic",
@@ -46,13 +46,10 @@ func main() {
 // In order to load topic with data, use:
 // kafka-console-producer --broker-list localhost:29092 --topic standart-topic < examples/load.txt
 func batchConsumeFn(messages []*kafka.Message) error {
-	fmt.Printf("%d\n comes first %s", len(messages), messages[0].Value)
 	// you can add custom error handling here & flag messages
 	for i := range messages {
 		if i%2 == 0 {
 			messages[i].IsFailed = true
-		} else {
-			messages[i].IsFailed = false
 		}
 	}
 

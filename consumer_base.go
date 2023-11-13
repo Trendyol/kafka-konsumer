@@ -31,24 +31,24 @@ type Reader interface {
 }
 
 type base struct {
-	cronsumer                         kcronsumer.Cronsumer
-	api                               API
-	logger                            LoggerInterface
-	metric                            *ConsumerMetric
-	context                           context.Context
-	messageCh                         chan *Message
-	quit                              chan struct{}
-	cancelFn                          context.CancelFunc
-	r                                 Reader
-	retryTopic                        string
-	subprocesses                      subprocesses
-	wg                                sync.WaitGroup
-	concurrency                       int
-	once                              sync.Once
-	retryEnabled                      bool
-	nonTransactionalBatchRetryEnabled bool
-	distributedTracingEnabled         bool
-	propagator                        propagation.TextMapPropagator
+	cronsumer                 kcronsumer.Cronsumer
+	api                       API
+	logger                    LoggerInterface
+	metric                    *ConsumerMetric
+	context                   context.Context
+	messageCh                 chan *Message
+	quit                      chan struct{}
+	cancelFn                  context.CancelFunc
+	r                         Reader
+	retryTopic                string
+	subprocesses              subprocesses
+	wg                        sync.WaitGroup
+	concurrency               int
+	once                      sync.Once
+	retryEnabled              bool
+	transactionalRetry        bool
+	distributedTracingEnabled bool
+	propagator                propagation.TextMapPropagator
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -69,16 +69,16 @@ func newBase(cfg *ConsumerConfig) (*base, error) {
 	}
 
 	c := base{
-		metric:                            &ConsumerMetric{},
-		messageCh:                         make(chan *Message, cfg.Concurrency),
-		quit:                              make(chan struct{}),
-		concurrency:                       cfg.Concurrency,
-		retryEnabled:                      cfg.RetryEnabled,
-		nonTransactionalBatchRetryEnabled: cfg.NonTransactionalBatchRetryEnabled,
-		distributedTracingEnabled:         cfg.DistributedTracingEnabled,
-		logger:                            log,
-		subprocesses:                      newSubProcesses(),
-		r:                                 reader,
+		metric:                    &ConsumerMetric{},
+		messageCh:                 make(chan *Message, cfg.Concurrency),
+		quit:                      make(chan struct{}),
+		concurrency:               cfg.Concurrency,
+		retryEnabled:              cfg.RetryEnabled,
+		transactionalRetry:        cfg.TransactionalRetry,
+		distributedTracingEnabled: cfg.DistributedTracingEnabled,
+		logger:                    log,
+		subprocesses:              newSubProcesses(),
+		r:                         reader,
 	}
 
 	if cfg.DistributedTracingEnabled {
