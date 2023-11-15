@@ -63,7 +63,7 @@ func Test_batchConsumer_process(t *testing.T) {
 	t.Run("When_Processing_Is_Successful", func(t *testing.T) {
 		// Given
 		bc := batchConsumer{
-			base: &base{metric: &ConsumerMetric{}},
+			base: &base{metric: &ConsumerMetric{}, transactionalRetry: true},
 			consumeFn: func([]*Message) error {
 				return nil
 			},
@@ -84,7 +84,7 @@ func Test_batchConsumer_process(t *testing.T) {
 		// Given
 		gotOnlyOneTimeException := true
 		bc := batchConsumer{
-			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug)},
+			base: &base{metric: &ConsumerMetric{}, transactionalRetry: true, logger: NewZapLogger(LogLevelDebug)},
 			consumeFn: func(messages []*Message) error {
 				if gotOnlyOneTimeException {
 					gotOnlyOneTimeException = false
@@ -108,7 +108,7 @@ func Test_batchConsumer_process(t *testing.T) {
 	t.Run("When_Re-processing_Is_Failed_And_Retry_Disabled", func(t *testing.T) {
 		// Given
 		bc := batchConsumer{
-			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug)},
+			base: &base{metric: &ConsumerMetric{}, transactionalRetry: true, logger: NewZapLogger(LogLevelDebug)},
 			consumeFn: func(messages []*Message) error {
 				return errors.New("error case")
 			},
@@ -129,7 +129,10 @@ func Test_batchConsumer_process(t *testing.T) {
 		// Given
 		mc := mockCronsumer{}
 		bc := batchConsumer{
-			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), retryEnabled: true, cronsumer: &mc},
+			base: &base{
+				metric: &ConsumerMetric{}, transactionalRetry: true,
+				logger: NewZapLogger(LogLevelDebug), retryEnabled: true, cronsumer: &mc,
+			},
 			consumeFn: func(messages []*Message) error {
 				return errors.New("error case")
 			},
@@ -150,7 +153,10 @@ func Test_batchConsumer_process(t *testing.T) {
 		// Given
 		mc := mockCronsumer{wantErr: true}
 		bc := batchConsumer{
-			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), retryEnabled: true, cronsumer: &mc},
+			base: &base{
+				metric: &ConsumerMetric{}, transactionalRetry: true,
+				logger: NewZapLogger(LogLevelDebug), retryEnabled: true, cronsumer: &mc,
+			},
 			consumeFn: func(messages []*Message) error {
 				return errors.New("error case")
 			},

@@ -132,7 +132,7 @@ After running `docker-compose up` command, you can run any application you want.
             },
             LogLevel:     kafka.LogLevelDebug,
             RetryEnabled: true,
-            TransactionalRetry: false,
+            TransactionalRetry: kafka.NewBoolPtr(false),
             RetryConfiguration: kafka.RetryConfiguration{
                 Brokers:       []string{"localhost:29092"},
                 Topic:         "retry-topic",
