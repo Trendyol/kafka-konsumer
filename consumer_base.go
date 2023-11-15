@@ -46,6 +46,7 @@ type base struct {
 	concurrency               int
 	once                      sync.Once
 	retryEnabled              bool
+	transactionalRetry        bool
 	distributedTracingEnabled bool
 	propagator                propagation.TextMapPropagator
 }
@@ -73,6 +74,7 @@ func newBase(cfg *ConsumerConfig) (*base, error) {
 		quit:                      make(chan struct{}),
 		concurrency:               cfg.Concurrency,
 		retryEnabled:              cfg.RetryEnabled,
+		transactionalRetry:        *cfg.TransactionalRetry,
 		distributedTracingEnabled: cfg.DistributedTracingEnabled,
 		logger:                    log,
 		subprocesses:              newSubProcesses(),

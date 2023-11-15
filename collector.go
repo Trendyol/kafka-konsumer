@@ -13,10 +13,6 @@ type metricCollector struct {
 
 	totalUnprocessedMessagesCounter *prometheus.Desc
 	totalProcessedMessagesCounter   *prometheus.Desc
-	// Deprecated: it will be removed next releases
-	totalUnprocessedBatchMessagesCounter *prometheus.Desc
-	// Deprecated: it will be removed next releases
-	totalProcessedBatchMessagesCounter *prometheus.Desc
 }
 
 func (s *metricCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -37,19 +33,6 @@ func (s *metricCollector) Collect(ch chan<- prometheus.Metric) {
 		float64(s.consumerMetric.TotalUnprocessedMessagesCounter),
 		[]string{}...,
 	)
-	ch <- prometheus.MustNewConstMetric(
-		s.totalProcessedBatchMessagesCounter,
-		prometheus.CounterValue,
-		float64(s.consumerMetric.TotalProcessedMessagesCounter),
-		[]string{}...,
-	)
-
-	ch <- prometheus.MustNewConstMetric(
-		s.totalUnprocessedBatchMessagesCounter,
-		prometheus.CounterValue,
-		float64(s.consumerMetric.TotalUnprocessedMessagesCounter),
-		[]string{}...,
-	)
 }
 
 func newMetricCollector(consumerMetric *ConsumerMetric) *metricCollector {
@@ -65,18 +48,6 @@ func newMetricCollector(consumerMetric *ConsumerMetric) *metricCollector {
 		totalUnprocessedMessagesCounter: prometheus.NewDesc(
 			prometheus.BuildFQName(Name, "unprocessed_messages_total", "current"),
 			"Total number of unprocessed messages.",
-			[]string{},
-			nil,
-		),
-		totalProcessedBatchMessagesCounter: prometheus.NewDesc(
-			prometheus.BuildFQName(Name, "processed_batch_messages_total", "current"),
-			"Total number of processed batch messages.",
-			[]string{},
-			nil,
-		),
-		totalUnprocessedBatchMessagesCounter: prometheus.NewDesc(
-			prometheus.BuildFQName(Name, "unprocessed_batch_messages_total", "current"),
-			"Total number of unprocessed batch messages.",
 			[]string{},
 			nil,
 		),

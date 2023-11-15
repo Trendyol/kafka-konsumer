@@ -117,8 +117,55 @@ After running `docker-compose up` command, you can run any application you want.
         fmt.Printf("%d\n comes first %s", len(messages), messages[0].Value)
         return nil
     }
+
 </details>
 
+<details>
+    <summary>With Disabling Transactional Retry</summary>
+
+    func main() {
+        consumerCfg := &kafka.ConsumerConfig{
+            Reader: kafka.ReaderConfig{
+                Brokers: []string{"localhost:29092"},
+                Topic:   "standart-topic",
+                GroupID: "standart-cg",
+            },
+            LogLevel:     kafka.LogLevelDebug,
+            RetryEnabled: true,
+            TransactionalRetry: kafka.NewBoolPtr(false),
+            RetryConfiguration: kafka.RetryConfiguration{
+                Brokers:       []string{"localhost:29092"},
+                Topic:         "retry-topic",
+                StartTimeCron: "*/1 * * * *",
+                WorkDuration:  50 * time.Second,
+                MaxRetry:      3,
+            },
+            BatchConfiguration: kafka.BatchConfiguration{
+                MessageGroupLimit:    1000,
+                MessageGroupDuration: time.Second,
+                BatchConsumeFn:       batchConsumeFn,
+            },
+        }
+    
+        consumer, _ := kafka.NewConsumer(consumerCfg)
+        defer consumer.Stop()
+    
+        consumer.Consume()
+    }
+    
+    func batchConsumeFn(messages []kafka.Message) error {
+        // you can add custom error handling here & flag messages
+        for i := range messages {
+            if i%2 == 0 {
+                messages[i].IsFailed = true
+            }
+        }
+    
+        // you must return err here to retry failed messages
+        return errors.New("err")
+    }
+
+</details>
 
 #### With Distributed Tracing Support
 
@@ -147,6 +194,7 @@ under [the specified folder](examples/with-sasl-plaintext) and then start the ap
 | `logLevel`                                       | Describes log level; valid options are `debug`, `info`, `warn`, and `error`                                                           | info                        |
 | `concurrency`                                    | Number of goroutines used at listeners                                                                                                | 1                           |
 | `retryEnabled`                                   | Retry/Exception consumer is working or not                                                                                            | false                       |
+| `transactionalRetry`                             | Set false if you want to use exception/retry strategy to only failed messages                                                         | true                        |
 | `commitInterval`                                 | indicates the interval at which offsets are committed to the broker.                                                                  | 1s                          |
 | `rack`                                           | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go#RackAffinityGroupBalancer)                                                 |                             |
 | `clientId`                                       | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Dialer)                                                            |                             |
@@ -193,7 +241,3 @@ Kafka Konsumer offers an API that handles exposing several metrics.
 |---------------------------------------------------------|---------------------------------------------|------------|
 | kafka_konsumer_processed_messages_total_current         | Total number of processed messages.         | Counter    |
 | kafka_konsumer_unprocessed_messages_total_current       | Total number of unprocessed messages.       | Counter    |
-| kafka_konsumer_processed_batch_messages_total_current   | Total number of processed batch messages.   | Counter    |
-| kafka_konsumer_unprocessed_batch_messages_total_current | Total number of unprocessed batch messages. | Counter    |
-
-**NOTE:** `kafka_konsumer_processed_batch_messages_total_current` and `kafka_konsumer_unprocessed_batch_messages_total_current` will be deprecated in the next releases. Please use `kafka_konsumer_processed_messages_total_current` and `kafka_konsumer_unprocessed_messages_total_current` instead.

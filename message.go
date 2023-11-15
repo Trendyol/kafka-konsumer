@@ -16,11 +16,16 @@ type Message struct {
 	Partition     int
 	Offset        int64
 	HighWaterMark int64
-	Key           []byte
-	Value         []byte
-	Headers       []Header
-	WriterData    interface{}
-	Time          time.Time
+
+	// IsFailed Is only used on transactional retry disabled
+	IsFailed bool
+
+	Key        []byte
+	Value      []byte
+	Headers    []Header
+	WriterData interface{}
+	Time       time.Time
+
 	// Context To enable distributed tracing support
 	Context context.Context
 }

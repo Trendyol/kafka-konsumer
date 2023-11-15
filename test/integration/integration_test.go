@@ -154,6 +154,64 @@ func Test_Should_Batch_Consume_Messages_Successfully(t *testing.T) {
 	}
 }
 
+func Test_Should_Batch_Retry_Only_Failed_Messages_When_Transactional_Retry_Is_Disabled(t *testing.T) {
+	// Given
+	topic := "nontransactional-cronsumer-topic"
+	consumerGroup := "nontransactional-cronsumer-cg"
+	brokerAddress := "localhost:9092"
+
+	retryTopic := "retry-topic"
+
+	_, cleanUp := createTopicAndWriteMessages(t, topic, []segmentio.Message{
+		{Topic: topic, Partition: 0, Offset: 1, Key: []byte("1"), Value: []byte(`foo1`)},
+		{Topic: topic, Partition: 0, Offset: 2, Key: []byte("2"), Value: []byte(`foo2`)},
+		{Topic: topic, Partition: 0, Offset: 3, Key: []byte("3"), Value: []byte(`foo3`)},
+		{Topic: topic, Partition: 0, Offset: 4, Key: []byte("4"), Value: []byte(`foo4`)},
+		{Topic: topic, Partition: 0, Offset: 5, Key: []byte("5"), Value: []byte(`foo5`)},
+	})
+	defer cleanUp()
+
+	retryConn, cleanUpThisToo := createTopicAndWriteMessages(t, retryTopic, nil)
+	defer cleanUpThisToo()
+
+	consumerCfg := &kafka.ConsumerConfig{
+		TransactionalRetry: kafka.NewBoolPtr(false),
+		Reader:             kafka.ReaderConfig{Brokers: []string{brokerAddress}, Topic: topic, GroupID: consumerGroup},
+		RetryEnabled:       true,
+		RetryConfiguration: kafka.RetryConfiguration{
+			Brokers:       []string{brokerAddress},
+			Topic:         retryTopic,
+			StartTimeCron: "*/1 * * * *",
+			WorkDuration:  50 * time.Second,
+			MaxRetry:      3,
+			LogLevel:      "error",
+		},
+		BatchConfiguration: &kafka.BatchConfiguration{
+			MessageGroupLimit:    100,
+			MessageGroupDuration: time.Second,
+			BatchConsumeFn: func(messages []*kafka.Message) error {
+				messages[1].IsFailed = true
+				return errors.New("err")
+			},
+		},
+		LogLevel: kafka.LogLevelError,
+	}
+
+	consumer, _ := kafka.NewConsumer(consumerCfg)
+	defer consumer.Stop()
+
+	consumer.Consume()
+
+	// Then
+	var expectedOffset int64 = 1
+	conditionFunc := func() bool {
+		lastOffset, _ := retryConn.ReadLastOffset()
+		return lastOffset == expectedOffset
+	}
+
+	assertEventually(t, conditionFunc, 45*time.Second, time.Second)
+}
+
 func Test_Should_Integrate_With_Kafka_Cronsumer_Successfully(t *testing.T) {
 	// Given
 	topic := "cronsumer-topic"

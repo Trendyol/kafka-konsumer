@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/Trendyol/kafka-konsumer"
 	"os"
@@ -20,12 +21,13 @@ func main() {
 			MessageGroupDuration: time.Second,
 			BatchConsumeFn:       batchConsumeFn,
 		},
-		RetryEnabled: true,
+		RetryEnabled:       true,
+		TransactionalRetry: kafka.NewBoolPtr(false),
 		RetryConfiguration: kafka.RetryConfiguration{
 			Brokers:       []string{"localhost:29092"},
 			Topic:         "retry-topic",
-			StartTimeCron: "*/1 * * * *",
-			WorkDuration:  50 * time.Second,
+			StartTimeCron: "*/5 * * * *",
+			WorkDuration:  4 * time.Minute,
 			MaxRetry:      3,
 		},
 	}
@@ -44,6 +46,13 @@ func main() {
 // In order to load topic with data, use:
 // kafka-console-producer --broker-list localhost:29092 --topic standart-topic < examples/load.txt
 func batchConsumeFn(messages []*kafka.Message) error {
-	fmt.Printf("%d\n comes first %s", len(messages), messages[0].Value)
-	return nil
+	// you can add custom error handling here & flag messages
+	for i := range messages {
+		if i%2 == 0 {
+			messages[i].IsFailed = true
+		}
+	}
+
+	// you must return error here to retry only failed messages
+	return errors.New("err")
 }

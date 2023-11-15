@@ -44,6 +44,7 @@ type ConsumerConfig struct {
 	Concurrency                     int
 	RetryEnabled                    bool
 	APIEnabled                      bool
+	TransactionalRetry              *bool
 }
 
 func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
@@ -193,4 +194,11 @@ func (cfg *ConsumerConfig) setDefaults() {
 			cfg.DistributedTracingConfiguration.TracerProvider = otel.GetTracerProvider()
 		}
 	}
+	if cfg.TransactionalRetry == nil {
+		cfg.TransactionalRetry = NewBoolPtr(true)
+	}
+}
+
+func NewBoolPtr(value bool) *bool {
+	return &value
 }

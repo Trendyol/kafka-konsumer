@@ -23,6 +23,9 @@ func TestConsumerConfig_validate(t *testing.T) {
 		if cfg.Reader.CommitInterval != time.Second {
 			t.Fatalf("Reader Commit Interval default value must equal to 1s")
 		}
+		if *cfg.TransactionalRetry != true {
+			t.Fatal("Default Transactional Retry is true")
+		}
 	})
 	t.Run("Set_Defaults_When_Distributed_Tracing_Enabled", func(t *testing.T) {
 		// Given
