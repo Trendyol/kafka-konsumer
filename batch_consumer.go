@@ -93,7 +93,7 @@ func (b *batchConsumer) process(messages []*Message) {
 
 	if consumeErr != nil {
 		b.logger.Warnf("Consume Function Err %s, Messages will be retried", consumeErr.Error())
-		// Try to process same messages again
+		// Try to process same messages again for resolving transient network errors etc.
 		if consumeErr = b.consumeFn(messages); consumeErr != nil {
 			b.logger.Warnf("Consume Function Again Err %s, messages are sending to exception/retry topic %s", consumeErr.Error(), b.retryTopic)
 			b.metric.TotalUnprocessedMessagesCounter += int64(len(messages))

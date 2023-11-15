@@ -22,12 +22,12 @@ func main() {
 			BatchConsumeFn:       batchConsumeFn,
 		},
 		RetryEnabled:       true,
-		TransactionalRetry: false,
+		TransactionalRetry: kafka.NewBoolPtr(false),
 		RetryConfiguration: kafka.RetryConfiguration{
 			Brokers:       []string{"localhost:29092"},
 			Topic:         "retry-topic",
-			StartTimeCron: "*/1 * * * *",
-			WorkDuration:  50 * time.Second,
+			StartTimeCron: "*/5 * * * *",
+			WorkDuration:  4 * time.Minute,
 			MaxRetry:      3,
 		},
 	}
@@ -53,6 +53,6 @@ func batchConsumeFn(messages []*kafka.Message) error {
 		}
 	}
 
-	// you should return error here to retry failed messages
+	// you must return error here to retry only failed messages
 	return errors.New("err")
 }

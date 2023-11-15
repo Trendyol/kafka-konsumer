@@ -154,10 +154,10 @@ func Test_Should_Batch_Consume_Messages_Successfully(t *testing.T) {
 	}
 }
 
-func Test_Should_Batch_Retry_Only_Failed_Messages(t *testing.T) {
+func Test_Should_Batch_Retry_Only_Failed_Messages_When_Transactional_Retry_Is_Disabled(t *testing.T) {
 	// Given
-	topic := "cronsumer-topic"
-	consumerGroup := "cronsumer-cg"
+	topic := "nontransactional-cronsumer-topic"
+	consumerGroup := "nontransactional-cronsumer-cg"
 	brokerAddress := "localhost:9092"
 
 	retryTopic := "retry-topic"
@@ -175,7 +175,7 @@ func Test_Should_Batch_Retry_Only_Failed_Messages(t *testing.T) {
 	defer cleanUpThisToo()
 
 	consumerCfg := &kafka.ConsumerConfig{
-		TransactionalRetry: false,
+		TransactionalRetry: kafka.NewBoolPtr(false),
 		Reader:             kafka.ReaderConfig{Brokers: []string{brokerAddress}, Topic: topic, GroupID: consumerGroup},
 		RetryEnabled:       true,
 		RetryConfiguration: kafka.RetryConfiguration{
@@ -206,7 +206,6 @@ func Test_Should_Batch_Retry_Only_Failed_Messages(t *testing.T) {
 	var expectedOffset int64 = 1
 	conditionFunc := func() bool {
 		lastOffset, _ := retryConn.ReadLastOffset()
-		fmt.Println(lastOffset)
 		return lastOffset == expectedOffset
 	}
 

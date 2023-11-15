@@ -74,7 +74,7 @@ func newBase(cfg *ConsumerConfig) (*base, error) {
 		quit:                      make(chan struct{}),
 		concurrency:               cfg.Concurrency,
 		retryEnabled:              cfg.RetryEnabled,
-		transactionalRetry:        cfg.TransactionalRetry,
+		transactionalRetry:        *cfg.TransactionalRetry,
 		distributedTracingEnabled: cfg.DistributedTracingEnabled,
 		logger:                    log,
 		subprocesses:              newSubProcesses(),
