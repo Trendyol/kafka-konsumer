@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/Trendyol/otel-kafka-konsumer"
 	"go.opentelemetry.io/otel/propagation"
@@ -26,8 +27,9 @@ type Consumer interface {
 }
 
 type Reader interface {
-	ReadMessage(ctx context.Context) (*kafka.Message, error)
+	FetchMessage(ctx context.Context) (*kafka.Message, error)
 	Close() error
+	CommitMessages(messages []kafka.Message) error
 }
 
 type base struct {
@@ -42,6 +44,7 @@ type base struct {
 	r                         Reader
 	retryTopic                string
 	subprocesses              subprocesses
+	messageGroupDuration      time.Duration
 	wg                        sync.WaitGroup
 	concurrency               int
 	once                      sync.Once
@@ -59,7 +62,7 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	return newSingleConsumer(cfg)
 }
 
-func newBase(cfg *ConsumerConfig) (*base, error) {
+func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 	log := NewZapLogger(cfg.LogLevel)
 
 	reader, err := cfg.newKafkaReader()
@@ -70,7 +73,7 @@ func newBase(cfg *ConsumerConfig) (*base, error) {
 
 	c := base{
 		metric:                    &ConsumerMetric{},
-		messageCh:                 make(chan *Message, cfg.Concurrency),
+		messageCh:                 make(chan *Message, messageChSize),
 		quit:                      make(chan struct{}),
 		concurrency:               cfg.Concurrency,
 		retryEnabled:              cfg.RetryEnabled,
@@ -79,6 +82,7 @@ func newBase(cfg *ConsumerConfig) (*base, error) {
 		logger:                    log,
 		subprocesses:              newSubProcesses(),
 		r:                         reader,
+		messageGroupDuration:      cfg.MessageGroupDuration,
 	}
 
 	if cfg.DistributedTracingEnabled {
@@ -117,7 +121,7 @@ func (c *base) startConsume() {
 		case <-c.quit:
 			return
 		default:
-			message, err := c.r.ReadMessage(c.context)
+			message, err := c.r.FetchMessage(c.context)
 			if err != nil {
 				if c.context.Err() != nil {
 					continue

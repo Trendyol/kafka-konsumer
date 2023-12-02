@@ -44,6 +44,14 @@ func (m *Message) toKafkaMessage() kafka.Message {
 	}
 }
 
+func toKafkaMessages(messages []*Message) []kafka.Message {
+	kafkaMessages := make([]kafka.Message, len(messages))
+	for _, message := range messages {
+		kafkaMessages = append(kafkaMessages, message.toKafkaMessage())
+	}
+	return kafkaMessages
+}
+
 func fromKafkaMessage(message *kafka.Message) *Message {
 	return &Message{
 		Topic:         message.Topic,

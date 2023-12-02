@@ -17,12 +17,12 @@ func Test_batchConsumer_startBatch(t *testing.T) {
 
 	bc := batchConsumer{
 		base: &base{
-			messageCh: make(chan *Message),
-			metric:    &ConsumerMetric{},
-			wg:        sync.WaitGroup{},
+			messageCh:            make(chan *Message),
+			metric:               &ConsumerMetric{},
+			wg:                   sync.WaitGroup{},
+			messageGroupDuration: 500 * time.Millisecond,
 		},
-		messageGroupLimit:    3,
-		messageGroupDuration: 500 * time.Millisecond,
+		messageGroupLimit: 3,
 		consumeFn: func(messages []*Message) error {
 			numberOfBatch++
 			return nil

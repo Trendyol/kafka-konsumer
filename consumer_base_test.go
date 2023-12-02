@@ -83,7 +83,7 @@ type mockReader struct {
 	wantErr bool
 }
 
-func (m *mockReader) ReadMessage(ctx context.Context) (*kafka.Message, error) {
+func (m *mockReader) FetchMessage(ctx context.Context) (*kafka.Message, error) {
 	if m.wantErr {
 		return nil, errors.New("err")
 	}
@@ -92,5 +92,9 @@ func (m *mockReader) ReadMessage(ctx context.Context) (*kafka.Message, error) {
 }
 
 func (m *mockReader) Close() error {
+	panic("implement me")
+}
+
+func (m *mockReader) CommitMessages(messages []kafka.Message) error {
 	panic("implement me")
 }

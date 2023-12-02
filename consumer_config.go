@@ -39,6 +39,7 @@ type ConsumerConfig struct {
 	Reader                          ReaderConfig
 	RetryConfiguration              RetryConfiguration
 	CommitInterval                  time.Duration
+	MessageGroupDuration            time.Duration
 	DistributedTracingEnabled       bool
 	DistributedTracingConfiguration DistributedTracingConfiguration
 	Concurrency                     int
@@ -122,9 +123,8 @@ type RetryConfiguration struct {
 }
 
 type BatchConfiguration struct {
-	BatchConsumeFn       BatchConsumeFn
-	MessageGroupLimit    int
-	MessageGroupDuration time.Duration
+	BatchConsumeFn    BatchConsumeFn
+	MessageGroupLimit int
 }
 
 func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
@@ -166,9 +166,9 @@ func (cfg *ConsumerConfig) newKafkaReader() (Reader, error) {
 
 	reader := kafka.NewReader(readerCfg)
 
-	if cfg.DistributedTracingEnabled {
-		return NewOtelReaderWrapper(cfg, reader)
-	}
+	//if cfg.DistributedTracingEnabled {
+	//	return NewOtelReaderWrapper(cfg, reader)
+	//}
 
 	return NewReaderWrapper(reader), nil
 }
@@ -184,6 +184,10 @@ func (cfg *ConsumerConfig) setDefaults() {
 		cfg.Reader.CommitInterval = time.Second
 	} else {
 		cfg.Reader.CommitInterval = cfg.CommitInterval
+	}
+
+	if cfg.MessageGroupDuration == 0 {
+		cfg.MessageGroupDuration = time.Second
 	}
 
 	if cfg.DistributedTracingEnabled {

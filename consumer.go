@@ -2,6 +2,8 @@ package kafka
 
 import (
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
+	"sync"
+	"time"
 )
 
 type consumer struct {
@@ -11,7 +13,7 @@ type consumer struct {
 }
 
 func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
-	consumerBase, err := newBase(cfg)
+	consumerBase, err := newBase(cfg, cfg.Concurrency)
 	if err != nil {
 		return nil, err
 	}
@@ -39,15 +41,57 @@ func (c *consumer) Consume() {
 	c.wg.Add(1)
 	go c.startConsume()
 
-	for i := 0; i < c.concurrency; i++ {
-		c.wg.Add(1)
-		go func() {
-			defer c.wg.Done()
+	c.wg.Add(1)
+	go c.startBatch()
+}
 
-			for message := range c.messageCh {
-				c.process(message)
+func (c *consumer) startBatch() {
+	defer c.wg.Done()
+
+	ticker := time.NewTicker(c.messageGroupDuration)
+	defer ticker.Stop()
+
+	messages := make([]*Message, 0, c.concurrency)
+
+	for {
+		select {
+		case <-ticker.C:
+			if len(messages) == 0 {
+				continue
 			}
-		}()
+
+			c.consume(messages)
+			messages = messages[:0]
+		case msg, ok := <-c.messageCh:
+			if !ok {
+				return
+			}
+
+			messages = append(messages, msg)
+
+			if len(messages) == c.concurrency {
+				c.consume(messages)
+				messages = messages[:0]
+			}
+		}
+	}
+}
+
+func (c *consumer) consume(messages []*Message) {
+	var wg sync.WaitGroup
+	wg.Add(len(messages))
+	for _, message := range messages {
+		go func(message *Message) {
+			defer wg.Done()
+			c.process(message)
+		}(message)
+	}
+	wg.Wait()
+
+	kafkaMessages := toKafkaMessages(messages)
+	err := c.r.CommitMessages(kafkaMessages)
+	if err != nil {
+		c.logger.Errorf("Commit Error %s,", err.Error())
 	}
 }
 
