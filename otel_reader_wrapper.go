@@ -26,14 +26,14 @@ package kafka
 //	}, nil
 //}
 //
-//func (o *otelReaderWrapper) FetchMessage(ctx context.Context) (*segmentio.Message, error) {
+// func (o *otelReaderWrapper) FetchMessage(ctx context.Context) (*segmentio.Message, error) {
 //	return o.r.FetchMessage(ctx)
 //}
 //
-//func (o *otelReaderWrapper) Close() error {
+// func (o *otelReaderWrapper) Close() error {
 //	return o.r.Close()
 //}
 //
-//func (o *otelReaderWrapper) CommitMessages(messages []segmentio.Message) error {
+// func (o *otelReaderWrapper) CommitMessages(messages []segmentio.Message) error {
 //	return o.r.CommitMessages(context.Background(), messages...)
 //}
