@@ -15,12 +15,14 @@ func Test_batchConsumer_startBatch(t *testing.T) {
 	// Given
 	var numberOfBatch int
 
+	mc := mockReader{}
 	bc := batchConsumer{
 		base: &base{
 			messageCh:            make(chan *Message),
 			metric:               &ConsumerMetric{},
 			wg:                   sync.WaitGroup{},
 			messageGroupDuration: 500 * time.Millisecond,
+			r:                    &mc,
 		},
 		messageGroupLimit: 3,
 		consumeFn: func(messages []*Message) error {

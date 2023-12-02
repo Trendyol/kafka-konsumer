@@ -92,9 +92,15 @@ func (m *mockReader) FetchMessage(ctx context.Context) (*kafka.Message, error) {
 }
 
 func (m *mockReader) Close() error {
-	panic("implement me")
+	if m.wantErr {
+		return errors.New("err")
+	}
+	return nil
 }
 
 func (m *mockReader) CommitMessages(messages []kafka.Message) error {
-	panic("implement me")
+	if m.wantErr {
+		return errors.New("err")
+	}
+	return nil
 }
