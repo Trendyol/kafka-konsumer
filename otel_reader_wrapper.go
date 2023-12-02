@@ -4,7 +4,7 @@ package kafka
 //	r *otelkafkakonsumer.Reader
 //}
 //
-//func NewOtelReaderWrapper(cfg *ConsumerConfig, reader *segmentio.Reader) (Reader, error) {
+// func NewOtelReaderWrapper(cfg *ConsumerConfig, reader *segmentio.Reader) (Reader, error) {
 //	cfg.setDefaults()
 //
 //	newReader, err := otelkafkakonsumer.NewReader(
