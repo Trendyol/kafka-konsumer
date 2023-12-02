@@ -1,6 +1,6 @@
 package kafka
 
-//type otelReaderWrapper struct {
+// type otelReaderWrapper struct {
 //	r *otelkafkakonsumer.Reader
 //}
 //

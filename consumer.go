@@ -1,9 +1,10 @@
 package kafka
 
 import (
-	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"sync"
 	"time"
+
+	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 )
 
 type consumer struct {

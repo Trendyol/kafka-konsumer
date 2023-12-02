@@ -166,7 +166,7 @@ func (cfg *ConsumerConfig) newKafkaReader() (Reader, error) {
 
 	reader := kafka.NewReader(readerCfg)
 
-	//if cfg.DistributedTracingEnabled {
+	// if cfg.DistributedTracingEnabled {
 	//	return NewOtelReaderWrapper(cfg, reader)
 	//}
 
