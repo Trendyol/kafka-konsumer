@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+
 	"github.com/Trendyol/otel-kafka-konsumer"
 	segmentio "github.com/segmentio/kafka-go"
 	"go.opentelemetry.io/otel/attribute"
