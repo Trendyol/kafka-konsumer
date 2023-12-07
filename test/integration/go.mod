@@ -11,7 +11,7 @@ require (
 
 require (
 	github.com/Trendyol/kafka-cronsumer v1.4.5 // indirect
-	github.com/Trendyol/otel-kafka-konsumer v0.0.5 // indirect
+	github.com/Trendyol/otel-kafka-konsumer v0.0.6 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/ansrivas/fiberprometheus/v2 v2.6.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
