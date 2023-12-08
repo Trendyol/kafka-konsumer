@@ -129,3 +129,10 @@ func (m *Message) RemoveHeader(header Header) {
 		}
 	}
 }
+
+func CreateErrHeader(consumeErr error) Header {
+	return Header{
+		Key:   "X-ErrMessage",
+		Value: []byte(consumeErr.Error()),
+	}
+}

@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/segmentio/kafka-go"
@@ -111,5 +112,22 @@ func TestMessage_RemoveHeader(t *testing.T) {
 	headers := m.Headers
 	if len(headers) != 0 {
 		t.Fatalf("Header length must be equal to 0")
+	}
+}
+
+func TestMessage_CreateErrHeader(t *testing.T) {
+	// Given
+	e := errors.New("err")
+
+	// When
+	h := CreateErrHeader(e)
+
+	// Then
+	if h.Key != "X-ErrMessage" {
+		t.Fatalf("Header key must be equal to X-ErrMessage")
+	}
+
+	if h.Value == nil {
+		t.Fatalf("Header value must be present")
 	}
 }

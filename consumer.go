@@ -64,6 +64,7 @@ func (c *consumer) process(message *Message) {
 	}
 
 	if consumeErr != nil && c.retryEnabled {
+		message.AddHeader(CreateErrHeader(consumeErr))
 		retryableMsg := message.toRetryableMessage(c.retryTopic)
 		if produceErr := c.cronsumer.Produce(retryableMsg); produceErr != nil {
 			c.logger.Errorf("Error producing message %s to exception/retry topic %s",
