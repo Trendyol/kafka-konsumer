@@ -1,7 +1,7 @@
 package kafka
 
 import (
-	"sync"
+	"github.com/segmentio/kafka-go"
 	"time"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
@@ -42,6 +42,16 @@ func (c *consumer) Consume() {
 	c.wg.Add(1)
 	go c.startConsume()
 
+	for i := 0; i < c.concurrency; i++ {
+		c.wg.Add(1)
+		go func() {
+			defer c.wg.Done()
+			for message := range c.singleMessageCommitCh {
+				c.process(message)
+				c.waitMessageProcess <- struct{}{}
+			}
+		}()
+	}
 	c.wg.Add(1)
 	go c.startBatch()
 }
@@ -53,6 +63,7 @@ func (c *consumer) startBatch() {
 	defer ticker.Stop()
 
 	messages := make([]*Message, 0, c.concurrency)
+	commitMessages := make([]kafka.Message, 0, c.concurrency)
 
 	for {
 		select {
@@ -61,7 +72,7 @@ func (c *consumer) startBatch() {
 				continue
 			}
 
-			c.consume(messages)
+			c.consume(messages, &commitMessages)
 			messages = messages[:0]
 		case msg, ok := <-c.messageCh:
 			if !ok {
@@ -71,26 +82,25 @@ func (c *consumer) startBatch() {
 			messages = append(messages, msg)
 
 			if len(messages) == c.concurrency {
-				c.consume(messages)
+				c.consume(messages, &commitMessages)
 				messages = messages[:0]
 			}
 		}
 	}
 }
 
-func (c *consumer) consume(messages []*Message) {
-	var wg sync.WaitGroup
-	wg.Add(len(messages))
+func (c *consumer) consume(messages []*Message, commitMessages *[]kafka.Message) {
 	for _, message := range messages {
-		go func(message *Message) {
-			defer wg.Done()
-			c.process(message)
-		}(message)
+		c.singleMessageCommitCh <- message
 	}
-	wg.Wait()
 
-	kafkaMessages := toKafkaMessages(messages)
-	err := c.r.CommitMessages(kafkaMessages)
+	for i := 0; i < len(messages); i++ {
+		<-c.waitMessageProcess
+	}
+
+	toKafkaMessages(messages, commitMessages)
+	err := c.r.CommitMessages(*commitMessages)
+	*commitMessages = (*commitMessages)[:0]
 	if err != nil {
 		c.logger.Errorf("Commit Error %s,", err.Error())
 	}

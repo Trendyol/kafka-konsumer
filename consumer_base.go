@@ -39,7 +39,10 @@ type base struct {
 	metric                    *ConsumerMetric
 	context                   context.Context
 	messageCh                 chan *Message
+	singleMessageCommitCh     chan *Message
+	batchMessageCommitCh      chan []*Message
 	quit                      chan struct{}
+	waitMessageProcess        chan struct{}
 	cancelFn                  context.CancelFunc
 	r                         Reader
 	retryTopic                string
@@ -83,6 +86,9 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		subprocesses:              newSubProcesses(),
 		r:                         reader,
 		messageGroupDuration:      cfg.MessageGroupDuration,
+		waitMessageProcess:        make(chan struct{}, cfg.Concurrency),
+		singleMessageCommitCh:     make(chan *Message, cfg.Concurrency),
+		batchMessageCommitCh:      make(chan []*Message, cfg.Concurrency),
 	}
 
 	if cfg.DistributedTracingEnabled {
@@ -152,6 +158,9 @@ func (c *base) Stop() error {
 		c.cancelFn()
 		c.quit <- struct{}{}
 		close(c.messageCh)
+		close(c.singleMessageCommitCh)
+		close(c.batchMessageCommitCh)
+		close(c.waitMessageProcess)
 		c.wg.Wait()
 		err = c.r.Close()
 	})

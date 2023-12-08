@@ -1,7 +1,7 @@
 package kafka
 
 import (
-	"sync"
+	"github.com/segmentio/kafka-go"
 	"time"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
@@ -49,6 +49,17 @@ func (b *batchConsumer) Consume() {
 	b.wg.Add(1)
 	go b.startConsume()
 
+	for i := 0; i < b.concurrency; i++ {
+		b.wg.Add(1)
+		go func() {
+			defer b.wg.Done()
+			for messages := range b.batchMessageCommitCh {
+				b.process(messages)
+				b.waitMessageProcess <- struct{}{}
+			}
+		}()
+	}
+
 	b.wg.Add(1)
 	go b.startBatch()
 }
@@ -60,6 +71,7 @@ func (b *batchConsumer) startBatch() {
 	defer ticker.Stop()
 
 	messages := make([]*Message, 0, b.messageGroupLimit*b.concurrency)
+	commitMessages := make([]kafka.Message, 0, b.messageGroupLimit*b.concurrency)
 
 	for {
 		select {
@@ -68,7 +80,7 @@ func (b *batchConsumer) startBatch() {
 				continue
 			}
 
-			b.consume(messages)
+			b.consume(messages, &commitMessages)
 			messages = messages[:0]
 		case msg, ok := <-b.messageCh:
 			if !ok {
@@ -78,7 +90,7 @@ func (b *batchConsumer) startBatch() {
 			messages = append(messages, msg)
 
 			if len(messages) == (b.messageGroupLimit * b.concurrency) {
-				b.consume(messages)
+				b.consume(messages, &commitMessages)
 				messages = messages[:0]
 			}
 		}
@@ -102,21 +114,20 @@ func chunkMessages(allMessages []*Message, chunkSize int) [][]*Message {
 	return chunks
 }
 
-func (b *batchConsumer) consume(allMessages []*Message) {
+func (b *batchConsumer) consume(allMessages []*Message, commitMessages *[]kafka.Message) {
 	chunks := chunkMessages(allMessages, b.messageGroupLimit)
 
-	var wg sync.WaitGroup
-	wg.Add(len(chunks))
 	for _, chunk := range chunks {
-		go func(chunk []*Message) {
-			defer wg.Done()
-			b.process(chunk)
-		}(chunk)
+		b.batchMessageCommitCh <- chunk
 	}
-	wg.Wait()
 
-	kafkaMessages := toKafkaMessages(allMessages)
-	err := b.r.CommitMessages(kafkaMessages)
+	for i := 0; i < len(chunks); i++ {
+		<-b.waitMessageProcess
+	}
+
+	toKafkaMessages(allMessages, commitMessages)
+	err := b.r.CommitMessages(*commitMessages)
+	*commitMessages = (*commitMessages)[:0]
 	if err != nil {
 		b.logger.Errorf("Commit Error %s,", err.Error())
 	}

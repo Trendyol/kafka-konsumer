@@ -44,12 +44,10 @@ func (m *Message) toKafkaMessage() kafka.Message {
 	}
 }
 
-func toKafkaMessages(messages []*Message) []kafka.Message {
-	kafkaMessages := make([]kafka.Message, len(messages))
+func toKafkaMessages(messages []*Message, commitMessages *[]kafka.Message) {
 	for _, message := range messages {
-		kafkaMessages = append(kafkaMessages, message.toKafkaMessage())
+		*commitMessages = append(*commitMessages, message.toKafkaMessage())
 	}
-	return kafkaMessages
 }
 
 func fromKafkaMessage(message *kafka.Message) *Message {
