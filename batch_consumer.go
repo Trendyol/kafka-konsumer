@@ -1,8 +1,9 @@
 package kafka
 
 import (
-	"github.com/segmentio/kafka-go"
 	"time"
+
+	"github.com/segmentio/kafka-go"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 )
