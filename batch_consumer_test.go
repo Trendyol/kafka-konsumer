@@ -20,11 +20,15 @@ func Test_batchConsumer_startBatch(t *testing.T) {
 	mc := mockReader{}
 	bc := batchConsumer{
 		base: &base{
-			messageCh:            make(chan *Message),
-			metric:               &ConsumerMetric{},
-			wg:                   sync.WaitGroup{},
-			messageGroupDuration: 500 * time.Millisecond,
-			r:                    &mc,
+			messageCh:             make(chan *Message, 1),
+			batchMessageCommitCh:  make(chan []*Message, 1),
+			singleMessageCommitCh: make(chan *Message, 1),
+			waitMessageProcess:    make(chan struct{}, 1),
+			metric:                &ConsumerMetric{},
+			wg:                    sync.WaitGroup{},
+			messageGroupDuration:  500 * time.Millisecond,
+			r:                     &mc,
+			concurrency:           1,
 		},
 		messageGroupLimit: 3,
 		consumeFn: func(messages []*Message) error {

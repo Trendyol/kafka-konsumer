@@ -50,6 +50,13 @@ func (b *batchConsumer) Consume() {
 	b.wg.Add(1)
 	go b.startConsume()
 
+	b.wg.Add(1)
+	go b.startBatch()
+}
+
+func (b *batchConsumer) startBatch() {
+	defer b.wg.Done()
+
 	for i := 0; i < b.concurrency; i++ {
 		b.wg.Add(1)
 		go func() {
@@ -60,13 +67,6 @@ func (b *batchConsumer) Consume() {
 			}
 		}()
 	}
-
-	b.wg.Add(1)
-	go b.startBatch()
-}
-
-func (b *batchConsumer) startBatch() {
-	defer b.wg.Done()
 
 	ticker := time.NewTicker(b.messageGroupDuration)
 	defer ticker.Stop()
