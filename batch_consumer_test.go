@@ -216,8 +216,8 @@ func Test_batchConsumer_process(t *testing.T) {
 func Test_batchConsumer_chunk(t *testing.T) {
 	tests := []struct {
 		allMessages []*Message
-		chunkSize   int
 		expected    [][]*Message
+		chunkSize   int
 	}{
 		{
 			allMessages: createMessages(0, 9),

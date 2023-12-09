@@ -36,25 +36,25 @@ type base struct {
 	cronsumer                 kcronsumer.Cronsumer
 	api                       API
 	logger                    LoggerInterface
-	metric                    *ConsumerMetric
+	propagator                propagation.TextMapPropagator
 	context                   context.Context
-	messageCh                 chan *Message
-	singleMessageCommitCh     chan *Message
-	batchMessageCommitCh      chan []*Message
+	r                         Reader
+	cancelFn                  context.CancelFunc
+	metric                    *ConsumerMetric
 	quit                      chan struct{}
 	waitMessageProcess        chan struct{}
-	cancelFn                  context.CancelFunc
-	r                         Reader
+	singleMessageCommitCh     chan *Message
+	messageCh                 chan *Message
+	batchMessageCommitCh      chan []*Message
 	retryTopic                string
 	subprocesses              subprocesses
-	messageGroupDuration      time.Duration
 	wg                        sync.WaitGroup
 	concurrency               int
+	messageGroupDuration      time.Duration
 	once                      sync.Once
 	retryEnabled              bool
 	transactionalRetry        bool
 	distributedTracingEnabled bool
-	propagator                propagation.TextMapPropagator
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {

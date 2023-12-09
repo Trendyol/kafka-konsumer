@@ -12,22 +12,21 @@ import (
 type Header = protocol.Header
 
 type Message struct {
+	Time       time.Time
+	WriterData interface{}
+
+	// Context To enable distributed tracing support
+	Context       context.Context
 	Topic         string
+	Key           []byte
+	Value         []byte
+	Headers       []Header
 	Partition     int
 	Offset        int64
 	HighWaterMark int64
 
 	// IsFailed Is only used on transactional retry disabled
 	IsFailed bool
-
-	Key        []byte
-	Value      []byte
-	Headers    []Header
-	WriterData interface{}
-	Time       time.Time
-
-	// Context To enable distributed tracing support
-	Context context.Context
 }
 
 func (m *Message) toKafkaMessage() kafka.Message {
