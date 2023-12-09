@@ -260,7 +260,7 @@ func Test_batchConsumer_chunk(t *testing.T) {
 
 	for i, tc := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			chunkedMessages := chunkMessages(tc.allMessages, tc.chunkSize)
+			chunkedMessages := chunkMessages(&tc.allMessages, tc.chunkSize)
 
 			if !reflect.DeepEqual(chunkedMessages, tc.expected) && !(len(chunkedMessages) == 0 && len(tc.expected) == 0) {
 				t.Errorf("For chunkSize %d, expected %v, but got %v", tc.chunkSize, tc.expected, chunkedMessages)
