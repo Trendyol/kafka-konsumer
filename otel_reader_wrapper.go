@@ -13,7 +13,7 @@ package kafka
 //	r *otelkafkakonsumer.Reader
 //}
 //
-//func NewOtelReaderWrapper(cfg *ConsumerConfig, reader *segmentio.Reader) (Reader, error) {
+// func NewOtelReaderWrapper(cfg *ConsumerConfig, reader *segmentio.Reader) (Reader, error) {
 //	cfg.setDefaults()
 //
 //	newReader, err := otelkafkakonsumer.NewReader(
@@ -35,14 +35,14 @@ package kafka
 //	}, nil
 //}
 //
-//func (o *otelReaderWrapper) FetchMessage(ctx context.Context) (*segmentio.Message, error) {
+// func (o *otelReaderWrapper) FetchMessage(ctx context.Context) (*segmentio.Message, error) {
 //	return o.r.FetchMessage(ctx)
 //}
 //
-//func (o *otelReaderWrapper) Close() error {
+// func (o *otelReaderWrapper) Close() error {
 //	return o.r.Close()
 //}
 //
-//func (o *otelReaderWrapper) CommitMessages(messages []segmentio.Message) error {
+// func (o *otelReaderWrapper) CommitMessages(messages []segmentio.Message) error {
 //	return o.r.CommitMessages(context.Background(), messages...)
 //}
