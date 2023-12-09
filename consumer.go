@@ -74,7 +74,7 @@ func (c *consumer) startBatch() {
 				continue
 			}
 
-			c.consume(messages, &commitMessages)
+			c.consume(&messages, &commitMessages)
 			messages = messages[:0]
 		case msg, ok := <-c.messageCh:
 			if !ok {
@@ -84,19 +84,20 @@ func (c *consumer) startBatch() {
 			messages = append(messages, msg)
 
 			if len(messages) == c.concurrency {
-				c.consume(messages, &commitMessages)
+				c.consume(&messages, &commitMessages)
 				messages = messages[:0]
 			}
 		}
 	}
 }
 
-func (c *consumer) consume(messages []*Message, commitMessages *[]kafka.Message) {
-	for _, message := range messages {
+func (c *consumer) consume(messages *[]*Message, commitMessages *[]kafka.Message) {
+	messageList := *messages
+	for _, message := range messageList {
 		c.singleMessageCommitCh <- message
 	}
 
-	for i := 0; i < len(messages); i++ {
+	for i := 0; i < len(messageList); i++ {
 		<-c.waitMessageProcess
 	}
 

@@ -81,7 +81,7 @@ func (b *batchConsumer) startBatch() {
 				continue
 			}
 
-			b.consume(messages, &commitMessages)
+			b.consume(&messages, &commitMessages)
 			messages = messages[:0]
 		case msg, ok := <-b.messageCh:
 			if !ok {
@@ -91,31 +91,33 @@ func (b *batchConsumer) startBatch() {
 			messages = append(messages, msg)
 
 			if len(messages) == (b.messageGroupLimit * b.concurrency) {
-				b.consume(messages, &commitMessages)
+				b.consume(&messages, &commitMessages)
 				messages = messages[:0]
 			}
 		}
 	}
 }
 
-func chunkMessages(allMessages []*Message, chunkSize int) [][]*Message {
+func chunkMessages(allMessages *[]*Message, chunkSize int) [][]*Message {
 	var chunks [][]*Message
-	for i := 0; i < len(allMessages); i += chunkSize {
+
+	allMessageList := *allMessages
+	for i := 0; i < len(allMessageList); i += chunkSize {
 		end := i + chunkSize
 
 		// necessary check to avoid slicing beyond
 		// slice capacity
-		if end > len(allMessages) {
-			end = len(allMessages)
+		if end > len(allMessageList) {
+			end = len(allMessageList)
 		}
 
-		chunks = append(chunks, allMessages[i:end])
+		chunks = append(chunks, allMessageList[i:end])
 	}
 
 	return chunks
 }
 
-func (b *batchConsumer) consume(allMessages []*Message, commitMessages *[]kafka.Message) {
+func (b *batchConsumer) consume(allMessages *[]*Message, commitMessages *[]kafka.Message) {
 	chunks := chunkMessages(allMessages, b.messageGroupLimit)
 
 	for _, chunk := range chunks {

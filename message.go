@@ -44,8 +44,8 @@ func (m *Message) toKafkaMessage() kafka.Message {
 	}
 }
 
-func toKafkaMessages(messages []*Message, commitMessages *[]kafka.Message) {
-	for _, message := range messages {
+func toKafkaMessages(messages *[]*Message, commitMessages *[]kafka.Message) {
+	for _, message := range *messages {
 		*commitMessages = append(*commitMessages, message.toKafkaMessage())
 	}
 }
