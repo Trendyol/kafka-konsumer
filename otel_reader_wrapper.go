@@ -1,6 +1,6 @@
 package kafka
 
-//import (
+// import (
 //	"context"
 //
 //	"github.com/Trendyol/otel-kafka-konsumer"
@@ -9,7 +9,7 @@ package kafka
 //	semconv "go.opentelemetry.io/otel/semconv/v1.19.0"
 //)
 //
-//type otelReaderWrapper struct {
+// type otelReaderWrapper struct {
 //	r *otelkafkakonsumer.Reader
 //}
 //

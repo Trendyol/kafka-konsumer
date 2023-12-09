@@ -58,6 +58,7 @@ func putMessages(messages *[]*Message) {
 
 func putKafkaMessage(messages *[]kafka.Message) {
 	for _, message := range *messages {
+		//nolint:gosec
 		kafkaMessagePool.Put(&message)
 	}
 }
