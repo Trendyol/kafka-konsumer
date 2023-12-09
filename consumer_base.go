@@ -2,9 +2,10 @@ package kafka
 
 import (
 	"context"
-	otelkafkakonsumer "github.com/Trendyol/otel-kafka-konsumer"
 	"sync"
 	"time"
+
+	otelkafkakonsumer "github.com/Trendyol/otel-kafka-konsumer"
 
 	"go.opentelemetry.io/otel/propagation"
 

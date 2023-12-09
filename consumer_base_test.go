@@ -83,7 +83,7 @@ type mockReader struct {
 	wantErr bool
 }
 
-func (m *mockReader) FetchMessage(ctx context.Context) (*kafka.Message, error) {
+func (m *mockReader) FetchMessage(_ context.Context) (*kafka.Message, error) {
 	if m.wantErr {
 		return nil, errors.New("err")
 	}
