@@ -5,7 +5,7 @@ go 1.19
 replace github.com/Trendyol/kafka-konsumer => ../..
 
 require (
-	github.com/Trendyol/kafka-konsumer v0.0.0-00010101000000-000000000000
+	github.com/Trendyol/kafka-konsumer v1.8.8
 	github.com/segmentio/kafka-go v0.4.43
 )
 

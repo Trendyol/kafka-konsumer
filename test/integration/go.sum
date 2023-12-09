@@ -1,7 +1,6 @@
 github.com/Trendyol/kafka-cronsumer v1.4.5 h1:82MhKZi1tXqFMp2gpSiYaT4UyN6LxumIu6ZMC8yZ1JY=
 github.com/Trendyol/kafka-cronsumer v1.4.5/go.mod h1:VpweJmKY+6dppFhzWOZDbZfxBNuJkSxB12CcuZWBNFU=
-github.com/Trendyol/otel-kafka-konsumer v0.0.5 h1:i5Q6vR4ZRTtlb+uLimGJNBOQUiAtcbjn7Xc2FmPap/4=
-github.com/Trendyol/otel-kafka-konsumer v0.0.5/go.mod h1:zdCaFclzRCO9fzcjxkHrWOB3I2+uTPrmkq4zczkD1F0=
+github.com/Trendyol/otel-kafka-konsumer v0.0.6 h1:FFSft5lIA+kyH+hZW4bxt/xWG6J3PFUGzKZbjyf+fVM=
 github.com/Trendyol/otel-kafka-konsumer v0.0.6/go.mod h1:zdCaFclzRCO9fzcjxkHrWOB3I2+uTPrmkq4zczkD1F0=
 github.com/andybalholm/brotli v1.0.5 h1:8uQZIdzKmjc/iuPu7O2ioW48L81FgatrcpfFmiq/cCs=
 github.com/andybalholm/brotli v1.0.5/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
