@@ -104,6 +104,7 @@ func (c *consumer) consume(messages *[]*Message, commitMessages *[]kafka.Message
 	toKafkaMessages(messages, commitMessages)
 	err := c.r.CommitMessages(*commitMessages)
 	*commitMessages = (*commitMessages)[:0]
+	putMessages(messages)
 	if err != nil {
 		c.logger.Errorf("Commit Error %s,", err.Error())
 	}

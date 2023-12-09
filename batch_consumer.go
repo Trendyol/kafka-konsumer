@@ -131,6 +131,7 @@ func (b *batchConsumer) consume(allMessages *[]*Message, commitMessages *[]kafka
 	toKafkaMessages(allMessages, commitMessages)
 	err := b.r.CommitMessages(*commitMessages)
 	*commitMessages = (*commitMessages)[:0]
+	putMessages(allMessages)
 	if err != nil {
 		b.logger.Errorf("Commit Error %s,", err.Error())
 	}

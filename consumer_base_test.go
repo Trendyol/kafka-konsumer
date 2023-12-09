@@ -98,7 +98,7 @@ func (m *mockReader) Close() error {
 	return nil
 }
 
-func (m *mockReader) CommitMessages(messages []kafka.Message) error {
+func (m *mockReader) CommitMessages(_ []kafka.Message) error {
 	if m.wantErr {
 		return errors.New("err")
 	}

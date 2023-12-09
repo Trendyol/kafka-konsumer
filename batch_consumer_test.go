@@ -295,11 +295,11 @@ func (m *mockCronsumer) Stop() {
 	panic("implement me")
 }
 
-func (m *mockCronsumer) WithLogger(logger lcronsumer.Interface) {
+func (m *mockCronsumer) WithLogger(_ lcronsumer.Interface) {
 	panic("implement me")
 }
 
-func (m *mockCronsumer) Produce(message kcronsumer.Message) error {
+func (m *mockCronsumer) Produce(_ kcronsumer.Message) error {
 	if m.wantErr {
 		return errors.New("error")
 	}

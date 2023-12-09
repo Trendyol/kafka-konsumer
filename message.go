@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
@@ -49,19 +50,33 @@ func toKafkaMessages(messages *[]*Message, commitMessages *[]kafka.Message) {
 	}
 }
 
-func fromKafkaMessage(message *kafka.Message) *Message {
-	return &Message{
-		Topic:         message.Topic,
-		Partition:     message.Partition,
-		Offset:        message.Offset,
-		HighWaterMark: message.HighWaterMark,
-		Key:           message.Key,
-		Value:         message.Value,
-		Headers:       message.Headers,
-		WriterData:    message.WriterData,
-		Time:          message.Time,
-		Context:       context.TODO(),
+func putMessages(messages *[]*Message) {
+	for _, message := range *messages {
+		messagePool.Put(message)
 	}
+}
+
+var messagePool = sync.Pool{
+	New: func() any {
+		return &Message{}
+	},
+}
+
+func fromKafkaMessage(kafkaMessage *kafka.Message) *Message {
+	message := messagePool.Get().(*Message)
+
+	message.Topic = kafkaMessage.Topic
+	message.Partition = kafkaMessage.Partition
+	message.Offset = kafkaMessage.Offset
+	message.HighWaterMark = kafkaMessage.HighWaterMark
+	message.Key = kafkaMessage.Key
+	message.Value = kafkaMessage.Value
+	message.Headers = kafkaMessage.Headers
+	message.WriterData = kafkaMessage.WriterData
+	message.Time = kafkaMessage.Time
+	message.Context = context.TODO()
+
+	return message
 }
 
 func (m *Message) toRetryableMessage(retryTopic string) kcronsumer.Message {
@@ -92,16 +107,17 @@ func toMessage(message kcronsumer.Message) *Message {
 		})
 	}
 
-	return &Message{
-		Topic:         message.Topic,
-		Partition:     message.Partition,
-		Offset:        message.Offset,
-		HighWaterMark: message.HighWaterMark,
-		Key:           message.Key,
-		Value:         message.Value,
-		Headers:       headers,
-		Time:          message.Time,
-	}
+	msg := messagePool.Get().(*Message)
+	msg.Topic = message.Topic
+	msg.Partition = message.Partition
+	msg.Offset = message.Offset
+	msg.HighWaterMark = message.HighWaterMark
+	msg.Key = message.Key
+	msg.Value = message.Value
+	msg.Headers = headers
+	msg.Time = message.Time
+
+	return msg
 }
 
 func (m *Message) Header(key string) *kafka.Header {

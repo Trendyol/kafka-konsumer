@@ -2,10 +2,10 @@ package kafka
 
 import (
 	"context"
+	otelkafkakonsumer "github.com/Trendyol/otel-kafka-konsumer"
 	"sync"
 	"time"
 
-	"github.com/Trendyol/otel-kafka-konsumer"
 	"go.opentelemetry.io/otel/propagation"
 
 	"github.com/prometheus/client_golang/prometheus"

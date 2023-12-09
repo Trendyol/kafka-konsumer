@@ -63,14 +63,14 @@ type mockOtelKafkaKonsumerWriter struct {
 
 var _ OtelKafkaKonsumerWriter = (*mockOtelKafkaKonsumerWriter)(nil)
 
-func (m mockOtelKafkaKonsumerWriter) WriteMessage(ctx context.Context, msg kafka.Message) error {
+func (m mockOtelKafkaKonsumerWriter) WriteMessage(_ context.Context, _ kafka.Message) error {
 	if m.wantErr {
 		return errors.New("err occurred")
 	}
 	return nil
 }
 
-func (m mockOtelKafkaKonsumerWriter) WriteMessages(ctx context.Context, msgs []kafka.Message) error {
+func (m mockOtelKafkaKonsumerWriter) WriteMessages(_ context.Context, _ []kafka.Message) error {
 	if m.wantErr {
 		return errors.New("err occurred")
 	}
