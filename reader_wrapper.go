@@ -15,9 +15,10 @@ func NewReaderWrapper(reader *segmentio.Reader) Reader {
 }
 
 // ReadMessage returns pointer of kafka message because we will support distributed tracing in the near future
-func (s *readerWrapper) FetchMessage(ctx context.Context) (*segmentio.Message, error) {
+func (s *readerWrapper) FetchMessage(ctx context.Context, msg *segmentio.Message) error {
 	message, err := s.r.FetchMessage(ctx)
-	return &message, err
+	*msg = message
+	return err
 }
 
 func (s *readerWrapper) Close() error {

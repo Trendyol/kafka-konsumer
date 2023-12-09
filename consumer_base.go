@@ -2,10 +2,9 @@ package kafka
 
 import (
 	"context"
+	otelkafkakonsumer "github.com/Trendyol/otel-kafka-konsumer"
 	"sync"
 	"time"
-
-	otelkafkakonsumer "github.com/Trendyol/otel-kafka-konsumer"
 
 	"go.opentelemetry.io/otel/propagation"
 
@@ -28,7 +27,7 @@ type Consumer interface {
 }
 
 type Reader interface {
-	FetchMessage(ctx context.Context) (*kafka.Message, error)
+	FetchMessage(ctx context.Context, msg *kafka.Message) error
 	Close() error
 	CommitMessages(messages []kafka.Message) error
 }
@@ -128,7 +127,8 @@ func (c *base) startConsume() {
 		case <-c.quit:
 			return
 		default:
-			message, err := c.r.FetchMessage(c.context)
+			message := kafkaMessagePool.Get().(*kafka.Message)
+			err := c.r.FetchMessage(c.context, message)
 			if err != nil {
 				if c.context.Err() != nil {
 					continue

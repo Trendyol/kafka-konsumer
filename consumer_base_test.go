@@ -83,12 +83,13 @@ type mockReader struct {
 	wantErr bool
 }
 
-func (m *mockReader) FetchMessage(_ context.Context) (*kafka.Message, error) {
+func (m *mockReader) FetchMessage(_ context.Context, msg *kafka.Message) error {
 	if m.wantErr {
-		return nil, errors.New("err")
+		return errors.New("err")
 	}
 	//nolint:lll
-	return &kafka.Message{Topic: "topic", Partition: 0, Offset: 1, HighWaterMark: 1, Key: []byte("foo"), Value: []byte("bar"), Headers: []kafka.Header{{Key: "header", Value: []byte("value")}}}, nil
+	*msg = kafka.Message{Topic: "topic", Partition: 0, Offset: 1, HighWaterMark: 1, Key: []byte("foo"), Value: []byte("bar"), Headers: []kafka.Header{{Key: "header", Value: []byte("value")}}}
+	return nil
 }
 
 func (m *mockReader) Close() error {
