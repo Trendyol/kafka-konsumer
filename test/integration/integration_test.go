@@ -310,8 +310,8 @@ func Test_Should_Progate_Custom_Headers_With_Kafka_Cronsumer_Successfully(t *tes
 	if err != nil {
 		t.Fatalf("error reading message")
 	}
-	if len(msg.Headers) != 1 {
-		t.Fatalf("msg header must be length of 1")
+	if len(msg.Headers) != 2 {
+		t.Fatalf("msg header must be length of 2")
 	}
 	if msg.Headers[0].Key != "custom_exception_header" {
 		t.Fatalf("key must be custom_exception_header")
