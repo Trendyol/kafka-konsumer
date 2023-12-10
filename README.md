@@ -7,7 +7,27 @@
 Kafka Konsumer provides an easy implementation of Kafka consumer with a built-in retry/exception
 manager ([kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer)).
 
-## Guide
+## Migration Guide
+
+### V2 Release Notes
+- Added ability for manipulating kafka message headers
+- Changed consumeFn and batchConsumeFn as pointer signature
+- Added transactional retry feature. Set false if you want to use exception/retry strategy to only failed messages.
+- Changed from auto-commit to manuel commit default without reducing performance.
+- Bumped kafka-cronsumer for getting latest changes.
+  - Backoff strategy support (linear, exponential options)
+  - Added message key for retried messages 
+
+### How to migrate from v1 to v2?
+
+You can get latest version via `go get github.com/Trendyol/kafka-konsumer/v2@latest`
+
+- You need to change import path from `github.com/Trendyol/kafka-konsumer` to `github.com/Trendyol/kafka-konsumer/v2`
+
+- You need to change your consume function with pointer signature.
+
+- We moved messageGroupDuration from `batchConfiguration.messageGroupDuration` to root level. Because this field is used
+single (non-batch) consumer too.
 
 ### Installation
 
