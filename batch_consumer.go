@@ -76,6 +76,8 @@ func (b *batchConsumer) startBatch() {
 			b.consume(&messages, &commitMessages)
 		case msg, ok := <-b.incomingMessageStream:
 			if !ok {
+				close(b.batchConsumingStream)
+				close(b.messageProcessedStream)
 				return
 			}
 

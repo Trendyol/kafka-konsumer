@@ -160,10 +160,8 @@ func (c *base) Stop() error {
 		c.cancelFn()
 		c.quit <- struct{}{}
 		close(c.incomingMessageStream)
-		close(c.singleConsumingStream)
-		close(c.batchConsumingStream)
-		close(c.messageProcessedStream)
 		c.wg.Wait()
+
 		err = c.r.Close()
 	})
 

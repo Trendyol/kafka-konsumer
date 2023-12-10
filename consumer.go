@@ -68,6 +68,8 @@ func (c *consumer) startBatch() {
 			c.consume(&messages, &commitMessages)
 		case msg, ok := <-c.incomingMessageStream:
 			if !ok {
+				close(c.singleConsumingStream)
+				close(c.messageProcessedStream)
 				return
 			}
 
