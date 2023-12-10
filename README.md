@@ -17,6 +17,9 @@ manager ([kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer)).
 - Bumped kafka-cronsumer for getting latest changes.
   - Backoff strategy support (linear, exponential options)
   - Added message key for retried messages 
+- Reduce memory allocation by using `sync.Pool`.
+- Increase TP on changing internal concurrency structure.
+
 
 ### How to migrate from v1 to v2?
 
