@@ -5,12 +5,12 @@ go 1.19
 replace github.com/Trendyol/kafka-konsumer/v2 => ../..
 
 require (
-	github.com/Trendyol/kafka-konsumer/v2 v1.8.8
+	github.com/Trendyol/kafka-konsumer/v2 v2.0.4
 	github.com/segmentio/kafka-go v0.4.43
 )
 
 require (
-	github.com/Trendyol/kafka-cronsumer v1.4.5 // indirect
+	github.com/Trendyol/kafka-cronsumer v1.4.6 // indirect
 	github.com/Trendyol/otel-kafka-konsumer v0.0.7 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/ansrivas/fiberprometheus/v2 v2.6.1 // indirect
