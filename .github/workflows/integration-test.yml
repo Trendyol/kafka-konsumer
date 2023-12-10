@@ -2,9 +2,9 @@ name: 🔨IntegrationTest
 
 on:
   push:
-    branches: [main]
+    branches: [v1,v2]
   pull_request:
-    branches: [main]
+    branches: [v1,v2]
 
 jobs:
   test:
