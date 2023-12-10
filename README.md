@@ -17,6 +17,7 @@ manager ([kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer)).
 - Bumped kafka-cronsumer for getting latest changes.
   - Backoff strategy support (linear, exponential options)
   - Added message key for retried messages 
+  - Added x-error-message to see what was the error of the message during processing
 - Reduce memory allocation by using `sync.Pool`.
 - Increase TP on changing internal concurrency structure.
 
