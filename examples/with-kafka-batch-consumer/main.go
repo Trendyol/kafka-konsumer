@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/Trendyol/kafka-konsumer"
+	"github.com/Trendyol/kafka-konsumer/v2"
 	"os"
 	"os/signal"
 	"time"

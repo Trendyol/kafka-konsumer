@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/Trendyol/kafka-konsumer/v2"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/jaeger"
@@ -13,8 +14,6 @@ import (
 	"os"
 	"os/signal"
 	"time"
-
-	"github.com/Trendyol/kafka-konsumer"
 )
 
 func main() {

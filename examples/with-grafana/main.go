@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Trendyol/kafka-konsumer/v2"
 	"os"
 	"os/signal"
 	"strconv"
 	"time"
-
-	"github.com/Trendyol/kafka-konsumer"
 )
 
 type user struct {
