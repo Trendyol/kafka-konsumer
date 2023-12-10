@@ -6,7 +6,7 @@ replace github.com/Trendyol/kafka-konsumer/v2 => ../..
 
 require (
 	github.com/Trendyol/kafka-konsumer/v2 v2.0.4
-	github.com/segmentio/kafka-go v0.4.43
+	github.com/segmentio/kafka-go v0.4.46
 )
 
 require (
@@ -47,6 +47,6 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 )
