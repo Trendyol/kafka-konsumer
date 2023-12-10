@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Trendyol/kafka-konsumer/v2"
 	segmentio "github.com/segmentio/kafka-go"
 	"testing"
 	"time"
