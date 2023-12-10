@@ -43,10 +43,10 @@ type base struct {
 	cancelFn                  context.CancelFunc
 	metric                    *ConsumerMetric
 	quit                      chan struct{}
-	waitMessageProcess        chan struct{}
-	singleMessageCommitCh     chan *Message
-	messageCh                 chan *Message
-	batchMessageCommitCh      chan []*Message
+	messageProcessedStream    chan struct{}
+	incomingMessageStream     chan *Message
+	singleConsumingStream     chan *Message
+	batchConsumingStream      chan []*Message
 	retryTopic                string
 	subprocesses              subprocesses
 	wg                        sync.WaitGroup
@@ -77,7 +77,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 
 	c := base{
 		metric:                    &ConsumerMetric{},
-		messageCh:                 make(chan *Message, messageChSize),
+		incomingMessageStream:     make(chan *Message, messageChSize),
 		quit:                      make(chan struct{}),
 		concurrency:               cfg.Concurrency,
 		retryEnabled:              cfg.RetryEnabled,
@@ -87,9 +87,9 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		subprocesses:              newSubProcesses(),
 		r:                         reader,
 		messageGroupDuration:      cfg.MessageGroupDuration,
-		waitMessageProcess:        make(chan struct{}, cfg.Concurrency),
-		singleMessageCommitCh:     make(chan *Message, cfg.Concurrency),
-		batchMessageCommitCh:      make(chan []*Message, cfg.Concurrency),
+		messageProcessedStream:    make(chan struct{}, cfg.Concurrency),
+		singleConsumingStream:     make(chan *Message, cfg.Concurrency),
+		batchConsumingStream:      make(chan []*Message, cfg.Concurrency),
 	}
 
 	if cfg.DistributedTracingEnabled {
@@ -128,8 +128,8 @@ func (c *base) startConsume() {
 		case <-c.quit:
 			return
 		default:
-			message := kafkaMessagePool.Get().(*kafka.Message)
-			err := c.r.FetchMessage(c.context, message)
+			m := kafkaMessagePool.Get().(*kafka.Message)
+			err := c.r.FetchMessage(c.context, m)
 			if err != nil {
 				if c.context.Err() != nil {
 					continue
@@ -138,12 +138,12 @@ func (c *base) startConsume() {
 				continue
 			}
 
-			consumedMessage := fromKafkaMessage(message)
+			incomingMessage := fromKafkaMessage(m)
 			if c.distributedTracingEnabled {
-				consumedMessage.Context = c.propagator.Extract(context.Background(), otelkafkakonsumer.NewMessageCarrier(message))
+				incomingMessage.Context = c.propagator.Extract(context.Background(), otelkafkakonsumer.NewMessageCarrier(m))
 			}
 
-			c.messageCh <- consumedMessage
+			c.incomingMessageStream <- incomingMessage
 		}
 	}
 }
@@ -159,10 +159,10 @@ func (c *base) Stop() error {
 		c.subprocesses.Stop()
 		c.cancelFn()
 		c.quit <- struct{}{}
-		close(c.messageCh)
-		close(c.singleMessageCommitCh)
-		close(c.batchMessageCommitCh)
-		close(c.waitMessageProcess)
+		close(c.incomingMessageStream)
+		close(c.singleConsumingStream)
+		close(c.batchConsumingStream)
+		close(c.messageProcessedStream)
 		c.wg.Wait()
 		err = c.r.Close()
 	})

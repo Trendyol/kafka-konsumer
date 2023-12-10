@@ -43,23 +43,14 @@ func (c *consumer) Consume() {
 	c.wg.Add(1)
 	go c.startConsume()
 
+	c.setupConcurrentWorkers()
+
 	c.wg.Add(1)
 	go c.startBatch()
 }
 
 func (c *consumer) startBatch() {
 	defer c.wg.Done()
-
-	for i := 0; i < c.concurrency; i++ {
-		c.wg.Add(1)
-		go func() {
-			defer c.wg.Done()
-			for message := range c.singleMessageCommitCh {
-				c.process(message)
-				c.waitMessageProcess <- struct{}{}
-			}
-		}()
-	}
 
 	ticker := time.NewTicker(c.messageGroupDuration)
 	defer ticker.Stop()
@@ -75,8 +66,7 @@ func (c *consumer) startBatch() {
 			}
 
 			c.consume(&messages, &commitMessages)
-			messages = messages[:0]
-		case msg, ok := <-c.messageCh:
+		case msg, ok := <-c.incomingMessageStream:
 			if !ok {
 				return
 			}
@@ -85,30 +75,47 @@ func (c *consumer) startBatch() {
 
 			if len(messages) == c.concurrency {
 				c.consume(&messages, &commitMessages)
-				messages = messages[:0]
 			}
 		}
 	}
 }
 
+func (c *consumer) setupConcurrentWorkers() {
+	for i := 0; i < c.concurrency; i++ {
+		c.wg.Add(1)
+		go func() {
+			defer c.wg.Done()
+			for message := range c.singleConsumingStream {
+				c.process(message)
+				c.messageProcessedStream <- struct{}{}
+			}
+		}()
+	}
+}
+
 func (c *consumer) consume(messages *[]*Message, commitMessages *[]kafka.Message) {
 	messageList := *messages
+
+	// Send the messages to process
 	for _, message := range messageList {
-		c.singleMessageCommitCh <- message
+		c.singleConsumingStream <- message
 	}
 
-	for i := 0; i < len(messageList); i++ {
-		<-c.waitMessageProcess
+	// Wait the messages to be processed
+	for range messageList {
+		<-c.messageProcessedStream
 	}
 
 	toKafkaMessages(messages, commitMessages)
-	err := c.r.CommitMessages(*commitMessages)
+	if err := c.r.CommitMessages(*commitMessages); err != nil {
+		c.logger.Errorf("Commit Error %s,", err.Error())
+	}
+
+	// Clearing resources
 	putKafkaMessage(commitMessages)
 	putMessages(messages)
 	*commitMessages = (*commitMessages)[:0]
-	if err != nil {
-		c.logger.Errorf("Commit Error %s,", err.Error())
-	}
+	*messages = (*messages)[:0]
 }
 
 func (c *consumer) process(message *Message) {

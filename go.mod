@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/Trendyol/kafka-cronsumer v1.4.5
-	github.com/Trendyol/otel-kafka-konsumer v0.0.6
+	github.com/Trendyol/otel-kafka-konsumer v0.0.7
 	github.com/ansrivas/fiberprometheus/v2 v2.6.1
 	github.com/gofiber/fiber/v2 v2.50.0
 	github.com/prometheus/client_golang v1.16.0

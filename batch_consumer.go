@@ -50,6 +50,8 @@ func (b *batchConsumer) Consume() {
 	b.wg.Add(1)
 	go b.startConsume()
 
+	b.setupConcurrentWorkers()
+
 	b.wg.Add(1)
 	go b.startBatch()
 }
@@ -57,22 +59,12 @@ func (b *batchConsumer) Consume() {
 func (b *batchConsumer) startBatch() {
 	defer b.wg.Done()
 
-	for i := 0; i < b.concurrency; i++ {
-		b.wg.Add(1)
-		go func() {
-			defer b.wg.Done()
-			for messages := range b.batchMessageCommitCh {
-				b.process(messages)
-				b.waitMessageProcess <- struct{}{}
-			}
-		}()
-	}
-
 	ticker := time.NewTicker(b.messageGroupDuration)
 	defer ticker.Stop()
 
-	messages := make([]*Message, 0, b.messageGroupLimit*b.concurrency)
-	commitMessages := make([]kafka.Message, 0, b.messageGroupLimit*b.concurrency)
+	maximumMessageLimit := b.messageGroupLimit * b.concurrency
+	messages := make([]*Message, 0, maximumMessageLimit)
+	commitMessages := make([]kafka.Message, 0, maximumMessageLimit)
 
 	for {
 		select {
@@ -82,19 +74,30 @@ func (b *batchConsumer) startBatch() {
 			}
 
 			b.consume(&messages, &commitMessages)
-			messages = messages[:0]
-		case msg, ok := <-b.messageCh:
+		case msg, ok := <-b.incomingMessageStream:
 			if !ok {
 				return
 			}
 
 			messages = append(messages, msg)
 
-			if len(messages) == (b.messageGroupLimit * b.concurrency) {
+			if len(messages) == maximumMessageLimit {
 				b.consume(&messages, &commitMessages)
-				messages = messages[:0]
 			}
 		}
+	}
+}
+
+func (b *batchConsumer) setupConcurrentWorkers() {
+	for i := 0; i < b.concurrency; i++ {
+		b.wg.Add(1)
+		go func() {
+			defer b.wg.Done()
+			for messages := range b.batchConsumingStream {
+				b.process(messages)
+				b.messageProcessedStream <- struct{}{}
+			}
+		}()
 	}
 }
 
@@ -120,22 +123,26 @@ func chunkMessages(allMessages *[]*Message, chunkSize int) [][]*Message {
 func (b *batchConsumer) consume(allMessages *[]*Message, commitMessages *[]kafka.Message) {
 	chunks := chunkMessages(allMessages, b.messageGroupLimit)
 
+	// Send the messages to process
 	for _, chunk := range chunks {
-		b.batchMessageCommitCh <- chunk
+		b.batchConsumingStream <- chunk
 	}
 
+	// Wait the messages to be processed
 	for i := 0; i < len(chunks); i++ {
-		<-b.waitMessageProcess
+		<-b.messageProcessedStream
 	}
 
 	toKafkaMessages(allMessages, commitMessages)
-	err := b.r.CommitMessages(*commitMessages)
+	if err := b.r.CommitMessages(*commitMessages); err != nil {
+		b.logger.Errorf("Commit Error %s,", err.Error())
+	}
+
+	// Clearing resources
 	putKafkaMessage(commitMessages)
 	putMessages(allMessages)
 	*commitMessages = (*commitMessages)[:0]
-	if err != nil {
-		b.logger.Errorf("Commit Error %s,", err.Error())
-	}
+	*allMessages = (*allMessages)[:0]
 }
 
 func (b *batchConsumer) process(chunkMessages []*Message) {

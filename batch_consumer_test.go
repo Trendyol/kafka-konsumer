@@ -20,15 +20,15 @@ func Test_batchConsumer_startBatch(t *testing.T) {
 	mc := mockReader{}
 	bc := batchConsumer{
 		base: &base{
-			messageCh:             make(chan *Message, 1),
-			batchMessageCommitCh:  make(chan []*Message, 1),
-			singleMessageCommitCh: make(chan *Message, 1),
-			waitMessageProcess:    make(chan struct{}, 1),
-			metric:                &ConsumerMetric{},
-			wg:                    sync.WaitGroup{},
-			messageGroupDuration:  500 * time.Millisecond,
-			r:                     &mc,
-			concurrency:           1,
+			incomingMessageStream:  make(chan *Message, 1),
+			batchConsumingStream:   make(chan []*Message, 1),
+			singleConsumingStream:  make(chan *Message, 1),
+			messageProcessedStream: make(chan struct{}, 1),
+			metric:                 &ConsumerMetric{},
+			wg:                     sync.WaitGroup{},
+			messageGroupDuration:   500 * time.Millisecond,
+			r:                      &mc,
+			concurrency:            1,
 		},
 		messageGroupLimit: 3,
 		consumeFn: func(messages []*Message) error {
@@ -38,24 +38,25 @@ func Test_batchConsumer_startBatch(t *testing.T) {
 	}
 	go func() {
 		// Simulate messageGroupLimit
-		bc.base.messageCh <- &Message{}
-		bc.base.messageCh <- &Message{}
-		bc.base.messageCh <- &Message{}
+		bc.base.incomingMessageStream <- &Message{}
+		bc.base.incomingMessageStream <- &Message{}
+		bc.base.incomingMessageStream <- &Message{}
 
 		time.Sleep(1 * time.Second)
 
 		// Simulate messageGroupDuration
-		bc.base.messageCh <- &Message{}
+		bc.base.incomingMessageStream <- &Message{}
 
 		time.Sleep(1 * time.Second)
 
 		// Return from startBatch
-		close(bc.base.messageCh)
+		close(bc.base.incomingMessageStream)
 	}()
 
 	bc.base.wg.Add(1)
 
 	// When
+	bc.setupConcurrentWorkers()
 	bc.startBatch()
 
 	// Then
