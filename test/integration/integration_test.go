@@ -125,10 +125,10 @@ func Test_Should_Batch_Consume_Messages_Successfully(t *testing.T) {
 	messagesLen := make(chan int)
 
 	consumerCfg := &kafka.ConsumerConfig{
-		Reader: kafka.ReaderConfig{Brokers: []string{brokerAddress}, Topic: topic, GroupID: consumerGroup},
+		MessageGroupDuration: time.Second,
+		Reader:               kafka.ReaderConfig{Brokers: []string{brokerAddress}, Topic: topic, GroupID: consumerGroup},
 		BatchConfiguration: &kafka.BatchConfiguration{
-			MessageGroupLimit:    100,
-			MessageGroupDuration: time.Second,
+			MessageGroupLimit: 100,
 			BatchConsumeFn: func(messages []*kafka.Message) error {
 				messagesLen <- len(messages)
 				return nil
@@ -186,9 +186,9 @@ func Test_Should_Batch_Retry_Only_Failed_Messages_When_Transactional_Retry_Is_Di
 			MaxRetry:      3,
 			LogLevel:      "error",
 		},
+		MessageGroupDuration: time.Second,
 		BatchConfiguration: &kafka.BatchConfiguration{
-			MessageGroupLimit:    100,
-			MessageGroupDuration: time.Second,
+			MessageGroupLimit: 100,
 			BatchConsumeFn: func(messages []*kafka.Message) error {
 				messages[1].IsFailed = true
 				return errors.New("err")

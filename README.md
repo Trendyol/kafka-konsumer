@@ -100,9 +100,9 @@ After running `docker-compose up` command, you can run any application you want.
                 WorkDuration:  50 * time.Second,
                 MaxRetry:      3,
             },
+            MessageGroupDuration: time.Second,
             BatchConfiguration: kafka.BatchConfiguration{
                 MessageGroupLimit:    1000,
-                MessageGroupDuration: time.Second,
                 BatchConsumeFn:       batchConsumeFn,
             },
         }
@@ -140,9 +140,9 @@ After running `docker-compose up` command, you can run any application you want.
                 WorkDuration:  50 * time.Second,
                 MaxRetry:      3,
             },
+            MessageGroupDuration: time.Second,
             BatchConfiguration: kafka.BatchConfiguration{
                 MessageGroupLimit:    1000,
-                MessageGroupDuration: time.Second,
                 BatchConsumeFn:       batchConsumeFn,
             },
         }
@@ -198,6 +198,7 @@ under [the specified folder](examples/with-sasl-plaintext) and then start the ap
 | `commitInterval`                                 | indicates the interval at which offsets are committed to the broker.                                                                  | 1s                          |
 | `rack`                                           | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go#RackAffinityGroupBalancer)                                                 |                             |
 | `clientId`                                       | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Dialer)                                                            |                             |
+| `messageGroupDuration`                           | Maximum time to wait for a batch                                                                                                      |                             |
 | `dial.Timeout`                                   | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Dialer)                                                            | no timeout                  |
 | `dial.KeepAlive`                                 | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Dialer)                                                            | not enabled                 |
 | `transport.DialTimeout `                         | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go@v0.4.42#Transport)                                                         | 5s                          |
@@ -219,7 +220,6 @@ under [the specified folder](examples/with-sasl-plaintext) and then start the ap
 | `retryConfiguration.sasl.username`               | SCRAM OR PLAIN username                                                                                                               |                             |
 | `retryConfiguration.sasl.password`               | SCRAM OR PLAIN password                                                                                                               |                             |
 | `batchConfiguration.messageGroupLimit`           | Maximum number of messages in a batch                                                                                                 |                             |
-| `batchConfiguration.messageGroupDuration`        | Maximum time to wait for a batch                                                                                                      |                             |
 | `tls.rootCAPath`                                 | [see doc](https://pkg.go.dev/crypto/tls#Config.RootCAs)                                                                               | ""                          |
 | `tls.intermediateCAPath`                         | Same with rootCA, if you want to specify two rootca you can use it with rootCAPath                                                    | ""                          |
 | `sasl.authType`                                  | `SCRAM` or `PLAIN`                                                                                                                    |                             |

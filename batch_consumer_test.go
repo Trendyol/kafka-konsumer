@@ -2,6 +2,8 @@ package kafka
 
 import (
 	"errors"
+	"reflect"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -15,14 +17,20 @@ func Test_batchConsumer_startBatch(t *testing.T) {
 	// Given
 	var numberOfBatch int
 
+	mc := mockReader{}
 	bc := batchConsumer{
 		base: &base{
-			messageCh: make(chan *Message),
-			metric:    &ConsumerMetric{},
-			wg:        sync.WaitGroup{},
+			incomingMessageStream:  make(chan *Message, 1),
+			batchConsumingStream:   make(chan []*Message, 1),
+			singleConsumingStream:  make(chan *Message, 1),
+			messageProcessedStream: make(chan struct{}, 1),
+			metric:                 &ConsumerMetric{},
+			wg:                     sync.WaitGroup{},
+			messageGroupDuration:   500 * time.Millisecond,
+			r:                      &mc,
+			concurrency:            1,
 		},
-		messageGroupLimit:    3,
-		messageGroupDuration: 500 * time.Millisecond,
+		messageGroupLimit: 3,
 		consumeFn: func(messages []*Message) error {
 			numberOfBatch++
 			return nil
@@ -30,24 +38,25 @@ func Test_batchConsumer_startBatch(t *testing.T) {
 	}
 	go func() {
 		// Simulate messageGroupLimit
-		bc.base.messageCh <- &Message{}
-		bc.base.messageCh <- &Message{}
-		bc.base.messageCh <- &Message{}
+		bc.base.incomingMessageStream <- &Message{}
+		bc.base.incomingMessageStream <- &Message{}
+		bc.base.incomingMessageStream <- &Message{}
 
 		time.Sleep(1 * time.Second)
 
 		// Simulate messageGroupDuration
-		bc.base.messageCh <- &Message{}
+		bc.base.incomingMessageStream <- &Message{}
 
 		time.Sleep(1 * time.Second)
 
 		// Return from startBatch
-		close(bc.base.messageCh)
+		close(bc.base.incomingMessageStream)
 	}()
 
 	bc.base.wg.Add(1)
 
 	// When
+	bc.setupConcurrentWorkers()
 	bc.startBatch()
 
 	// Then
@@ -205,6 +214,72 @@ func Test_batchConsumer_process(t *testing.T) {
 	})
 }
 
+func Test_batchConsumer_chunk(t *testing.T) {
+	tests := []struct {
+		allMessages []*Message
+		expected    [][]*Message
+		chunkSize   int
+	}{
+		{
+			allMessages: createMessages(0, 9),
+			chunkSize:   3,
+			expected: [][]*Message{
+				createMessages(0, 3),
+				createMessages(3, 6),
+				createMessages(6, 9),
+			},
+		},
+		{
+			allMessages: []*Message{},
+			chunkSize:   3,
+			expected:    [][]*Message{},
+		},
+		{
+			allMessages: createMessages(0, 1),
+			chunkSize:   3,
+			expected: [][]*Message{
+				createMessages(0, 1),
+			},
+		},
+		{
+			allMessages: createMessages(0, 8),
+			chunkSize:   3,
+			expected: [][]*Message{
+				createMessages(0, 3),
+				createMessages(3, 6),
+				createMessages(6, 8),
+			},
+		},
+		{
+			allMessages: createMessages(0, 3),
+			chunkSize:   3,
+			expected: [][]*Message{
+				createMessages(0, 3),
+			},
+		},
+	}
+
+	for i, tc := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			chunkedMessages := chunkMessages(&tc.allMessages, tc.chunkSize)
+
+			if !reflect.DeepEqual(chunkedMessages, tc.expected) && !(len(chunkedMessages) == 0 && len(tc.expected) == 0) {
+				t.Errorf("For chunkSize %d, expected %v, but got %v", tc.chunkSize, tc.expected, chunkedMessages)
+			}
+		})
+	}
+}
+
+func createMessages(partitionStart int, partitionEnd int) []*Message {
+	messages := make([]*Message, 0)
+	for i := partitionStart; i < partitionEnd; i++ {
+		messages = append(messages, &Message{
+			Partition: i,
+		})
+	}
+	return messages
+}
+
 type mockCronsumer struct {
 	wantErr bool
 }
@@ -221,11 +296,11 @@ func (m *mockCronsumer) Stop() {
 	panic("implement me")
 }
 
-func (m *mockCronsumer) WithLogger(logger lcronsumer.Interface) {
+func (m *mockCronsumer) WithLogger(_ lcronsumer.Interface) {
 	panic("implement me")
 }
 
-func (m *mockCronsumer) Produce(message kcronsumer.Message) error {
+func (m *mockCronsumer) Produce(_ kcronsumer.Message) error {
 	if m.wantErr {
 		return errors.New("error")
 	}

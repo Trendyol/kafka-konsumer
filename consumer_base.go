@@ -3,8 +3,10 @@ package kafka
 import (
 	"context"
 	"sync"
+	"time"
 
-	"github.com/Trendyol/otel-kafka-konsumer"
+	otelkafkakonsumer "github.com/Trendyol/otel-kafka-konsumer"
+
 	"go.opentelemetry.io/otel/propagation"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,29 +28,34 @@ type Consumer interface {
 }
 
 type Reader interface {
-	ReadMessage(ctx context.Context) (*kafka.Message, error)
+	FetchMessage(ctx context.Context, msg *kafka.Message) error
 	Close() error
+	CommitMessages(messages []kafka.Message) error
 }
 
 type base struct {
 	cronsumer                 kcronsumer.Cronsumer
 	api                       API
 	logger                    LoggerInterface
-	metric                    *ConsumerMetric
+	propagator                propagation.TextMapPropagator
 	context                   context.Context
-	messageCh                 chan *Message
-	quit                      chan struct{}
-	cancelFn                  context.CancelFunc
 	r                         Reader
+	cancelFn                  context.CancelFunc
+	metric                    *ConsumerMetric
+	quit                      chan struct{}
+	messageProcessedStream    chan struct{}
+	incomingMessageStream     chan *Message
+	singleConsumingStream     chan *Message
+	batchConsumingStream      chan []*Message
 	retryTopic                string
 	subprocesses              subprocesses
 	wg                        sync.WaitGroup
 	concurrency               int
+	messageGroupDuration      time.Duration
 	once                      sync.Once
 	retryEnabled              bool
 	transactionalRetry        bool
 	distributedTracingEnabled bool
-	propagator                propagation.TextMapPropagator
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -59,7 +66,7 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	return newSingleConsumer(cfg)
 }
 
-func newBase(cfg *ConsumerConfig) (*base, error) {
+func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 	log := NewZapLogger(cfg.LogLevel)
 
 	reader, err := cfg.newKafkaReader()
@@ -70,7 +77,7 @@ func newBase(cfg *ConsumerConfig) (*base, error) {
 
 	c := base{
 		metric:                    &ConsumerMetric{},
-		messageCh:                 make(chan *Message, cfg.Concurrency),
+		incomingMessageStream:     make(chan *Message, messageChSize),
 		quit:                      make(chan struct{}),
 		concurrency:               cfg.Concurrency,
 		retryEnabled:              cfg.RetryEnabled,
@@ -79,6 +86,10 @@ func newBase(cfg *ConsumerConfig) (*base, error) {
 		logger:                    log,
 		subprocesses:              newSubProcesses(),
 		r:                         reader,
+		messageGroupDuration:      cfg.MessageGroupDuration,
+		messageProcessedStream:    make(chan struct{}, cfg.Concurrency),
+		singleConsumingStream:     make(chan *Message, cfg.Concurrency),
+		batchConsumingStream:      make(chan []*Message, cfg.Concurrency),
 	}
 
 	if cfg.DistributedTracingEnabled {
@@ -117,7 +128,8 @@ func (c *base) startConsume() {
 		case <-c.quit:
 			return
 		default:
-			message, err := c.r.ReadMessage(c.context)
+			m := kafkaMessagePool.Get().(*kafka.Message)
+			err := c.r.FetchMessage(c.context, m)
 			if err != nil {
 				if c.context.Err() != nil {
 					continue
@@ -126,12 +138,12 @@ func (c *base) startConsume() {
 				continue
 			}
 
-			consumedMessage := fromKafkaMessage(message)
+			incomingMessage := fromKafkaMessage(m)
 			if c.distributedTracingEnabled {
-				consumedMessage.Context = c.propagator.Extract(context.Background(), otelkafkakonsumer.NewMessageCarrier(message))
+				incomingMessage.Context = c.propagator.Extract(context.Background(), otelkafkakonsumer.NewMessageCarrier(m))
 			}
 
-			c.messageCh <- consumedMessage
+			c.incomingMessageStream <- incomingMessage
 		}
 	}
 }
@@ -147,7 +159,10 @@ func (c *base) Stop() error {
 		c.subprocesses.Stop()
 		c.cancelFn()
 		c.quit <- struct{}{}
-		close(c.messageCh)
+		close(c.incomingMessageStream)
+		close(c.singleConsumingStream)
+		close(c.batchConsumingStream)
+		close(c.messageProcessedStream)
 		c.wg.Wait()
 		err = c.r.Close()
 	})

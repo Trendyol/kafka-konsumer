@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
@@ -12,22 +13,21 @@ import (
 type Header = protocol.Header
 
 type Message struct {
+	Time       time.Time
+	WriterData interface{}
+
+	// Context To enable distributed tracing support
+	Context       context.Context
 	Topic         string
+	Key           []byte
+	Value         []byte
+	Headers       []Header
 	Partition     int
 	Offset        int64
 	HighWaterMark int64
 
 	// IsFailed Is only used on transactional retry disabled
 	IsFailed bool
-
-	Key        []byte
-	Value      []byte
-	Headers    []Header
-	WriterData interface{}
-	Time       time.Time
-
-	// Context To enable distributed tracing support
-	Context context.Context
 }
 
 func (m *Message) toKafkaMessage() kafka.Message {
@@ -44,19 +44,52 @@ func (m *Message) toKafkaMessage() kafka.Message {
 	}
 }
 
-func fromKafkaMessage(message *kafka.Message) *Message {
-	return &Message{
-		Topic:         message.Topic,
-		Partition:     message.Partition,
-		Offset:        message.Offset,
-		HighWaterMark: message.HighWaterMark,
-		Key:           message.Key,
-		Value:         message.Value,
-		Headers:       message.Headers,
-		WriterData:    message.WriterData,
-		Time:          message.Time,
-		Context:       context.TODO(),
+func toKafkaMessages(messages *[]*Message, commitMessages *[]kafka.Message) {
+	for _, message := range *messages {
+		*commitMessages = append(*commitMessages, message.toKafkaMessage())
 	}
+}
+
+func putMessages(messages *[]*Message) {
+	for _, message := range *messages {
+		messagePool.Put(message)
+	}
+}
+
+func putKafkaMessage(messages *[]kafka.Message) {
+	for _, message := range *messages {
+		//nolint:gosec
+		kafkaMessagePool.Put(&message)
+	}
+}
+
+var messagePool = sync.Pool{
+	New: func() any {
+		return &Message{}
+	},
+}
+
+var kafkaMessagePool = sync.Pool{
+	New: func() any {
+		return &kafka.Message{}
+	},
+}
+
+func fromKafkaMessage(kafkaMessage *kafka.Message) *Message {
+	message := messagePool.Get().(*Message)
+
+	message.Topic = kafkaMessage.Topic
+	message.Partition = kafkaMessage.Partition
+	message.Offset = kafkaMessage.Offset
+	message.HighWaterMark = kafkaMessage.HighWaterMark
+	message.Key = kafkaMessage.Key
+	message.Value = kafkaMessage.Value
+	message.Headers = kafkaMessage.Headers
+	message.WriterData = kafkaMessage.WriterData
+	message.Time = kafkaMessage.Time
+	message.Context = context.TODO()
+
+	return message
 }
 
 func (m *Message) toRetryableMessage(retryTopic string) kcronsumer.Message {
@@ -87,16 +120,17 @@ func toMessage(message kcronsumer.Message) *Message {
 		})
 	}
 
-	return &Message{
-		Topic:         message.Topic,
-		Partition:     message.Partition,
-		Offset:        message.Offset,
-		HighWaterMark: message.HighWaterMark,
-		Key:           message.Key,
-		Value:         message.Value,
-		Headers:       headers,
-		Time:          message.Time,
-	}
+	msg := messagePool.Get().(*Message)
+	msg.Topic = message.Topic
+	msg.Partition = message.Partition
+	msg.Offset = message.Offset
+	msg.HighWaterMark = message.HighWaterMark
+	msg.Key = message.Key
+	msg.Value = message.Value
+	msg.Headers = headers
+	msg.Time = message.Time
+
+	return msg
 }
 
 func (m *Message) Header(key string) *kafka.Header {

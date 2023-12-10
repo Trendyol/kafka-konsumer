@@ -17,9 +17,8 @@ func main() {
 			GroupID: "standart-cg",
 		},
 		BatchConfiguration: &kafka.BatchConfiguration{
-			MessageGroupLimit:    1000,
-			MessageGroupDuration: time.Second,
-			BatchConsumeFn:       batchConsumeFn,
+			MessageGroupLimit: 1000,
+			BatchConsumeFn:    batchConsumeFn,
 		},
 		RetryEnabled:       true,
 		TransactionalRetry: kafka.NewBoolPtr(false),
@@ -30,6 +29,7 @@ func main() {
 			WorkDuration:  4 * time.Minute,
 			MaxRetry:      3,
 		},
+		MessageGroupDuration: time.Second,
 	}
 
 	consumer, _ := kafka.NewConsumer(consumerCfg)

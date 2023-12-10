@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/Trendyol/kafka-cronsumer v1.4.5
-	github.com/Trendyol/otel-kafka-konsumer v0.0.5
+	github.com/Trendyol/otel-kafka-konsumer v0.0.7
 	github.com/ansrivas/fiberprometheus/v2 v2.6.1
 	github.com/gofiber/fiber/v2 v2.50.0
 	github.com/prometheus/client_golang v1.16.0
@@ -44,6 +44,7 @@ require (
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	go.opentelemetry.io/otel/metric v1.19.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
+	go.uber.org/goleak v1.3.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.9.0 // indirect

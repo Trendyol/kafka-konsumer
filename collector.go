@@ -19,19 +19,21 @@ func (s *metricCollector) Describe(ch chan<- *prometheus.Desc) {
 	prometheus.DescribeByCollect(s, ch)
 }
 
+var emptyStringList []string
+
 func (s *metricCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(
 		s.totalProcessedMessagesCounter,
 		prometheus.CounterValue,
 		float64(s.consumerMetric.TotalProcessedMessagesCounter),
-		[]string{}...,
+		emptyStringList...,
 	)
 
 	ch <- prometheus.MustNewConstMetric(
 		s.totalUnprocessedMessagesCounter,
 		prometheus.CounterValue,
 		float64(s.consumerMetric.TotalUnprocessedMessagesCounter),
-		[]string{}...,
+		emptyStringList...,
 	)
 }
 
@@ -42,13 +44,13 @@ func newMetricCollector(consumerMetric *ConsumerMetric) *metricCollector {
 		totalProcessedMessagesCounter: prometheus.NewDesc(
 			prometheus.BuildFQName(Name, "processed_messages_total", "current"),
 			"Total number of processed messages.",
-			[]string{},
+			emptyStringList,
 			nil,
 		),
 		totalUnprocessedMessagesCounter: prometheus.NewDesc(
 			prometheus.BuildFQName(Name, "unprocessed_messages_total", "current"),
 			"Total number of unprocessed messages.",
-			[]string{},
+			emptyStringList,
 			nil,
 		),
 	}

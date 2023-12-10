@@ -30,20 +30,20 @@ type WriterConfig struct {
 }
 
 type TransportConfig struct {
+	MetadataTopics []string
 	DialTimeout    time.Duration
 	IdleTimeout    time.Duration
 	MetadataTTL    time.Duration
-	MetadataTopics []string
 }
 
 type ProducerConfig struct {
+	DistributedTracingConfiguration DistributedTracingConfiguration
 	Transport                       *TransportConfig
 	SASL                            *SASLConfig
 	TLS                             *TLSConfig
 	ClientID                        string
 	Writer                          WriterConfig
 	DistributedTracingEnabled       bool
-	DistributedTracingConfiguration DistributedTracingConfiguration
 }
 
 func (cfg *ProducerConfig) newKafkaTransport() (*kafka.Transport, error) {
