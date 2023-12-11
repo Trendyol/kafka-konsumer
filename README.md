@@ -10,11 +10,10 @@ manager ([kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer)).
 ## Migration Guide
 
 ### V2 Release Notes
-- Added ability for manipulating kafka message headers
-- Changed consumeFn and batchConsumeFn as pointer signature
+- Added ability for manipulating kafka message headers.
 - Added transactional retry feature. Set false if you want to use exception/retry strategy to only failed messages.
-- Changed from auto-commit to manuel commit default without reducing performance.
-- Bumped kafka-cronsumer for getting latest changes.
+- Enable manuel commit at both single and batch consuming modes.
+- Bumped [kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer/releases) to the latest version:
   - Backoff strategy support (linear, exponential options)
   - Added message key for retried messages 
   - Added x-error-message to see what was the error of the message during processing
