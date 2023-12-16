@@ -8,7 +8,7 @@ require (
 	github.com/ansrivas/fiberprometheus/v2 v2.6.1
 	github.com/gofiber/fiber/v2 v2.50.0
 	github.com/prometheus/client_golang v1.16.0
-	github.com/segmentio/kafka-go v0.4.46
+	github.com/segmentio/kafka-go v0.4.47
 	go.opentelemetry.io/otel v1.19.0
 	go.opentelemetry.io/otel/trace v1.19.0
 	go.uber.org/zap v1.24.0
