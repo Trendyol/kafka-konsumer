@@ -1,9 +1,9 @@
 package kafka
 
 import (
-	"bytes"
 	"context"
 	"errors"
+	"github.com/google/go-cmp/cmp"
 	"sync"
 	"testing"
 
@@ -46,35 +46,8 @@ func Test_base_startConsume(t *testing.T) {
 		//nolint:lll
 		expected := kafka.Message{Topic: "topic", Partition: 0, Offset: 1, HighWaterMark: 1, Key: []byte("foo"), Value: []byte("bar"), Headers: []kafka.Header{{Key: "header", Value: []byte("value")}}}
 
-		actualHeader := actual.Headers[0]
-		expectedHeader := expected.Headers[0]
-
-		if actual.Topic != expected.Topic {
-			t.Errorf("Expected: %s, Actual: %s", expected.Topic, actual.Topic)
-		}
-		if actual.Partition != expected.Partition {
-			t.Errorf("Expected: %d, Actual: %d", expected.Partition, actual.Partition)
-		}
-		if actual.Offset != expected.Offset {
-			t.Errorf("Expected: %d, Actual: %d", expected.Offset, actual.Offset)
-		}
-		if actual.HighWaterMark != expected.HighWaterMark {
-			t.Errorf("Expected: %d, Actual: %d", expected.HighWaterMark, actual.HighWaterMark)
-		}
-		if !bytes.Equal(actual.Key, expected.Key) {
-			t.Errorf("Expected: %s, Actual: %s", expected.Value, actual.Value)
-		}
-		if !bytes.Equal(actual.Value, expected.Value) {
-			t.Errorf("Expected: %s, Actual: %s", expected.Value, actual.Value)
-		}
-		if actualHeader.Key != expectedHeader.Key {
-			t.Errorf("Expected: %s, Actual: %s", actualHeader.Key, expectedHeader.Key)
-		}
-		if !bytes.Equal(actualHeader.Value, expectedHeader.Value) {
-			t.Errorf("Expected: %s, Actual: %s", expectedHeader.Value, expectedHeader.Value)
-		}
-		if actual.Time != expected.Time {
-			t.Errorf("Expected: %s, Actual: %s", expected.Value, actual.Value)
+		if diff := cmp.Diff(actual.Headers[0], expected.Headers[0]); diff != "" {
+			t.Error(diff)
 		}
 	})
 }
