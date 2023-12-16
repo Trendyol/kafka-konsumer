@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 
@@ -26,6 +27,9 @@ func Test_base_startConsume(t *testing.T) {
 
 		// When
 		go b.startConsume()
+
+		// Ensure some time passes
+		time.Sleep(3 * time.Second)
 		b.quit <- struct{}{}
 
 		// Then
