@@ -186,7 +186,7 @@ func Test_Should_Batch_Retry_Only_Failed_Messages_When_Transactional_Retry_Is_Di
 			MaxRetry:      3,
 			LogLevel:      "error",
 		},
-		MessageGroupDuration: time.Second,
+		MessageGroupDuration: 5 * time.Second,
 		BatchConfiguration: &kafka.BatchConfiguration{
 			MessageGroupLimit: 100,
 			BatchConsumeFn: func(messages []*kafka.Message) error {
