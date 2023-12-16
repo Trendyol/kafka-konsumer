@@ -3,9 +3,10 @@ package kafka
 import (
 	"context"
 	"errors"
-	"github.com/google/go-cmp/cmp"
 	"sync"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 
 	"github.com/segmentio/kafka-go"
 )
