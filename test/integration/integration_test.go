@@ -323,7 +323,56 @@ func Test_Should_Propagate_Custom_Headers_With_Kafka_Cronsumer_Successfully(t *t
 }
 
 func Test_Should_Batch_Consume_With_PreBatch_Enabled(t *testing.T) {
+	// Given
+	topic := "batch-topic-prebatch-enabled"
+	consumerGroup := "batch-topic-prebatch-cg"
+	brokerAddress := "localhost:9092"
 
+	messages := []segmentio.Message{
+		{Topic: topic, Partition: 0, Offset: 1, Key: []byte("1"), Value: []byte(`foo1`)},
+		{Topic: topic, Partition: 0, Offset: 2, Key: []byte("2"), Value: []byte(`foo2`)},
+		{Topic: topic, Partition: 0, Offset: 3, Key: []byte("3"), Value: []byte(`foo3`)},
+		{Topic: topic, Partition: 0, Offset: 4, Key: []byte("4"), Value: []byte(`foo4`)},
+		{Topic: topic, Partition: 0, Offset: 5, Key: []byte("5"), Value: []byte(`foo5`)},
+	}
+
+	conn, cleanUp := createTopicAndWriteMessages(t, topic, messages)
+	defer cleanUp()
+
+	messagesLen := make(chan int)
+
+	consumerCfg := &kafka.ConsumerConfig{
+		MessageGroupDuration: time.Second,
+		Reader:               kafka.ReaderConfig{Brokers: []string{brokerAddress}, Topic: topic, GroupID: consumerGroup},
+		BatchConfiguration: &kafka.BatchConfiguration{
+			MessageGroupLimit: 100,
+			PreBatchFn: func(messages []*kafka.Message) []*kafka.Message {
+				// assume that, there is couple of logic here
+				return messages[:3]
+			},
+			BatchConsumeFn: func(messages []*kafka.Message) error {
+				messagesLen <- len(messages)
+				return nil
+			},
+		},
+	}
+
+	consumer, _ := kafka.NewConsumer(consumerCfg)
+	defer consumer.Stop()
+
+	consumer.Consume()
+
+	// Then
+	actual := <-messagesLen
+
+	if actual != 3 {
+		t.Fatalf("Message length does not equal %d", actual)
+	}
+
+	o, _ := conn.ReadLastOffset()
+	if o != 5 {
+		t.Fatalf("offset %v must be equal to 5", o)
+	}
 }
 
 func createTopicAndWriteMessages(t *testing.T, topicName string, messages []segmentio.Message) (*segmentio.Conn, func()) {
