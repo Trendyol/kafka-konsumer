@@ -53,7 +53,7 @@ func Test_batchConsumer_startBatch(t *testing.T) {
 		close(bc.base.incomingMessageStream)
 	}()
 
-	bc.base.wg.Add(1)
+	bc.base.wg.Add(1 + bc.base.concurrency)
 
 	// When
 	bc.setupConcurrentWorkers()

@@ -258,7 +258,7 @@ func Test_Should_Integrate_With_Kafka_Cronsumer_Successfully(t *testing.T) {
 	assertEventually(t, conditionFunc, 45*time.Second, time.Second)
 }
 
-func Test_Should_Progate_Custom_Headers_With_Kafka_Cronsumer_Successfully(t *testing.T) {
+func Test_Should_Propagate_Custom_Headers_With_Kafka_Cronsumer_Successfully(t *testing.T) {
 	// Given
 	topic := "cronsumer-header-topic"
 	consumerGroup := "cronsumer-header-cg"
@@ -320,6 +320,10 @@ func Test_Should_Progate_Custom_Headers_With_Kafka_Cronsumer_Successfully(t *tes
 		t.Fatalf("value must be custom_exception_value")
 	}
 	_ = msg
+}
+
+func Test_Should_Batch_Consume_With_PreBatch_Enabled(t *testing.T) {
+
 }
 
 func createTopicAndWriteMessages(t *testing.T, topicName string, messages []segmentio.Message) (*segmentio.Conn, func()) {
