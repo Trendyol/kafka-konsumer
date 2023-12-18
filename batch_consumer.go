@@ -11,7 +11,8 @@ import (
 type batchConsumer struct {
 	*base
 
-	consumeFn func([]*Message) error
+	consumeFn  BatchConsumeFn
+	preBatchFn PreBatchFn
 
 	messageGroupLimit int
 }
@@ -25,6 +26,7 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	c := batchConsumer{
 		base:              consumerBase,
 		consumeFn:         cfg.BatchConfiguration.BatchConsumeFn,
+		preBatchFn:        cfg.BatchConfiguration.PreBatchFn,
 		messageGroupLimit: cfg.BatchConfiguration.MessageGroupLimit,
 	}
 
@@ -47,9 +49,11 @@ func (b *batchConsumer) GetMetric() *ConsumerMetric {
 
 func (b *batchConsumer) Consume() {
 	go b.subprocesses.Start()
+
 	b.wg.Add(1)
 	go b.startConsume()
 
+	b.wg.Add(b.concurrency)
 	b.setupConcurrentWorkers()
 
 	b.wg.Add(1)
@@ -92,7 +96,6 @@ func (b *batchConsumer) startBatch() {
 
 func (b *batchConsumer) setupConcurrentWorkers() {
 	for i := 0; i < b.concurrency; i++ {
-		b.wg.Add(1)
 		go func() {
 			defer b.wg.Done()
 			for messages := range b.batchConsumingStream {
@@ -124,6 +127,11 @@ func chunkMessages(allMessages *[]*Message, chunkSize int) [][]*Message {
 
 func (b *batchConsumer) consume(allMessages *[]*Message, commitMessages *[]kafka.Message) {
 	chunks := chunkMessages(allMessages, b.messageGroupLimit)
+
+	if b.preBatchFn != nil {
+		preBatchResult := b.preBatchFn(*allMessages)
+		chunks = chunkMessages(&preBatchResult, b.messageGroupLimit)
+	}
 
 	// Send the messages to process
 	for _, chunk := range chunks {

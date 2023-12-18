@@ -6,7 +6,7 @@ replace github.com/Trendyol/kafka-konsumer/v2 => ../..
 
 require (
 	github.com/Trendyol/kafka-konsumer/v2 v2.0.4
-	github.com/segmentio/kafka-go v0.4.46
+	github.com/segmentio/kafka-go v0.4.47
 )
 
 require (

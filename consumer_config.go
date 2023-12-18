@@ -17,6 +17,8 @@ type ReaderConfig kafka.ReaderConfig
 
 type BatchConsumeFn func([]*Message) error
 
+type PreBatchFn func([]*Message) []*Message
+
 type ConsumeFn func(*Message) error
 
 type DialConfig struct {
@@ -124,6 +126,7 @@ type RetryConfiguration struct {
 
 type BatchConfiguration struct {
 	BatchConsumeFn    BatchConsumeFn
+	PreBatchFn        PreBatchFn
 	MessageGroupLimit int
 }
 

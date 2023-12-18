@@ -126,6 +126,7 @@ func (c *base) startConsume() {
 	for {
 		select {
 		case <-c.quit:
+			close(c.incomingMessageStream)
 			return
 		default:
 			m := kafkaMessagePool.Get().(*kafka.Message)
@@ -134,7 +135,7 @@ func (c *base) startConsume() {
 				if c.context.Err() != nil {
 					continue
 				}
-				c.logger.Errorf("Message could not read, err %s", err.Error())
+				c.logger.Warnf("Message could not read, err %s", err.Error())
 				continue
 			}
 
@@ -159,9 +160,7 @@ func (c *base) Stop() error {
 		c.subprocesses.Stop()
 		c.cancelFn()
 		c.quit <- struct{}{}
-		close(c.incomingMessageStream)
 		c.wg.Wait()
-
 		err = c.r.Close()
 	})
 
