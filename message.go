@@ -129,6 +129,7 @@ func toMessage(message kcronsumer.Message) *Message {
 	msg.Value = message.Value
 	msg.Headers = headers
 	msg.Time = message.Time
+	msg.Context = context.Background()
 
 	return msg
 }
