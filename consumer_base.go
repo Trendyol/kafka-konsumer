@@ -25,6 +25,11 @@ type Consumer interface {
 
 	// Stop for graceful shutdown. In order to avoid data loss, you have to call it!
 	Stop() error
+
+	// GetMetricCollectors for the purpose of making metric collectors available.
+	// You can register these collectors on your own http server.
+	// Please look at the examples/with-metric-collector directory.
+	GetMetricCollectors() []prometheus.Collector
 }
 
 type Reader interface {
@@ -56,6 +61,7 @@ type base struct {
 	retryEnabled              bool
 	transactionalRetry        bool
 	distributedTracingEnabled bool
+	metricSuffix              string
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -90,6 +96,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		messageProcessedStream:    make(chan struct{}, cfg.Concurrency),
 		singleConsumingStream:     make(chan *Message, cfg.Concurrency),
 		batchConsumingStream:      make(chan []*Message, cfg.Concurrency),
+		metricSuffix:              cfg.MetricPrefix,
 	}
 
 	if cfg.DistributedTracingEnabled {
@@ -118,6 +125,17 @@ func (c *base) setupAPI(cfg *ConsumerConfig, consumerMetric *ConsumerMetric) {
 
 	c.api = NewAPI(cfg, consumerMetric, metricCollectors...)
 	c.subprocesses.Add(c.api)
+}
+
+func (c *base) GetMetricCollectors() []prometheus.Collector {
+	var metricCollectors []prometheus.Collector
+	if c.retryEnabled {
+		metricCollectors = c.cronsumer.GetMetricCollectors()
+	}
+
+	metricCollectors = append(metricCollectors, NewMetricCollector(c.metric, c.metricSuffix))
+
+	return metricCollectors
 }
 
 func (c *base) startConsume() {

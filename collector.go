@@ -8,20 +8,20 @@ import (
 
 const Name = "kafka_konsumer"
 
-type metricCollector struct {
+type MetricCollector struct {
 	consumerMetric *ConsumerMetric
 
 	totalUnprocessedMessagesCounter *prometheus.Desc
 	totalProcessedMessagesCounter   *prometheus.Desc
 }
 
-func (s *metricCollector) Describe(ch chan<- *prometheus.Desc) {
+func (s *MetricCollector) Describe(ch chan<- *prometheus.Desc) {
 	prometheus.DescribeByCollect(s, ch)
 }
 
 var emptyStringList []string
 
-func (s *metricCollector) Collect(ch chan<- prometheus.Metric) {
+func (s *MetricCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(
 		s.totalProcessedMessagesCounter,
 		prometheus.CounterValue,
@@ -37,18 +37,22 @@ func (s *metricCollector) Collect(ch chan<- prometheus.Metric) {
 	)
 }
 
-func newMetricCollector(consumerMetric *ConsumerMetric) *metricCollector {
-	return &metricCollector{
+func NewMetricCollector(consumerMetric *ConsumerMetric, prefix string) *MetricCollector {
+	if prefix == "" {
+		prefix = Name
+	}
+
+	return &MetricCollector{
 		consumerMetric: consumerMetric,
 
 		totalProcessedMessagesCounter: prometheus.NewDesc(
-			prometheus.BuildFQName(Name, "processed_messages_total", "current"),
+			prometheus.BuildFQName(prefix, "processed_messages_total", "current"),
 			"Total number of processed messages.",
 			emptyStringList,
 			nil,
 		),
 		totalUnprocessedMessagesCounter: prometheus.NewDesc(
-			prometheus.BuildFQName(Name, "unprocessed_messages_total", "current"),
+			prometheus.BuildFQName(prefix, "unprocessed_messages_total", "current"),
 			"Total number of unprocessed messages.",
 			emptyStringList,
 			nil,
@@ -61,7 +65,7 @@ func NewMetricMiddleware(cfg *ConsumerConfig,
 	consumerMetric *ConsumerMetric,
 	metricCollectors ...prometheus.Collector,
 ) (func(ctx *fiber.Ctx) error, error) {
-	prometheus.DefaultRegisterer.MustRegister(newMetricCollector(consumerMetric))
+	prometheus.DefaultRegisterer.MustRegister(NewMetricCollector(consumerMetric, cfg.MetricPrefix))
 	prometheus.DefaultRegisterer.MustRegister(metricCollectors...)
 
 	fiberPrometheus := fiberprometheus.New(cfg.Reader.GroupID)

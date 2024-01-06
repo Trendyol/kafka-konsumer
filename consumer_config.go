@@ -48,12 +48,20 @@ type ConsumerConfig struct {
 	DistributedTracingEnabled       bool
 	RetryEnabled                    bool
 	APIEnabled                      bool
+
+	// MetricPrefix is used for prometheus fq name prefix.
+	// If not provided, default metric prefix value is `kafka_konsumer`.
+	// Currently, there are two exposed prometheus metrics. `processed_messages_total` and `unprocessed_messages_total`.
+	// So, if default metric prefix used, metrics names are `kafka_konsumer_processed_messages_total_current` and
+	// `kafka_konsumer_unprocessed_messages_total_current`.
+	MetricPrefix string
 }
 
 func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 	cronsumerCfg := kcronsumer.Config{
-		ClientID: cfg.RetryConfiguration.ClientID,
-		Brokers:  cfg.RetryConfiguration.Brokers,
+		MetricPrefix: cfg.RetryConfiguration.MetricPrefix,
+		ClientID:     cfg.RetryConfiguration.ClientID,
+		Brokers:      cfg.RetryConfiguration.Brokers,
 		Consumer: kcronsumer.ConsumerConfig{
 			ClientID:          cfg.ClientID,
 			GroupID:           cfg.Reader.GroupID,
@@ -122,6 +130,7 @@ type RetryConfiguration struct {
 	Brokers         []string
 	MaxRetry        int
 	WorkDuration    time.Duration
+	MetricPrefix    string
 }
 
 type BatchConfiguration struct {
