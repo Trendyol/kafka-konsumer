@@ -167,7 +167,7 @@ func (cfg *ConsumerConfig) newKafkaReader(log LoggerInterface) (Reader, error) {
 		readerCfg.GroupBalancers = []kafka.GroupBalancer{kafka.RackAffinityGroupBalancer{Rack: cfg.Rack}}
 	}
 
-	log.Warnf("Consumer Group %s, Topic %s, Client Id %s", readerCfg.GroupID, readerCfg.Topic, cfg.ClientID)
+	log.Warnf("Consumer Group %s, Topic %s, Client Id %s", readerCfg.GroupID, readerCfg.GroupTopics[0], cfg.ClientID)
 	reader := kafka.NewReader(readerCfg)
 
 	if cfg.DistributedTracingEnabled {
