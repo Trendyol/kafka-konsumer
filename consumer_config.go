@@ -153,7 +153,7 @@ func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
 	return dialer.Dialer, nil
 }
 
-func (cfg *ConsumerConfig) newKafkaReader() (Reader, error) {
+func (cfg *ConsumerConfig) newKafkaReader(log LoggerInterface) (Reader, error) {
 	cfg.setDefaults()
 
 	dialer, err := cfg.newKafkaDialer()
@@ -167,6 +167,7 @@ func (cfg *ConsumerConfig) newKafkaReader() (Reader, error) {
 		readerCfg.GroupBalancers = []kafka.GroupBalancer{kafka.RackAffinityGroupBalancer{Rack: cfg.Rack}}
 	}
 
+	log.Warnf("Consumer Group %s, Topic %s, Client Id %s", readerCfg.GroupID, readerCfg.Topic, cfg.ClientID)
 	reader := kafka.NewReader(readerCfg)
 
 	if cfg.DistributedTracingEnabled {
