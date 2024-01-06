@@ -130,6 +130,8 @@ func (c *base) startConsume() {
 			return
 		default:
 			m := kafkaMessagePool.Get().(*kafka.Message)
+			m = &kafka.Message{}
+
 			err := c.r.FetchMessage(c.context, m)
 			if err != nil {
 				if c.context.Err() != nil {
