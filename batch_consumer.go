@@ -149,7 +149,6 @@ func (b *batchConsumer) consume(allMessages *[]*Message, commitMessages *[]kafka
 	}
 
 	// Clearing resources
-	putKafkaMessage(commitMessages)
 	putMessages(allMessages)
 	*commitMessages = (*commitMessages)[:0]
 	*allMessages = (*allMessages)[:0]
