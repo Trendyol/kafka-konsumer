@@ -85,7 +85,8 @@ func (b *batchConsumer) startBatch() {
 				return
 			}
 
-			messages = append(messages, msg)
+			messages = append(messages, msg.message)
+			commitMessages = append(commitMessages, *msg.kafkaMessage)
 
 			if len(messages) == maximumMessageLimit {
 				b.consume(&messages, &commitMessages)
@@ -143,14 +144,11 @@ func (b *batchConsumer) consume(allMessages *[]*Message, commitMessages *[]kafka
 		<-b.messageProcessedStream
 	}
 
-	toKafkaMessages(allMessages, commitMessages)
 	if err := b.r.CommitMessages(*commitMessages); err != nil {
 		b.logger.Errorf("Commit Error %s,", err.Error())
 	}
 
 	// Clearing resources
-	putKafkaMessage(commitMessages)
-	putMessages(allMessages)
 	*commitMessages = (*commitMessages)[:0]
 	*allMessages = (*allMessages)[:0]
 }
