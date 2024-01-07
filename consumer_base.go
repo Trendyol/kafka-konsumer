@@ -129,8 +129,7 @@ func (c *base) startConsume() {
 			close(c.incomingMessageStream)
 			return
 		default:
-			m := kafkaMessagePool.Get().(*kafka.Message)
-			m = &kafka.Message{}
+			m := &kafka.Message{}
 
 			err := c.r.FetchMessage(c.context, m)
 			if err != nil {

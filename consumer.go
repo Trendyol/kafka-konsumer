@@ -114,7 +114,6 @@ func (c *consumer) consume(messages *[]*Message, commitMessages *[]kafka.Message
 	}
 
 	// Clearing resources
-	putKafkaMessage(commitMessages)
 	putMessages(messages)
 	*commitMessages = (*commitMessages)[:0]
 	*messages = (*messages)[:0]

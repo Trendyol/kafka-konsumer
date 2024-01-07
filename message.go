@@ -56,22 +56,9 @@ func putMessages(messages *[]*Message) {
 	}
 }
 
-func putKafkaMessage(messages *[]kafka.Message) {
-	for _, message := range *messages {
-		//nolint:gosec
-		kafkaMessagePool.Put(&message)
-	}
-}
-
 var messagePool = sync.Pool{
 	New: func() any {
 		return &Message{}
-	},
-}
-
-var kafkaMessagePool = sync.Pool{
-	New: func() any {
-		return &kafka.Message{}
 	},
 }
 
