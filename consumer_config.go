@@ -153,7 +153,7 @@ func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
 	return dialer.Dialer, nil
 }
 
-func (cfg *ConsumerConfig) newKafkaReader(log LoggerInterface) (Reader, error) {
+func (cfg *ConsumerConfig) newKafkaReader() (Reader, error) {
 	cfg.setDefaults()
 
 	dialer, err := cfg.newKafkaDialer()

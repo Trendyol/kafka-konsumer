@@ -2,12 +2,13 @@ package kafka
 
 import (
 	"errors"
-	"github.com/segmentio/kafka-go"
 	"reflect"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/segmentio/kafka-go"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	lcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/logger"

@@ -69,7 +69,7 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 	log := NewZapLogger(cfg.LogLevel)
 
-	reader, err := cfg.newKafkaReader(log)
+	reader, err := cfg.newKafkaReader()
 	if err != nil {
 		log.Errorf("Error when initializing kafka reader %v", err)
 		return nil, err
