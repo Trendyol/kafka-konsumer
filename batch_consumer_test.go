@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"errors"
+	"github.com/segmentio/kafka-go"
 	"reflect"
 	"strconv"
 	"sync"
@@ -20,7 +21,7 @@ func Test_batchConsumer_startBatch(t *testing.T) {
 	mc := mockReader{}
 	bc := batchConsumer{
 		base: &base{
-			incomingMessageStream:  make(chan *Message, 1),
+			incomingMessageStream:  make(chan *IncomingMessage, 1),
 			batchConsumingStream:   make(chan []*Message, 1),
 			singleConsumingStream:  make(chan *Message, 1),
 			messageProcessedStream: make(chan struct{}, 1),
@@ -38,14 +39,26 @@ func Test_batchConsumer_startBatch(t *testing.T) {
 	}
 	go func() {
 		// Simulate messageGroupLimit
-		bc.base.incomingMessageStream <- &Message{}
-		bc.base.incomingMessageStream <- &Message{}
-		bc.base.incomingMessageStream <- &Message{}
+		bc.base.incomingMessageStream <- &IncomingMessage{
+			kafkaMessage: &kafka.Message{},
+			message:      &Message{},
+		}
+		bc.base.incomingMessageStream <- &IncomingMessage{
+			kafkaMessage: &kafka.Message{},
+			message:      &Message{},
+		}
+		bc.base.incomingMessageStream <- &IncomingMessage{
+			kafkaMessage: &kafka.Message{},
+			message:      &Message{},
+		}
 
 		time.Sleep(1 * time.Second)
 
 		// Simulate messageGroupDuration
-		bc.base.incomingMessageStream <- &Message{}
+		bc.base.incomingMessageStream <- &IncomingMessage{
+			kafkaMessage: &kafka.Message{},
+			message:      &Message{},
+		}
 
 		time.Sleep(1 * time.Second)
 
@@ -75,7 +88,7 @@ func Test_batchConsumer_startBatch_with_preBatch(t *testing.T) {
 	mc := mockReader{}
 	bc := batchConsumer{
 		base: &base{
-			incomingMessageStream:  make(chan *Message, 1),
+			incomingMessageStream:  make(chan *IncomingMessage, 1),
 			batchConsumingStream:   make(chan []*Message, 1),
 			singleConsumingStream:  make(chan *Message, 1),
 			messageProcessedStream: make(chan struct{}, 1),
@@ -96,14 +109,26 @@ func Test_batchConsumer_startBatch_with_preBatch(t *testing.T) {
 	}
 	go func() {
 		// Simulate messageGroupLimit
-		bc.base.incomingMessageStream <- &Message{}
-		bc.base.incomingMessageStream <- &Message{}
+		bc.base.incomingMessageStream <- &IncomingMessage{
+			kafkaMessage: &kafka.Message{},
+			message:      &Message{},
+		}
+		bc.base.incomingMessageStream <- &IncomingMessage{
+			kafkaMessage: &kafka.Message{},
+			message:      &Message{},
+		}
 
 		time.Sleep(1 * time.Second)
 
 		// Simulate messageGroupDuration
-		bc.base.incomingMessageStream <- &Message{}
-		bc.base.incomingMessageStream <- &Message{}
+		bc.base.incomingMessageStream <- &IncomingMessage{
+			kafkaMessage: &kafka.Message{},
+			message:      &Message{},
+		}
+		bc.base.incomingMessageStream <- &IncomingMessage{
+			kafkaMessage: &kafka.Message{},
+			message:      &Message{},
+		}
 
 		time.Sleep(1 * time.Second)
 

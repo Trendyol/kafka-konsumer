@@ -17,7 +17,7 @@ func Test_base_startConsume(t *testing.T) {
 		mc := mockReader{wantErr: true}
 		b := base{
 			wg: sync.WaitGroup{}, r: &mc,
-			incomingMessageStream: make(chan *Message),
+			incomingMessageStream: make(chan *IncomingMessage),
 			quit:                  make(chan struct{}),
 			logger:                NewZapLogger(LogLevelDebug),
 		}
@@ -39,7 +39,7 @@ func Test_base_startConsume(t *testing.T) {
 	t.Run("Read_Incoming_Messages_Successfully", func(t *testing.T) {
 		// Given
 		mc := mockReader{}
-		b := base{wg: sync.WaitGroup{}, r: &mc, incomingMessageStream: make(chan *Message)}
+		b := base{wg: sync.WaitGroup{}, r: &mc, incomingMessageStream: make(chan *IncomingMessage)}
 		b.wg.Add(1)
 
 		// When
@@ -51,7 +51,7 @@ func Test_base_startConsume(t *testing.T) {
 		//nolint:lll
 		expected := kafka.Message{Topic: "topic", Partition: 0, Offset: 1, HighWaterMark: 1, Key: []byte("foo"), Value: []byte("bar"), Headers: []kafka.Header{{Key: "header", Value: []byte("value")}}}
 
-		if diff := cmp.Diff(actual.Headers[0], expected.Headers[0]); diff != "" {
+		if diff := cmp.Diff(actual.message.Headers[0], expected.Headers[0]); diff != "" {
 			t.Error(diff)
 		}
 	})

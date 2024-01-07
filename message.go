@@ -29,6 +29,11 @@ type Message struct {
 	IsFailed bool
 }
 
+type IncomingMessage struct {
+	kafkaMessage *kafka.Message
+	message      *Message
+}
+
 func (m *Message) toKafkaMessage() kafka.Message {
 	return kafka.Message{
 		Topic:         m.Topic,

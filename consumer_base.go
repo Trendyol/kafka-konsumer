@@ -44,7 +44,7 @@ type base struct {
 	metric                    *ConsumerMetric
 	quit                      chan struct{}
 	messageProcessedStream    chan struct{}
-	incomingMessageStream     chan *SezerDeneme
+	incomingMessageStream     chan *IncomingMessage
 	singleConsumingStream     chan *Message
 	batchConsumingStream      chan []*Message
 	retryTopic                string
@@ -77,7 +77,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 
 	c := base{
 		metric:                    &ConsumerMetric{},
-		incomingMessageStream:     make(chan *SezerDeneme, messageChSize),
+		incomingMessageStream:     make(chan *IncomingMessage, messageChSize),
 		quit:                      make(chan struct{}),
 		concurrency:               cfg.Concurrency,
 		retryEnabled:              cfg.RetryEnabled,
@@ -120,11 +120,6 @@ func (c *base) setupAPI(cfg *ConsumerConfig, consumerMetric *ConsumerMetric) {
 	c.subprocesses.Add(c.api)
 }
 
-type SezerDeneme struct {
-	kafkaMessage *kafka.Message
-	message      *Message
-}
-
 func (c *base) startConsume() {
 	defer c.wg.Done()
 
@@ -144,18 +139,16 @@ func (c *base) startConsume() {
 				continue
 			}
 
-			incomingMessage := fromKafkaMessage(m)
-
-			deneme := &SezerDeneme{
+			incomingMessage := &IncomingMessage{
 				kafkaMessage: m,
-				message:      incomingMessage,
+				message:      fromKafkaMessage(m),
 			}
 
 			if c.distributedTracingEnabled {
-				incomingMessage.Context = c.propagator.Extract(context.Background(), otelkafkakonsumer.NewMessageCarrier(m))
+				incomingMessage.message.Context = c.propagator.Extract(context.Background(), otelkafkakonsumer.NewMessageCarrier(m))
 			}
 
-			c.incomingMessageStream <- deneme
+			c.incomingMessageStream <- incomingMessage
 		}
 	}
 }
