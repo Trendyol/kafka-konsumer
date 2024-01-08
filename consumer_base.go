@@ -44,7 +44,7 @@ type base struct {
 	metric                    *ConsumerMetric
 	quit                      chan struct{}
 	messageProcessedStream    chan struct{}
-	incomingMessageStream     chan *Message
+	incomingMessageStream     chan *IncomingMessage
 	singleConsumingStream     chan *Message
 	batchConsumingStream      chan []*Message
 	retryTopic                string
@@ -77,7 +77,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 
 	c := base{
 		metric:                    &ConsumerMetric{},
-		incomingMessageStream:     make(chan *Message, messageChSize),
+		incomingMessageStream:     make(chan *IncomingMessage, messageChSize),
 		quit:                      make(chan struct{}),
 		concurrency:               cfg.Concurrency,
 		retryEnabled:              cfg.RetryEnabled,
@@ -129,7 +129,7 @@ func (c *base) startConsume() {
 			close(c.incomingMessageStream)
 			return
 		default:
-			m := kafkaMessagePool.Get().(*kafka.Message)
+			m := &kafka.Message{}
 			err := c.r.FetchMessage(c.context, m)
 			if err != nil {
 				if c.context.Err() != nil {
@@ -139,9 +139,13 @@ func (c *base) startConsume() {
 				continue
 			}
 
-			incomingMessage := fromKafkaMessage(m)
+			incomingMessage := &IncomingMessage{
+				kafkaMessage: m,
+				message:      fromKafkaMessage(m),
+			}
+
 			if c.distributedTracingEnabled {
-				incomingMessage.Context = c.propagator.Extract(context.Background(), otelkafkakonsumer.NewMessageCarrier(m))
+				incomingMessage.message.Context = c.propagator.Extract(context.Background(), otelkafkakonsumer.NewMessageCarrier(m))
 			}
 
 			c.incomingMessageStream <- incomingMessage

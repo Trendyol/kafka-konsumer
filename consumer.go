@@ -73,7 +73,8 @@ func (c *consumer) startBatch() {
 				return
 			}
 
-			messages = append(messages, msg)
+			messages = append(messages, msg.message)
+			commitMessages = append(commitMessages, *msg.kafkaMessage)
 
 			if len(messages) == c.concurrency {
 				c.consume(&messages, &commitMessages)
@@ -108,14 +109,11 @@ func (c *consumer) consume(messages *[]*Message, commitMessages *[]kafka.Message
 		<-c.messageProcessedStream
 	}
 
-	toKafkaMessages(messages, commitMessages)
 	if err := c.r.CommitMessages(*commitMessages); err != nil {
 		c.logger.Errorf("Commit Error %s,", err.Error())
 	}
 
 	// Clearing resources
-	putKafkaMessage(commitMessages)
-	putMessages(messages)
 	*commitMessages = (*commitMessages)[:0]
 	*messages = (*messages)[:0]
 }

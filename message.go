@@ -2,7 +2,6 @@ package kafka
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
@@ -30,6 +29,11 @@ type Message struct {
 	IsFailed bool
 }
 
+type IncomingMessage struct {
+	kafkaMessage *kafka.Message
+	message      *Message
+}
+
 func (m *Message) toKafkaMessage() kafka.Message {
 	return kafka.Message{
 		Topic:         m.Topic,
@@ -44,40 +48,8 @@ func (m *Message) toKafkaMessage() kafka.Message {
 	}
 }
 
-func toKafkaMessages(messages *[]*Message, commitMessages *[]kafka.Message) {
-	for _, message := range *messages {
-		*commitMessages = append(*commitMessages, message.toKafkaMessage())
-	}
-}
-
-func putMessages(messages *[]*Message) {
-	for _, message := range *messages {
-		messagePool.Put(message)
-	}
-}
-
-func putKafkaMessage(messages *[]kafka.Message) {
-	for _, message := range *messages {
-		//nolint:gosec
-		kafkaMessagePool.Put(&message)
-	}
-}
-
-var messagePool = sync.Pool{
-	New: func() any {
-		return &Message{}
-	},
-}
-
-var kafkaMessagePool = sync.Pool{
-	New: func() any {
-		return &kafka.Message{}
-	},
-}
-
 func fromKafkaMessage(kafkaMessage *kafka.Message) *Message {
-	message := messagePool.Get().(*Message)
-
+	message := &Message{}
 	message.Topic = kafkaMessage.Topic
 	message.Partition = kafkaMessage.Partition
 	message.Offset = kafkaMessage.Offset
@@ -88,7 +60,6 @@ func fromKafkaMessage(kafkaMessage *kafka.Message) *Message {
 	message.WriterData = kafkaMessage.WriterData
 	message.Time = kafkaMessage.Time
 	message.Context = context.TODO()
-
 	return message
 }
 
@@ -120,7 +91,7 @@ func toMessage(message kcronsumer.Message) *Message {
 		})
 	}
 
-	msg := messagePool.Get().(*Message)
+	msg := &Message{}
 	msg.Topic = message.Topic
 	msg.Partition = message.Partition
 	msg.Offset = message.Offset
