@@ -1,4 +1,7 @@
-# Kafka Konsumer [![🔨Build And Test](https://github.com/Trendyol/kafka-konsumer/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/Trendyol/kafka-konsumer/actions/workflows/test.yml) [![🔨IntegrationTest](https://github.com/Trendyol/kafka-konsumer/actions/workflows/integration-test.yml/badge.svg?branch=main)](https://github.com/Trendyol/kafka-konsumer/actions/workflows/integration-test.yml)
+# Kafka Konsumer 
+[![🔨Build And Test](https://github.com/Trendyol/kafka-konsumer/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/Trendyol/kafka-konsumer/actions/workflows/test.yml) 
+[![🔨IntegrationTest](https://github.com/Trendyol/kafka-konsumer/actions/workflows/integration-test.yml/badge.svg?branch=main)](https://github.com/Trendyol/kafka-konsumer/actions/workflows/integration-test.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Trendyol/kafka-konsumer/v2)](https://goreportcard.com/report/github.com/Trendyol/kafka-konsumer/v2)
 
 <div style="text-align:center"><img src=".github/images/konsumer.png"/></div>
 
