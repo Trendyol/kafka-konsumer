@@ -57,6 +57,43 @@ func Test_base_startConsume(t *testing.T) {
 	})
 }
 
+func Test_base_Pause(t *testing.T) {
+	// Given
+	ctx, cancelFn := context.WithCancel(context.Background())
+	b := base{
+		logger: NewZapLogger(LogLevelDebug), pauseConsuming: false,
+		context: ctx, cancelFn: cancelFn,
+	}
+
+	// When
+	b.Pause()
+
+	// Then
+	if b.pauseConsuming != true {
+		t.Fatal("pauseConsuming must be true!")
+	}
+}
+
+func Test_base_Resume(t *testing.T) {
+	// Given
+	ctx, cancelFn := context.WithCancel(context.Background())
+	b := base{
+		logger: NewZapLogger(LogLevelDebug), pauseConsuming: false,
+		context: ctx, cancelFn: cancelFn,
+	}
+
+	// When
+	b.Resume()
+
+	// Then
+	if b.pauseConsuming != false {
+		t.Fatal("pauseConsuming must be true!")
+	}
+	if ctx == b.context {
+		t.Fatal("contexts must be differ!")
+	}
+}
+
 type mockReader struct {
 	wantErr bool
 }

@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"strconv"
@@ -351,6 +352,46 @@ func Test_batchConsumer_chunk(t *testing.T) {
 				t.Errorf("For chunkSize %d, expected %v, but got %v", tc.chunkSize, tc.expected, chunkedMessages)
 			}
 		})
+	}
+}
+
+func Test_batchConsumer_Pause(t *testing.T) {
+	// Given
+	ctx, cancelFn := context.WithCancel(context.Background())
+	bc := batchConsumer{
+		base: &base{
+			logger:   NewZapLogger(LogLevelDebug),
+			context:  ctx,
+			cancelFn: cancelFn,
+		},
+	}
+
+	// When
+	bc.Pause()
+
+	// Then
+	if bc.base.pauseConsuming != true {
+		t.Fatal("pauseConsuming must be true!")
+	}
+}
+
+func Test_batchConsumer_Resume(t *testing.T) {
+	// Given
+	ctx, cancelFn := context.WithCancel(context.Background())
+	bc := batchConsumer{
+		base: &base{
+			logger:   NewZapLogger(LogLevelDebug),
+			context:  ctx,
+			cancelFn: cancelFn,
+		},
+	}
+
+	// When
+	bc.Resume()
+
+	// Then
+	if bc.base.pauseConsuming != false {
+		t.Fatal("pauseConsuming must be false!")
 	}
 }
 

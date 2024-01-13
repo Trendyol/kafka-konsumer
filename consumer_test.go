@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"context"
 	"errors"
 	"testing"
 )
@@ -113,4 +114,44 @@ func Test_consumer_process(t *testing.T) {
 			t.Fatalf("Total Unprocessed Message Counter must equal to 1")
 		}
 	})
+}
+
+func Test_consumer_Pause(t *testing.T) {
+	// Given
+	ctx, cancelFn := context.WithCancel(context.Background())
+	c := consumer{
+		base: &base{
+			logger:   NewZapLogger(LogLevelDebug),
+			context:  ctx,
+			cancelFn: cancelFn,
+		},
+	}
+
+	// When
+	c.Pause()
+
+	// Then
+	if c.base.pauseConsuming != true {
+		t.Fatal("pauseConsuming must be true!")
+	}
+}
+
+func Test_consumer_Resume(t *testing.T) {
+	// Given
+	ctx, cancelFn := context.WithCancel(context.Background())
+	c := consumer{
+		base: &base{
+			logger:   NewZapLogger(LogLevelDebug),
+			context:  ctx,
+			cancelFn: cancelFn,
+		},
+	}
+
+	// When
+	c.Resume()
+
+	// Then
+	if c.base.pauseConsuming != false {
+		t.Fatal("pauseConsuming must be false!")
+	}
 }
