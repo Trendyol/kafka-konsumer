@@ -20,6 +20,12 @@ type Consumer interface {
 	// Consume starts consuming
 	Consume()
 
+	// Pause pauses consumer, it is stop consuming new messages
+	Pause()
+
+	// Resume resumes consumer, it is start to working
+	Resume()
+
 	// WithLogger for injecting custom log implementation
 	WithLogger(logger LoggerInterface)
 
@@ -56,6 +62,7 @@ type base struct {
 	retryEnabled              bool
 	transactionalRetry        bool
 	distributedTracingEnabled bool
+	pauseConsuming            bool
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -129,6 +136,10 @@ func (c *base) startConsume() {
 			close(c.incomingMessageStream)
 			return
 		default:
+			if c.pauseConsuming {
+				continue
+			}
+
 			m := &kafka.Message{}
 			err := c.r.FetchMessage(c.context, m)
 			if err != nil {
@@ -158,7 +169,8 @@ func (c *base) WithLogger(logger LoggerInterface) {
 }
 
 func (c *base) Stop() error {
-	c.logger.Debug("Stop called!")
+	c.logger.Info("Stop called!")
+
 	var err error
 	c.once.Do(func() {
 		c.subprocesses.Stop()

@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"context"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -15,6 +16,18 @@ type batchConsumer struct {
 	preBatchFn PreBatchFn
 
 	messageGroupLimit int
+}
+
+func (b *batchConsumer) Pause() {
+	b.logger.Info("Batch consumer is paused!")
+	b.pauseConsuming = true
+	b.cancelFn()
+}
+
+func (b *batchConsumer) Resume() {
+	b.logger.Info("Consumer is resumed!")
+	b.pauseConsuming = false
+	b.context, b.cancelFn = context.WithCancel(context.Background())
 }
 
 func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
