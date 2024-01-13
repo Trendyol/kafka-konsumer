@@ -16,6 +16,8 @@ manager ([kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer)).
 - Added ability for manipulating kafka message headers.
 - Added transactional retry feature. Set false if you want to use exception/retry strategy to only failed messages.
 - Enable manuel commit at both single and batch consuming modes.
+- Enabling consumer resume/pause functionality. Please refer to [its example](examples/with-pause-resume-consumer) and
+[how it works](examples/with-pause-resume-consumer/how-it-works.md) documentation.
 - Bumped [kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer/releases) to the latest version:
   - Backoff strategy support (linear, exponential options)
   - Added message key for retried messages 
@@ -196,6 +198,10 @@ After running `docker-compose up` command, you can run any application you want.
 #### With Distributed Tracing Support
 
 Please refer to [Tracing Example](examples/with-tracing/README.md)
+
+#### With Pause & Resume Consumer
+
+Please refer to [Pause Resume Example](examples/with-pause-resume-consumer)
 
 #### With Grafana & Prometheus
 

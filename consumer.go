@@ -48,6 +48,7 @@ func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 
 func (c *consumer) Consume() {
 	go c.subprocesses.Start()
+
 	c.wg.Add(1)
 	go c.startConsume()
 
