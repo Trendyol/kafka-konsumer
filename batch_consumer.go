@@ -25,7 +25,7 @@ func (b *batchConsumer) Pause() {
 }
 
 func (b *batchConsumer) Resume() {
-	b.logger.Info("Consumer is resumed!")
+	b.logger.Info("Batch consumer is resumed!")
 	b.pauseConsuming = false
 	b.context, b.cancelFn = context.WithCancel(context.Background())
 }
