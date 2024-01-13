@@ -1,7 +1,6 @@
 package kafka
 
 import (
-	"context"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -16,15 +15,11 @@ type consumer struct {
 }
 
 func (c *consumer) Pause() {
-	c.logger.Info("Consumer is paused!")
-	c.pauseConsuming = true
-	c.cancelFn()
+	c.base.Pause()
 }
 
 func (c *consumer) Resume() {
-	c.logger.Info("Consumer is resumed!")
-	c.pauseConsuming = false
-	c.context, c.cancelFn = context.WithCancel(context.Background())
+	c.base.Resume()
 }
 
 func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {

@@ -164,6 +164,18 @@ func (c *base) startConsume() {
 	}
 }
 
+func (c *base) Pause() {
+	c.logger.Info("Consumer is paused!")
+	c.pauseConsuming = true
+	c.cancelFn()
+}
+
+func (c *base) Resume() {
+	c.logger.Info("Consumer is resumed!")
+	c.pauseConsuming = false
+	c.context, c.cancelFn = context.WithCancel(context.Background())
+}
+
 func (c *base) WithLogger(logger LoggerInterface) {
 	c.logger = logger
 }
