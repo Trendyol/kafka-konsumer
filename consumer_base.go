@@ -20,10 +20,10 @@ type Consumer interface {
 	// Consume starts consuming
 	Consume()
 
-	// Pause pauses consumer, it is stop consuming new messages
+	// Pause function pauses consumer, it is stop consuming new messages
 	Pause()
 
-	// Resume resumes consumer, it is start to working
+	// Resume function resumes consumer, it is start to working
 	Resume()
 
 	// WithLogger for injecting custom log implementation
