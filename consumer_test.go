@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 )
 
@@ -121,10 +122,10 @@ func Test_consumer_Pause(t *testing.T) {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	c := consumer{
 		base: &base{
-			logger:   NewZapLogger(LogLevelDebug),
-			pause:    make(chan struct{}),
-			context:  ctx,
-			cancelFn: cancelFn,
+			logger:  NewZapLogger(LogLevelDebug),
+			pause:   make(chan struct{}),
+			context: ctx, cancelFn: cancelFn,
+			consumerState: stateRunning,
 		},
 	}
 	go func() {
@@ -142,12 +143,16 @@ func Test_consumer_Pause(t *testing.T) {
 
 func Test_consumer_Resume(t *testing.T) {
 	// Given
+	mc := mockReader{}
 	ctx, cancelFn := context.WithCancel(context.Background())
 	c := consumer{
 		base: &base{
-			logger:   NewZapLogger(LogLevelDebug),
-			context:  ctx,
-			cancelFn: cancelFn,
+			r:       &mc,
+			logger:  NewZapLogger(LogLevelDebug),
+			pause:   make(chan struct{}),
+			quit:    make(chan struct{}),
+			wg:      sync.WaitGroup{},
+			context: ctx, cancelFn: cancelFn,
 		},
 	}
 

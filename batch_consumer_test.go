@@ -360,10 +360,10 @@ func Test_batchConsumer_Pause(t *testing.T) {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	bc := batchConsumer{
 		base: &base{
-			logger:   NewZapLogger(LogLevelDebug),
-			context:  ctx,
-			pause:    make(chan struct{}),
-			cancelFn: cancelFn,
+			logger:  NewZapLogger(LogLevelDebug),
+			pause:   make(chan struct{}),
+			context: ctx, cancelFn: cancelFn,
+			consumerState: stateRunning,
 		},
 	}
 
@@ -382,12 +382,16 @@ func Test_batchConsumer_Pause(t *testing.T) {
 
 func Test_batchConsumer_Resume(t *testing.T) {
 	// Given
+	mc := mockReader{}
 	ctx, cancelFn := context.WithCancel(context.Background())
 	bc := batchConsumer{
 		base: &base{
-			logger:   NewZapLogger(LogLevelDebug),
-			context:  ctx,
-			cancelFn: cancelFn,
+			r:       &mc,
+			logger:  NewZapLogger(LogLevelDebug),
+			pause:   make(chan struct{}),
+			quit:    make(chan struct{}),
+			wg:      sync.WaitGroup{},
+			context: ctx, cancelFn: cancelFn,
 		},
 	}
 

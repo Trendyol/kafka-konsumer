@@ -179,7 +179,6 @@ func (c *base) Pause() {
 	c.cancelFn()
 
 	c.pause <- struct{}{}
-	close(c.pause)
 
 	c.consumerState = statePaused
 }
@@ -200,7 +199,7 @@ func (c *base) WithLogger(logger LoggerInterface) {
 }
 
 func (c *base) Stop() error {
-	c.logger.Info("Stop called!")
+	c.logger.Info("Stop is called!")
 
 	var err error
 	c.once.Do(func() {
@@ -208,7 +207,7 @@ func (c *base) Stop() error {
 		c.cancelFn()
 
 		// In order to save cpu, we break startConsume loop in pause mode.
-		// If consumer is pause mode, and Stop called
+		// If consumer is pause mode and Stop is called
 		// We need to close incomingMessageStream, because c.wg.Wait() blocks indefinitely.
 		if c.consumerState == stateRunning {
 			c.quit <- struct{}{}
