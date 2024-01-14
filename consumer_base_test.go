@@ -19,7 +19,8 @@ func Test_base_startConsume(t *testing.T) {
 			wg: sync.WaitGroup{}, r: &mc,
 			incomingMessageStream: make(chan *IncomingMessage),
 			quit:                  make(chan struct{}),
-			logger:                NewZapLogger(LogLevelDebug),
+			pause:                 make(chan struct{}),
+			logger:                NewZapLogger(LogLevelInfo),
 		}
 		b.context, b.cancelFn = context.WithCancel(context.Background())
 
@@ -61,33 +62,42 @@ func Test_base_Pause(t *testing.T) {
 	// Given
 	ctx, cancelFn := context.WithCancel(context.Background())
 	b := base{
-		logger: NewZapLogger(LogLevelDebug), pauseConsuming: false,
+		logger:  NewZapLogger(LogLevelDebug),
+		pause:   make(chan struct{}),
 		context: ctx, cancelFn: cancelFn,
 	}
+	go func() {
+		<-b.pause
+	}()
 
 	// When
 	b.Pause()
 
 	// Then
-	if b.pauseConsuming != true {
-		t.Fatal("pauseConsuming must be true!")
+	if b.consumerState != statePaused {
+		t.Fatal("consumer state must be in paused")
 	}
 }
 
 func Test_base_Resume(t *testing.T) {
 	// Given
+	mc := mockReader{}
 	ctx, cancelFn := context.WithCancel(context.Background())
 	b := base{
-		logger: NewZapLogger(LogLevelDebug), pauseConsuming: false,
+		r:       &mc,
+		logger:  NewZapLogger(LogLevelDebug),
+		quit:    make(chan struct{}),
+		pause:   make(chan struct{}),
 		context: ctx, cancelFn: cancelFn,
+		wg: sync.WaitGroup{},
 	}
 
 	// When
 	b.Resume()
 
 	// Then
-	if b.pauseConsuming != false {
-		t.Fatal("pauseConsuming must be true!")
+	if b.consumerState != stateRunning {
+		t.Fatal("consumer state must be in running")
 	}
 	if ctx == b.context {
 		t.Fatal("contexts must be differ!")

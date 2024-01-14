@@ -39,6 +39,13 @@ type Reader interface {
 	CommitMessages(messages []kafka.Message) error
 }
 
+type state string
+
+const (
+	stateRunning state = "running"
+	statePaused  state = "paused"
+)
+
 type base struct {
 	cronsumer                 kcronsumer.Cronsumer
 	api                       API
@@ -48,6 +55,7 @@ type base struct {
 	r                         Reader
 	cancelFn                  context.CancelFunc
 	metric                    *ConsumerMetric
+	pause                     chan struct{}
 	quit                      chan struct{}
 	messageProcessedStream    chan struct{}
 	incomingMessageStream     chan *IncomingMessage
@@ -62,7 +70,7 @@ type base struct {
 	retryEnabled              bool
 	transactionalRetry        bool
 	distributedTracingEnabled bool
-	pauseConsuming            bool
+	consumerState             state
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -86,6 +94,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		metric:                    &ConsumerMetric{},
 		incomingMessageStream:     make(chan *IncomingMessage, messageChSize),
 		quit:                      make(chan struct{}),
+		pause:                     make(chan struct{}),
 		concurrency:               cfg.Concurrency,
 		retryEnabled:              cfg.RetryEnabled,
 		transactionalRetry:        *cfg.TransactionalRetry,
@@ -97,6 +106,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		messageProcessedStream:    make(chan struct{}, cfg.Concurrency),
 		singleConsumingStream:     make(chan *Message, cfg.Concurrency),
 		batchConsumingStream:      make(chan []*Message, cfg.Concurrency),
+		consumerState:             stateRunning,
 	}
 
 	if cfg.DistributedTracingEnabled {
@@ -132,14 +142,13 @@ func (c *base) startConsume() {
 
 	for {
 		select {
+		case <-c.pause:
+			c.logger.Debug("startConsume exited!")
+			return
 		case <-c.quit:
 			close(c.incomingMessageStream)
 			return
 		default:
-			if c.pauseConsuming {
-				continue
-			}
-
 			m := &kafka.Message{}
 			err := c.r.FetchMessage(c.context, m)
 			if err != nil {
@@ -166,14 +175,24 @@ func (c *base) startConsume() {
 
 func (c *base) Pause() {
 	c.logger.Info("Consumer is paused!")
-	c.pauseConsuming = true
+
 	c.cancelFn()
+
+	c.pause <- struct{}{}
+	close(c.pause)
+
+	c.consumerState = statePaused
 }
 
 func (c *base) Resume() {
 	c.logger.Info("Consumer is resumed!")
-	c.pauseConsuming = false
+
+	c.pause = make(chan struct{})
 	c.context, c.cancelFn = context.WithCancel(context.Background())
+	c.consumerState = stateRunning
+
+	c.wg.Add(1)
+	go c.startConsume()
 }
 
 func (c *base) WithLogger(logger LoggerInterface) {
@@ -187,7 +206,16 @@ func (c *base) Stop() error {
 	c.once.Do(func() {
 		c.subprocesses.Stop()
 		c.cancelFn()
-		c.quit <- struct{}{}
+
+		// In order to save cpu, we break startConsume loop in pause mode.
+		// If consumer is pause mode, and Stop called
+		// We need to close incomingMessageStream, because c.wg.Wait() blocks indefinitely.
+		if c.consumerState == stateRunning {
+			c.quit <- struct{}{}
+		} else if c.consumerState == statePaused {
+			close(c.incomingMessageStream)
+		}
+
 		c.wg.Wait()
 		err = c.r.Close()
 	})

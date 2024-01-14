@@ -33,15 +33,16 @@ func main() {
 
 		time.Sleep(10 * time.Second)
 		consumer.Resume()
+		/*
+			time.Sleep(10 * time.Second)
+			consumer.Pause()
 
-		time.Sleep(10 * time.Second)
-		consumer.Pause()
+				time.Sleep(10 * time.Second)
+				consumer.Resume()
 
-		time.Sleep(10 * time.Second)
-		consumer.Resume()
-
-		time.Sleep(10 * time.Second)
-		consumer.Pause()
+				time.Sleep(10 * time.Second)
+				consumer.Pause()
+		*/
 	}()
 
 	c := make(chan os.Signal, 1)

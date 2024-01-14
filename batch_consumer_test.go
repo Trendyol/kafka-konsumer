@@ -362,16 +362,21 @@ func Test_batchConsumer_Pause(t *testing.T) {
 		base: &base{
 			logger:   NewZapLogger(LogLevelDebug),
 			context:  ctx,
+			pause:    make(chan struct{}),
 			cancelFn: cancelFn,
 		},
 	}
+
+	go func() {
+		<-bc.base.pause
+	}()
 
 	// When
 	bc.Pause()
 
 	// Then
-	if bc.base.pauseConsuming != true {
-		t.Fatal("pauseConsuming must be true!")
+	if bc.base.consumerState != statePaused {
+		t.Fatal("consumer state must be in paused")
 	}
 }
 
@@ -390,8 +395,8 @@ func Test_batchConsumer_Resume(t *testing.T) {
 	bc.Resume()
 
 	// Then
-	if bc.base.pauseConsuming != false {
-		t.Fatal("pauseConsuming must be false!")
+	if bc.base.consumerState != stateRunning {
+		t.Fatal("consumer state must be in resume!")
 	}
 }
 

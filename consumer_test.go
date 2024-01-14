@@ -122,17 +122,21 @@ func Test_consumer_Pause(t *testing.T) {
 	c := consumer{
 		base: &base{
 			logger:   NewZapLogger(LogLevelDebug),
+			pause:    make(chan struct{}),
 			context:  ctx,
 			cancelFn: cancelFn,
 		},
 	}
+	go func() {
+		<-c.base.pause
+	}()
 
 	// When
 	c.Pause()
 
 	// Then
-	if c.base.pauseConsuming != true {
-		t.Fatal("pauseConsuming must be true!")
+	if c.base.consumerState != statePaused {
+		t.Fatal("consumer state must be in paused")
 	}
 }
 
@@ -151,7 +155,7 @@ func Test_consumer_Resume(t *testing.T) {
 	c.Resume()
 
 	// Then
-	if c.base.pauseConsuming != false {
-		t.Fatal("pauseConsuming must be false!")
+	if c.base.consumerState != stateRunning {
+		t.Fatal("consumer state must be in running")
 	}
 }
