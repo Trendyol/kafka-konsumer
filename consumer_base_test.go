@@ -3,11 +3,12 @@ package kafka
 import (
 	"context"
 	"errors"
-	"github.com/google/go-cmp/cmp"
-	"github.com/segmentio/kafka-go"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/segmentio/kafka-go"
 )
 
 func Test_base_startConsume(t *testing.T) {
