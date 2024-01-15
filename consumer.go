@@ -14,6 +14,14 @@ type consumer struct {
 	consumeFn func(*Message) error
 }
 
+func (c *consumer) Pause() {
+	c.base.Pause()
+}
+
+func (c *consumer) Resume() {
+	c.base.Resume()
+}
+
 func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	consumerBase, err := newBase(cfg, cfg.Concurrency)
 	if err != nil {
@@ -40,6 +48,7 @@ func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 
 func (c *consumer) Consume() {
 	go c.subprocesses.Start()
+
 	c.wg.Add(1)
 	go c.startConsume()
 

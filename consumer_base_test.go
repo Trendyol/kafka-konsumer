@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-
 	"github.com/segmentio/kafka-go"
 )
 
@@ -16,10 +15,13 @@ func Test_base_startConsume(t *testing.T) {
 	t.Run("Return_When_Quit_Signal_Is_Came", func(t *testing.T) {
 		mc := mockReader{wantErr: true}
 		b := base{
-			wg: sync.WaitGroup{}, r: &mc,
+			wg:                    sync.WaitGroup{},
+			r:                     &mc,
 			incomingMessageStream: make(chan *IncomingMessage),
 			quit:                  make(chan struct{}),
-			logger:                NewZapLogger(LogLevelDebug),
+			pause:                 make(chan struct{}),
+			logger:                NewZapLogger(LogLevelError),
+			consumerState:         stateRunning,
 		}
 		b.context, b.cancelFn = context.WithCancel(context.Background())
 
@@ -55,6 +57,53 @@ func Test_base_startConsume(t *testing.T) {
 			t.Error(diff)
 		}
 	})
+}
+
+func Test_base_Pause(t *testing.T) {
+	// Given
+	ctx, cancelFn := context.WithCancel(context.Background())
+	b := base{
+		logger:  NewZapLogger(LogLevelDebug),
+		pause:   make(chan struct{}),
+		context: ctx, cancelFn: cancelFn,
+		consumerState: stateRunning,
+	}
+	go func() {
+		<-b.pause
+	}()
+
+	// When
+	b.Pause()
+
+	// Then
+	if b.consumerState != statePaused {
+		t.Fatal("consumer state must be in paused")
+	}
+}
+
+func Test_base_Resume(t *testing.T) {
+	// Given
+	mc := mockReader{}
+	ctx, cancelFn := context.WithCancel(context.Background())
+	b := base{
+		r:       &mc,
+		logger:  NewZapLogger(LogLevelDebug),
+		pause:   make(chan struct{}),
+		quit:    make(chan struct{}),
+		wg:      sync.WaitGroup{},
+		context: ctx, cancelFn: cancelFn,
+	}
+
+	// When
+	b.Resume()
+
+	// Then
+	if b.consumerState != stateRunning {
+		t.Fatal("consumer state must be in running")
+	}
+	if ctx == b.context {
+		t.Fatal("contexts must be differ!")
+	}
 }
 
 type mockReader struct {

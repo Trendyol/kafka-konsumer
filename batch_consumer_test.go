@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"strconv"
@@ -351,6 +352,55 @@ func Test_batchConsumer_chunk(t *testing.T) {
 				t.Errorf("For chunkSize %d, expected %v, but got %v", tc.chunkSize, tc.expected, chunkedMessages)
 			}
 		})
+	}
+}
+
+func Test_batchConsumer_Pause(t *testing.T) {
+	// Given
+	ctx, cancelFn := context.WithCancel(context.Background())
+	bc := batchConsumer{
+		base: &base{
+			logger:  NewZapLogger(LogLevelDebug),
+			pause:   make(chan struct{}),
+			context: ctx, cancelFn: cancelFn,
+			consumerState: stateRunning,
+		},
+	}
+
+	go func() {
+		<-bc.base.pause
+	}()
+
+	// When
+	bc.Pause()
+
+	// Then
+	if bc.base.consumerState != statePaused {
+		t.Fatal("consumer state must be in paused")
+	}
+}
+
+func Test_batchConsumer_Resume(t *testing.T) {
+	// Given
+	mc := mockReader{}
+	ctx, cancelFn := context.WithCancel(context.Background())
+	bc := batchConsumer{
+		base: &base{
+			r:       &mc,
+			logger:  NewZapLogger(LogLevelDebug),
+			pause:   make(chan struct{}),
+			quit:    make(chan struct{}),
+			wg:      sync.WaitGroup{},
+			context: ctx, cancelFn: cancelFn,
+		},
+	}
+
+	// When
+	bc.Resume()
+
+	// Then
+	if bc.base.consumerState != stateRunning {
+		t.Fatal("consumer state must be in resume!")
 	}
 }
 

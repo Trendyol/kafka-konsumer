@@ -105,6 +105,67 @@ func Test_Should_Consume_Message_Successfully(t *testing.T) {
 	}
 }
 
+func Test_Should_Pause_And_Resume_Successfully(t *testing.T) {
+	// Given
+	topic := "pause-topic"
+	consumerGroup := "pause-topic-cg"
+	brokerAddress := "localhost:9092"
+
+	conn, cleanUp := createTopicAndWriteMessages(t, topic, nil)
+	defer cleanUp()
+
+	messageCh := make(chan *kafka.Message)
+
+	consumerCfg := &kafka.ConsumerConfig{
+		Reader: kafka.ReaderConfig{Brokers: []string{brokerAddress}, Topic: topic, GroupID: consumerGroup},
+		ConsumeFn: func(message *kafka.Message) error {
+			messageCh <- message
+			return nil
+		},
+	}
+
+	consumer, _ := kafka.NewConsumer(consumerCfg)
+	defer consumer.Stop()
+
+	consumer.Consume()
+
+	producer := &segmentio.Writer{
+		Topic:                  topic,
+		Addr:                   segmentio.TCP(brokerAddress),
+		AllowAutoTopicCreation: true,
+	}
+
+	// When
+	consumer.Pause()
+
+	err := producer.WriteMessages(context.Background(), []segmentio.Message{{}, {}, {}}...)
+	if err != nil {
+		t.Fatalf("error producing step %s", err.Error())
+	}
+
+	// Then
+	timeoutCtx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+
+	select {
+	case <-timeoutCtx.Done():
+		o, _ := conn.ReadLastOffset()
+		if o != 3 {
+			t.Fatalf("offset %v must be equal to 3", o)
+		}
+	case <-messageCh:
+		t.Fatal("Consumer is Pause Mode so it is not possible to consume message!")
+	}
+
+	// When
+	consumer.Resume()
+
+	// Then
+	<-messageCh
+	<-messageCh
+	<-messageCh
+}
+
 func Test_Should_Batch_Consume_Messages_Successfully(t *testing.T) {
 	// Given
 	topic := "batch-topic"

@@ -17,6 +17,14 @@ type batchConsumer struct {
 	messageGroupLimit int
 }
 
+func (b *batchConsumer) Pause() {
+	b.base.Pause()
+}
+
+func (b *batchConsumer) Resume() {
+	b.base.Resume()
+}
+
 func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	consumerBase, err := newBase(cfg, cfg.BatchConfiguration.MessageGroupLimit*cfg.Concurrency)
 	if err != nil {
