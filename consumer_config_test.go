@@ -26,6 +26,9 @@ func TestConsumerConfig_validate(t *testing.T) {
 		if *cfg.TransactionalRetry != true {
 			t.Fatal("Default Transactional Retry is true")
 		}
+		if cfg.MessageGroupDuration != time.Second {
+			t.Fatal("Message Group Duration default value must equal to 1s")
+		}
 	})
 	t.Run("Set_Defaults_When_Distributed_Tracing_Enabled", func(t *testing.T) {
 		// Given
