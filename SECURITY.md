@@ -6,7 +6,7 @@ Security updates are applied only to the most recent releases.
 
 ## Reporting a Vulnerability
 
-To securely report a vulnerability, please [open an advisory on GitHub](). This form is also accessible when [submitting a new issue]().
+To securely report a vulnerability, please [submit a new issue on GitHub](https://github.com/Trendyol/kafka-konsumer/issues/new).
 
 ## Vulnerability Process
 
