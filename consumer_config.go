@@ -76,6 +76,12 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 		LogLevel: lcronsumer.Level(cfg.RetryConfiguration.LogLevel),
 	}
 
+	if cfg.RetryConfiguration.SkipMessageByHeaderFn != nil {
+		cronsumerCfg.Consumer.SkipMessageByHeaderFn = func(headers []kcronsumer.Header) bool {
+			return cfg.RetryConfiguration.SkipMessageByHeaderFn(toHeaders(headers))
+		}
+	}
+
 	if !cfg.RetryConfiguration.SASL.IsEmpty() {
 		cronsumerCfg.SASL.Enabled = true
 		cronsumerCfg.SASL.AuthType = string(cfg.RetryConfiguration.SASL.Type)
@@ -110,18 +116,32 @@ type DistributedTracingConfiguration struct {
 	Propagator     propagation.TextMapPropagator
 }
 
+type SkipMessageByHeaderFn func(headers []Header) bool
+
+func toHeaders(cronsumerHeaders []kcronsumer.Header) []Header {
+	headers := make([]Header, 0, len(cronsumerHeaders))
+	for i := range cronsumerHeaders {
+		headers = append(headers, Header{
+			Key:   cronsumerHeaders[i].Key,
+			Value: cronsumerHeaders[i].Value,
+		})
+	}
+	return headers
+}
+
 type RetryConfiguration struct {
-	SASL            *SASLConfig
-	TLS             *TLSConfig
-	ClientID        string
-	StartTimeCron   string
-	Topic           string
-	DeadLetterTopic string
-	Rack            string
-	LogLevel        LogLevel
-	Brokers         []string
-	MaxRetry        int
-	WorkDuration    time.Duration
+	SASL                  *SASLConfig
+	TLS                   *TLSConfig
+	ClientID              string
+	StartTimeCron         string
+	Topic                 string
+	DeadLetterTopic       string
+	Rack                  string
+	LogLevel              LogLevel
+	Brokers               []string
+	MaxRetry              int
+	WorkDuration          time.Duration
+	SkipMessageByHeaderFn SkipMessageByHeaderFn
 }
 
 type BatchConfiguration struct {

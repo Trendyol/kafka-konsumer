@@ -8,7 +8,6 @@ linters:
   disable-all: true
   enable:
     - bodyclose
-    - depguard
     - errcheck
     - dupl
     - exhaustive
@@ -43,6 +42,7 @@ issues:
     - path: _test\.go
       linters:
         - errcheck
+        - gosec
         - funlen
 
 service:
