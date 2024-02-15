@@ -1,10 +1,11 @@
 package kafka
 
 import (
-	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
-	"github.com/google/go-cmp/cmp"
 	"testing"
 	"time"
+
+	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestConsumerConfig_validate(t *testing.T) {
