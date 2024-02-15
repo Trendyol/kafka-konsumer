@@ -65,7 +65,7 @@ func Test_base_startConsume(t *testing.T) {
 		b := base{
 			wg:                    sync.WaitGroup{},
 			r:                     &mc,
-			logger:                NewZapLogger(LogLevelError),
+			logger:                NewZapLogger(LogLevelDebug),
 			incomingMessageStream: make(chan *IncomingMessage),
 			skipMessageByHeaderFn: func(header []kafka.Header) bool {
 				defer func() {

@@ -162,7 +162,7 @@ func (c *base) startConsume() {
 			}
 
 			if c.skipMessageByHeaderFn != nil && c.skipMessageByHeaderFn(m.Headers) {
-				c.logger.Infof("Message is not processed. Header filter applied. Headers: %v", (*m).Headers)
+				c.logger.Infof("Message is not processed. Header filter applied. Headers: %v", m.Headers)
 				if err = c.r.CommitMessages([]kafka.Message{*m}); err != nil {
 					c.logger.Errorf("Commit Error %s,", err.Error())
 				}
