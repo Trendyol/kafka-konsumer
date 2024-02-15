@@ -72,7 +72,7 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 			RebalanceTimeout:      cfg.Reader.RebalanceTimeout,
 			StartOffset:           kcronsumer.ToStringOffset(cfg.Reader.StartOffset),
 			RetentionTime:         cfg.Reader.RetentionTime,
-			SkipMessageByHeaderFn: cfg.RetryConfiguration.SkipMessageByHeaderFn,
+			SkipMessageByHeaderFn: kcronsumer.SkipMessageByHeaderFn(cfg.RetryConfiguration.SkipMessageByHeaderFn),
 		},
 		LogLevel: lcronsumer.Level(cfg.RetryConfiguration.LogLevel),
 	}
@@ -111,6 +111,8 @@ type DistributedTracingConfiguration struct {
 	Propagator     propagation.TextMapPropagator
 }
 
+type SkipMessageByHeaderFn kcronsumer.SkipMessageByHeaderFn
+
 type RetryConfiguration struct {
 	SASL                  *SASLConfig
 	TLS                   *TLSConfig
@@ -123,7 +125,7 @@ type RetryConfiguration struct {
 	Brokers               []string
 	MaxRetry              int
 	WorkDuration          time.Duration
-	SkipMessageByHeaderFn kcronsumer.SkipMessageByHeaderFn
+	SkipMessageByHeaderFn SkipMessageByHeaderFn
 }
 
 type BatchConfiguration struct {

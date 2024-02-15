@@ -2,3 +2,4 @@
 dist/
 unit_coverage.out
 unit_coverage.html
+.DS_Store
