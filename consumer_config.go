@@ -21,6 +21,8 @@ type PreBatchFn func([]*Message) []*Message
 
 type ConsumeFn func(*Message) error
 
+type SkipMessageByHeaderFn func(header []kafka.Header) bool
+
 type DialConfig struct {
 	Timeout   time.Duration
 	KeepAlive time.Duration
@@ -36,6 +38,7 @@ type ConsumerConfig struct {
 	Dial                            *DialConfig
 	BatchConfiguration              *BatchConfiguration
 	ConsumeFn                       ConsumeFn
+	SkipMessageByHeaderFn           SkipMessageByHeaderFn
 	TransactionalRetry              *bool
 	RetryConfiguration              RetryConfiguration
 	LogLevel                        LogLevel
@@ -115,8 +118,6 @@ type DistributedTracingConfiguration struct {
 	TracerProvider trace.TracerProvider
 	Propagator     propagation.TextMapPropagator
 }
-
-type SkipMessageByHeaderFn func(headers []Header) bool
 
 func toHeaders(cronsumerHeaders []kcronsumer.Header) []Header {
 	headers := make([]Header, 0, len(cronsumerHeaders))

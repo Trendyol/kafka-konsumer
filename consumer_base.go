@@ -54,6 +54,7 @@ type base struct {
 	context                   context.Context
 	r                         Reader
 	cancelFn                  context.CancelFunc
+	skipMessageByHeaderFn     SkipMessageByHeaderFn
 	metric                    *ConsumerMetric
 	pause                     chan struct{}
 	quit                      chan struct{}
@@ -107,6 +108,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		singleConsumingStream:     make(chan *Message, cfg.Concurrency),
 		batchConsumingStream:      make(chan []*Message, cfg.Concurrency),
 		consumerState:             stateRunning,
+		skipMessageByHeaderFn:     cfg.SkipMessageByHeaderFn,
 	}
 
 	if cfg.DistributedTracingEnabled {
@@ -156,6 +158,14 @@ func (c *base) startConsume() {
 					continue
 				}
 				c.logger.Warnf("Message could not read, err %s", err.Error())
+				continue
+			}
+
+			if c.skipMessageByHeaderFn != nil && c.skipMessageByHeaderFn(m.Headers) {
+				c.logger.Infof("Message is not processed. Header filter applied. Headers: %v", m.Headers)
+				if err = c.r.CommitMessages([]kafka.Message{*m}); err != nil {
+					c.logger.Errorf("Commit Error %s,", err.Error())
+				}
 				continue
 			}
 

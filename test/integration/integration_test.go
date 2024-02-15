@@ -436,6 +436,63 @@ func Test_Should_Batch_Consume_With_PreBatch_Enabled(t *testing.T) {
 	}
 }
 
+func Test_Should_Skip_Message_When_Header_Filter_Given(t *testing.T) {
+	// Given
+	topic := "header-filter-topic"
+	consumerGroup := "header-filter-cg"
+	brokerAddress := "localhost:9092"
+
+	incomingMessage := []segmentio.Message{
+		{
+			Topic: topic,
+			Headers: []segmentio.Header{
+				{Key: "SkipMessage", Value: []byte("any")},
+			},
+			Key:   []byte("1"),
+			Value: []byte(`foo`),
+		},
+	}
+
+	_, cleanUp := createTopicAndWriteMessages(t, topic, incomingMessage)
+	defer cleanUp()
+
+	consumeCh := make(chan struct{})
+	skipMessageCh := make(chan struct{})
+
+	consumerCfg := &kafka.ConsumerConfig{
+		Reader: kafka.ReaderConfig{Brokers: []string{brokerAddress}, Topic: topic, GroupID: consumerGroup},
+		SkipMessageByHeaderFn: func(header []kafka.Header) bool {
+			defer func() {
+				skipMessageCh <- struct{}{}
+			}()
+			for _, h := range header {
+				if h.Key == "SkipMessage" {
+					return true
+				}
+			}
+			return false
+		},
+		ConsumeFn: func(message *kafka.Message) error {
+			consumeCh <- struct{}{}
+			return nil
+		},
+	}
+
+	consumer, _ := kafka.NewConsumer(consumerCfg)
+	defer consumer.Stop()
+
+	consumer.Consume()
+
+	// Then
+	<-skipMessageCh
+
+	select {
+	case <-consumeCh:
+		t.Fatal("Message must be skipped! consumeCh mustn't receive any value")
+	case <-time.After(1 * time.Second):
+	}
+}
+
 func createTopicAndWriteMessages(t *testing.T, topicName string, messages []segmentio.Message) (*segmentio.Conn, func()) {
 	t.Helper()
 
