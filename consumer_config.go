@@ -55,24 +55,26 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 		ClientID: cfg.RetryConfiguration.ClientID,
 		Brokers:  cfg.RetryConfiguration.Brokers,
 		Consumer: kcronsumer.ConsumerConfig{
-			ClientID:              cfg.ClientID,
-			GroupID:               cfg.Reader.GroupID,
-			Topic:                 cfg.RetryConfiguration.Topic,
-			DeadLetterTopic:       cfg.RetryConfiguration.DeadLetterTopic,
-			Cron:                  cfg.RetryConfiguration.StartTimeCron,
-			Duration:              cfg.RetryConfiguration.WorkDuration,
-			Concurrency:           cfg.Concurrency,
-			MinBytes:              cfg.Reader.MinBytes,
-			MaxBytes:              cfg.Reader.MaxBytes,
-			MaxRetry:              cfg.RetryConfiguration.MaxRetry,
-			MaxWait:               cfg.Reader.MaxWait,
-			CommitInterval:        cfg.Reader.CommitInterval,
-			HeartbeatInterval:     cfg.Reader.HeartbeatInterval,
-			SessionTimeout:        cfg.Reader.SessionTimeout,
-			RebalanceTimeout:      cfg.Reader.RebalanceTimeout,
-			StartOffset:           kcronsumer.ToStringOffset(cfg.Reader.StartOffset),
-			RetentionTime:         cfg.Reader.RetentionTime,
-			SkipMessageByHeaderFn: kcronsumer.SkipMessageByHeaderFn(cfg.RetryConfiguration.SkipMessageByHeaderFn),
+			ClientID:          cfg.ClientID,
+			GroupID:           cfg.Reader.GroupID,
+			Topic:             cfg.RetryConfiguration.Topic,
+			DeadLetterTopic:   cfg.RetryConfiguration.DeadLetterTopic,
+			Cron:              cfg.RetryConfiguration.StartTimeCron,
+			Duration:          cfg.RetryConfiguration.WorkDuration,
+			Concurrency:       cfg.Concurrency,
+			MinBytes:          cfg.Reader.MinBytes,
+			MaxBytes:          cfg.Reader.MaxBytes,
+			MaxRetry:          cfg.RetryConfiguration.MaxRetry,
+			MaxWait:           cfg.Reader.MaxWait,
+			CommitInterval:    cfg.Reader.CommitInterval,
+			HeartbeatInterval: cfg.Reader.HeartbeatInterval,
+			SessionTimeout:    cfg.Reader.SessionTimeout,
+			RebalanceTimeout:  cfg.Reader.RebalanceTimeout,
+			StartOffset:       kcronsumer.ToStringOffset(cfg.Reader.StartOffset),
+			RetentionTime:     cfg.Reader.RetentionTime,
+			SkipMessageByHeaderFn: func(headers []kcronsumer.Header) bool {
+				return cfg.RetryConfiguration.SkipMessageByHeaderFn(toHeader(headers))
+			},
 		},
 		LogLevel: lcronsumer.Level(cfg.RetryConfiguration.LogLevel),
 	}
@@ -111,7 +113,18 @@ type DistributedTracingConfiguration struct {
 	Propagator     propagation.TextMapPropagator
 }
 
-type SkipMessageByHeaderFn kcronsumer.SkipMessageByHeaderFn
+type SkipMessageByHeaderFn func(headers []Header) bool
+
+func toHeader(cronsumerHeaders []kcronsumer.Header) []Header {
+	headers := make([]Header, 0, len(cronsumerHeaders))
+	for i := range cronsumerHeaders {
+		headers = append(headers, Header{
+			Key:   headers[i].Key,
+			Value: headers[i].Value,
+		})
+	}
+	return headers
+}
 
 type RetryConfiguration struct {
 	SASL                  *SASLConfig
