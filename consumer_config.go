@@ -72,11 +72,14 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 			RebalanceTimeout:  cfg.Reader.RebalanceTimeout,
 			StartOffset:       kcronsumer.ToStringOffset(cfg.Reader.StartOffset),
 			RetentionTime:     cfg.Reader.RetentionTime,
-			SkipMessageByHeaderFn: func(headers []kcronsumer.Header) bool {
-				return cfg.RetryConfiguration.SkipMessageByHeaderFn(toHeader(headers))
-			},
 		},
 		LogLevel: lcronsumer.Level(cfg.RetryConfiguration.LogLevel),
+	}
+
+	if cfg.RetryConfiguration.SkipMessageByHeaderFn != nil {
+		cronsumerCfg.Consumer.SkipMessageByHeaderFn = func(headers []kcronsumer.Header) bool {
+			return cfg.RetryConfiguration.SkipMessageByHeaderFn(toHeaders(headers))
+		}
 	}
 
 	if !cfg.RetryConfiguration.SASL.IsEmpty() {
@@ -115,12 +118,12 @@ type DistributedTracingConfiguration struct {
 
 type SkipMessageByHeaderFn func(headers []Header) bool
 
-func toHeader(cronsumerHeaders []kcronsumer.Header) []Header {
+func toHeaders(cronsumerHeaders []kcronsumer.Header) []Header {
 	headers := make([]Header, 0, len(cronsumerHeaders))
 	for i := range cronsumerHeaders {
 		headers = append(headers, Header{
-			Key:   headers[i].Key,
-			Value: headers[i].Value,
+			Key:   cronsumerHeaders[i].Key,
+			Value: cronsumerHeaders[i].Value,
 		})
 	}
 	return headers
