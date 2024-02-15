@@ -57,6 +57,45 @@ func Test_base_startConsume(t *testing.T) {
 			t.Error(diff)
 		}
 	})
+
+	t.Run("Skip_Incoming_Messages_When_SkipMessageByHeaderFn_Is_Applied", func(t *testing.T) {
+		// Given
+		mc := mockReader{}
+		skipMessageCh := make(chan struct{})
+		b := base{
+			wg:                    sync.WaitGroup{},
+			r:                     &mc,
+			logger:                NewZapLogger(LogLevelError),
+			incomingMessageStream: make(chan *IncomingMessage),
+			skipMessageByHeaderFn: func(header []kafka.Header) bool {
+				defer func() {
+					skipMessageCh <- struct{}{}
+				}()
+
+				for _, h := range header {
+					if h.Key == "header" {
+						return true
+					}
+				}
+				return false
+			},
+		}
+
+		b.wg.Add(1)
+
+		// When
+		go b.startConsume()
+
+		// Then
+		<-skipMessageCh
+
+		// assert incomingMessageStream does not receive any value because message is skipped
+		select {
+		case <-b.incomingMessageStream:
+			t.Fatal("incoming message stream must equal to 0")
+		case <-time.After(1 * time.Second):
+		}
+	})
 }
 
 func Test_base_Pause(t *testing.T) {
