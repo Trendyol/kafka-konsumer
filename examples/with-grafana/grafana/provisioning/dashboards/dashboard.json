@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
+  "id": 2,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -117,7 +117,7 @@
           },
           "editorMode": "code",
           "expr": "kafka_konsumer_processed_messages_total_current{job=\"konsumer\"}",
-          "legendFormat": "__auto",
+          "legendFormat": "{{__name__}}",
           "range": true,
           "refId": "A"
         }
@@ -188,6 +188,103 @@
         "x": 12,
         "y": 0
       },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "last",
+            "lastNotNull"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PE4E52330B67298A4"
+          },
+          "editorMode": "code",
+          "expr": "kafka_konsumer_unprocessed_messages_total_current{job=\"konsumer\"}",
+          "legendFormat": "{{__name__}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Kafka Konsumer Unprocessed Messages Total",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PE4E52330B67298A4"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
       "id": 2,
       "options": {
         "legend": {
@@ -213,13 +310,13 @@
             "uid": "PE4E52330B67298A4"
           },
           "editorMode": "code",
-          "expr": "sum(rate(kafka_konsumer_processed_messages_total_current{job=\"konsumer\"}[1m]))",
-          "legendFormat": "__auto",
+          "expr": "kafka_cronsumer_retried_messages_total_current{job=\"konsumer\"}",
+          "legendFormat": "{{__name__}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Kafka Konsumer Processed Messages Rate",
+      "title": "Kafka Cronsumer Retried Message Total",
       "type": "timeseries"
     }
   ],
@@ -232,13 +329,13 @@
     "list": []
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Kafka Konsumer Dashboard",
   "uid": "DlIdtG_4z",
-  "version": 5,
+  "version": 10,
   "weekStart": ""
 }
