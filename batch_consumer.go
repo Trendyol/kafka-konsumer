@@ -3,6 +3,8 @@ package kafka
 import (
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/segmentio/kafka-go"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
@@ -51,8 +53,8 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	return &c, nil
 }
 
-func (b *batchConsumer) GetMetric() *ConsumerMetric {
-	return b.metric
+func (b *batchConsumer) GetMetricCollectors() []prometheus.Collector {
+	return b.base.GetMetricCollectors()
 }
 
 func (b *batchConsumer) Consume() {

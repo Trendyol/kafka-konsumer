@@ -51,12 +51,20 @@ type ConsumerConfig struct {
 	DistributedTracingEnabled       bool
 	RetryEnabled                    bool
 	APIEnabled                      bool
+
+	// MetricPrefix is used for prometheus fq name prefix.
+	// If not provided, default metric prefix value is `kafka_konsumer`.
+	// Currently, there are two exposed prometheus metrics. `processed_messages_total_current` and `unprocessed_messages_total_current`.
+	// So, if default metric prefix used, metrics names are `kafka_konsumer_processed_messages_total_current` and
+	// `kafka_konsumer_unprocessed_messages_total_current`.
+	MetricPrefix string
 }
 
 func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 	cronsumerCfg := kcronsumer.Config{
-		ClientID: cfg.RetryConfiguration.ClientID,
-		Brokers:  cfg.RetryConfiguration.Brokers,
+		MetricPrefix: cfg.RetryConfiguration.MetricPrefix,
+		ClientID:     cfg.RetryConfiguration.ClientID,
+		Brokers:      cfg.RetryConfiguration.Brokers,
 		Consumer: kcronsumer.ConsumerConfig{
 			ClientID:          cfg.ClientID,
 			GroupID:           cfg.Reader.GroupID,
@@ -131,6 +139,13 @@ func toHeaders(cronsumerHeaders []kcronsumer.Header) []Header {
 }
 
 type RetryConfiguration struct {
+	// MetricPrefix is used for prometheus fq name prefix.
+	// If not provided, default metric prefix value is `kafka_cronsumer`.
+	// Currently, there are two exposed prometheus metrics. `retried_messages_total_current` and `discarded_messages_total_current`.
+	// So, if default metric prefix used, metrics names are `kafka_cronsumer_retried_messages_total_current` and
+	// `kafka_cronsumer_discarded_messages_total_current`.
+	MetricPrefix string
+
 	SASL                  *SASLConfig
 	TLS                   *TLSConfig
 	ClientID              string
