@@ -19,6 +19,8 @@ defer consumer.Stop()
 
 consumer.Consume()
 fmt.Println("Consumer started...!")
+
+// consumer.Pause(), consumer.Resume()
 ```
 
 If you need to implement Pause & Resume functionality on your own applications, you need to call `Consume`. Because this
