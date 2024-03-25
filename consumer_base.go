@@ -67,6 +67,8 @@ type base struct {
 	incomingMessageStream     chan *IncomingMessage
 	singleConsumingStream     chan *Message
 	batchConsumingStream      chan []*Message
+	brokers                   []string
+	topic                     string
 	retryTopic                string
 	subprocesses              subprocesses
 	wg                        sync.WaitGroup
@@ -116,6 +118,8 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		consumerState:             stateRunning,
 		skipMessageByHeaderFn:     cfg.SkipMessageByHeaderFn,
 		metricPrefix:              cfg.MetricPrefix,
+		brokers:                   cfg.Reader.Brokers,
+		topic:                     cfg.Reader.Topic,
 	}
 
 	if cfg.DistributedTracingEnabled {
