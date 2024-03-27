@@ -26,6 +26,11 @@ type Consumer interface {
 	// Resume function resumes consumer, it is start to working
 	Resume()
 
+	// GetMetricCollectors for the purpose of making metric collectors available.
+	// You can register these collectors on your own http server.
+	// Please look at the examples/with-metric-collector directory.
+	GetMetricCollectors() []prometheus.Collector
+
 	// WithLogger for injecting custom log implementation
 	WithLogger(logger LoggerInterface)
 
@@ -72,6 +77,7 @@ type base struct {
 	transactionalRetry        bool
 	distributedTracingEnabled bool
 	consumerState             state
+	metricPrefix              string
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -109,6 +115,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		batchConsumingStream:      make(chan []*Message, cfg.Concurrency),
 		consumerState:             stateRunning,
 		skipMessageByHeaderFn:     cfg.SkipMessageByHeaderFn,
+		metricPrefix:              cfg.MetricPrefix,
 	}
 
 	if cfg.DistributedTracingEnabled {
@@ -125,6 +132,18 @@ func (c *base) setupCronsumer(cfg *ConsumerConfig, retryFn func(kcronsumer.Messa
 	c.retryTopic = cfg.RetryConfiguration.Topic
 	c.cronsumer = cronsumer.New(cfg.newCronsumerConfig(), retryFn)
 	c.subprocesses.Add(c.cronsumer)
+}
+
+func (c *base) GetMetricCollectors() []prometheus.Collector {
+	var metricCollectors []prometheus.Collector
+
+	if c.retryEnabled {
+		metricCollectors = c.cronsumer.GetMetricCollectors()
+	}
+
+	metricCollectors = append(metricCollectors, NewMetricCollector(c.metricPrefix, c.metric))
+
+	return metricCollectors
 }
 
 func (c *base) setupAPI(cfg *ConsumerConfig, consumerMetric *ConsumerMetric) {
