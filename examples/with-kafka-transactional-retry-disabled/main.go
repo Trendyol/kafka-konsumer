@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/Trendyol/kafka-konsumer/v2"
@@ -10,6 +11,17 @@ import (
 )
 
 func main() {
+	producer, _ := kafka.NewProducer(&kafka.ProducerConfig{
+		DistributedTracingConfiguration: kafka.DistributedTracingConfiguration{},
+		Writer:                          kafka.WriterConfig{Brokers: []string{"localhost:29092"}, Topic: "standart-topic"},
+	})
+
+	producer.ProduceBatch(context.Background(), []kafka.Message{
+		{Value: []byte("message1")},
+		{Value: []byte("message2")},
+		{Value: []byte("message3")},
+	})
+
 	consumerCfg := &kafka.ConsumerConfig{
 		Reader: kafka.ReaderConfig{
 			Brokers: []string{"localhost:29092"},
@@ -25,8 +37,8 @@ func main() {
 		RetryConfiguration: kafka.RetryConfiguration{
 			Brokers:       []string{"localhost:29092"},
 			Topic:         "retry-topic",
-			StartTimeCron: "*/5 * * * *",
-			WorkDuration:  4 * time.Minute,
+			StartTimeCron: "*/1 * * * *",
+			WorkDuration:  20 * time.Second,
 			MaxRetry:      3,
 		},
 		MessageGroupDuration: time.Second,
@@ -48,8 +60,9 @@ func main() {
 func batchConsumeFn(messages []*kafka.Message) error {
 	// you can add custom error handling here & flag messages
 	for i := range messages {
-		if i%2 == 0 {
+		if i < 2 {
 			messages[i].IsFailed = true
+			messages[i].ErrDescription = fmt.Sprintf("%d error", i+1)
 		}
 	}
 

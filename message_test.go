@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"bytes"
+	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"testing"
 
 	"github.com/segmentio/kafka-go"
@@ -112,4 +113,124 @@ func TestMessage_RemoveHeader(t *testing.T) {
 	if len(headers) != 0 {
 		t.Fatalf("Header length must be equal to 0")
 	}
+}
+
+func TestMessage_toRetryableMessage(t *testing.T) {
+	t.Run("When_error_description_exist", func(t *testing.T) {
+		// Given
+		message := Message{
+			Key:   []byte("key"),
+			Value: []byte("value"),
+			Headers: []Header{
+				{
+					Key:   "x-custom-client-header",
+					Value: []byte("bar"),
+				},
+			},
+			ErrDescription: "some error description",
+		}
+		expected := kcronsumer.Message{
+			Topic: "retry-topic",
+			Key:   []byte("key"),
+			Value: []byte("value"),
+			Headers: []kcronsumer.Header{
+				{
+					Key:   "x-custom-client-header",
+					Value: []byte("bar"),
+				},
+				{
+					Key:   "x-error-message",
+					Value: []byte("some error description"),
+				},
+			},
+		}
+
+		// When
+		actual := message.toRetryableMessage("retry-topic")
+
+		// Then
+		if actual.Topic != expected.Topic {
+			t.Errorf("topic must be %q", expected.Topic)
+		}
+
+		if !bytes.Equal(actual.Key, expected.Key) {
+			t.Errorf("Key must be equal to %q", string(expected.Key))
+		}
+
+		if !bytes.Equal(actual.Value, expected.Value) {
+			t.Errorf("Value must be equal to %q", string(expected.Value))
+		}
+
+		if len(actual.Headers) != 2 {
+			t.Error("Header length must be equal to 2")
+		}
+
+		if actual.Headers[0].Key != expected.Headers[0].Key {
+			t.Errorf("First Header key must be equal to %q", expected.Headers[0].Key)
+		}
+
+		if !bytes.Equal(actual.Headers[0].Value, expected.Headers[0].Value) {
+			t.Errorf("First Header value must be equal to %q", expected.Headers[0].Value)
+		}
+
+		if actual.Headers[1].Key != expected.Headers[1].Key {
+			t.Errorf("Second Header key must be equal to %q", expected.Headers[1].Key)
+		}
+
+		if !bytes.Equal(actual.Headers[1].Value, expected.Headers[1].Value) {
+			t.Errorf("Second Header value must be equal to %q", expected.Headers[1].Value)
+		}
+	})
+	t.Run("When_error_description_does_not_exist", func(t *testing.T) {
+		// Given
+		message := Message{
+			Key:   []byte("key"),
+			Value: []byte("value"),
+			Headers: []Header{
+				{
+					Key:   "x-custom-client-header",
+					Value: []byte("bar"),
+				},
+			},
+		}
+		expected := kcronsumer.Message{
+			Topic: "retry-topic",
+			Key:   []byte("key"),
+			Value: []byte("value"),
+			Headers: []kcronsumer.Header{
+				{
+					Key:   "x-custom-client-header",
+					Value: []byte("bar"),
+				},
+			},
+		}
+
+		// When
+		actual := message.toRetryableMessage("retry-topic")
+
+		// Then
+		if actual.Topic != expected.Topic {
+			t.Errorf("topic must be %q", expected.Topic)
+		}
+
+		if !bytes.Equal(actual.Key, expected.Key) {
+			t.Errorf("Key must be equal to %q", string(expected.Key))
+		}
+
+		if !bytes.Equal(actual.Value, expected.Value) {
+			t.Errorf("Value must be equal to %q", string(expected.Value))
+		}
+
+		if len(actual.Headers) != 1 {
+			t.Error("Header length must be equal to 1")
+		}
+
+		if actual.Headers[0].Key != expected.Headers[0].Key {
+			t.Errorf("First Header key must be equal to %q", expected.Headers[0].Key)
+		}
+
+		if !bytes.Equal(actual.Headers[0].Value, expected.Headers[0].Value) {
+			t.Errorf("First Header value must be equal to %q", expected.Headers[0].Value)
+		}
+	})
 }
