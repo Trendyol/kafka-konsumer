@@ -179,7 +179,6 @@ func (b *batchConsumer) process(chunkMessages []*Message) {
 			errorMessage := consumeErr.Error()
 			if b.transactionalRetry {
 				for i := range chunkMessages {
-					chunkMessages[i].ErrDescription = consumeErr.Error()
 					cronsumerMessages = append(cronsumerMessages, chunkMessages[i].toRetryableMessage(b.retryTopic, errorMessage))
 				}
 			} else {

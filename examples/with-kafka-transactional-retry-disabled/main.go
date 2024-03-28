@@ -12,8 +12,7 @@ import (
 
 func main() {
 	producer, _ := kafka.NewProducer(&kafka.ProducerConfig{
-		DistributedTracingConfiguration: kafka.DistributedTracingConfiguration{},
-		Writer:                          kafka.WriterConfig{Brokers: []string{"localhost:29092"}, Topic: "standart-topic"},
+		Writer: kafka.WriterConfig{Brokers: []string{"localhost:29092"}, Topic: "standart-topic"},
 	})
 
 	producer.ProduceBatch(context.Background(), []kafka.Message{

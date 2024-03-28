@@ -31,7 +31,7 @@ type Message struct {
 
 	// IsFailed Is only used on transactional retry disabled
 	IsFailed bool
-	// ErrDescription specifies IsFailed message error
+	// ErrDescription specifies the IsFailed message's error
 	ErrDescription string
 }
 
