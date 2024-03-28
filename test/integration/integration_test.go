@@ -242,12 +242,11 @@ func Test_Should_Batch_Retry_Only_Failed_Messages_When_Transactional_Retry_Is_Di
 		RetryConfiguration: kafka.RetryConfiguration{
 			Brokers:       []string{brokerAddress},
 			Topic:         retryTopic,
-			StartTimeCron: "*/1 * * * *",
-			WorkDuration:  50 * time.Second,
+			StartTimeCron: "*/5 * * * *",
+			WorkDuration:  4 * time.Minute,
 			MaxRetry:      3,
-			LogLevel:      "error",
 		},
-		MessageGroupDuration: 10 * time.Second,
+		MessageGroupDuration: 20 * time.Second,
 		BatchConfiguration: &kafka.BatchConfiguration{
 			MessageGroupLimit: 5,
 			BatchConsumeFn: func(messages []*kafka.Message) error {
