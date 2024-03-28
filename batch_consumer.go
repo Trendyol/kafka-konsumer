@@ -42,9 +42,7 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	}
 
 	if cfg.RetryEnabled {
-		c.base.setupCronsumer(cfg, func(message kcronsumer.Message) error {
-			return c.runKonsumerFn(message)
-		})
+		c.base.setupCronsumer(cfg, c.runKonsumerFn)
 	}
 
 	if cfg.APIEnabled {
