@@ -2,8 +2,9 @@ package kafka
 
 import (
 	"bytes"
-	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"testing"
+
+	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 
 	"github.com/segmentio/kafka-go"
 )
