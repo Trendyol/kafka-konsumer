@@ -404,6 +404,41 @@ func Test_batchConsumer_Resume(t *testing.T) {
 	}
 }
 
+func Test_batchConsumer_runKonsumerFn(t *testing.T) {
+	t.Run("Should_Return_Default_Error_When_Error_Description_Does_Not_Exist", func(t *testing.T) {
+		// Given
+		expectedError := errors.New("default error")
+		bc := batchConsumer{consumeFn: func(messages []*Message) error {
+			return expectedError
+		}}
+
+		// When
+		actualError := bc.runKonsumerFn(kcronsumer.Message{})
+
+		// Then
+		if actualError.Error() != expectedError.Error() {
+			t.Fatalf("actual error = %s should be equal to expected error = %s", actualError.Error(), expectedError.Error())
+		}
+	})
+
+	t.Run("Should_Return_Message_Error_Description_When_Error_Description_Exist", func(t *testing.T) {
+		// Given
+		expectedError := errors.New("message error description")
+		bc := batchConsumer{consumeFn: func(messages []*Message) error {
+			messages[0].ErrDescription = "message error description"
+			return errors.New("default error")
+		}}
+
+		// When
+		actualError := bc.runKonsumerFn(kcronsumer.Message{})
+
+		// Then
+		if actualError.Error() != expectedError.Error() {
+			t.Fatalf("actual error = %s should be equal to expected error = %s", actualError.Error(), expectedError.Error())
+		}
+	})
+}
+
 func createMessages(partitionStart int, partitionEnd int) []*Message {
 	messages := make([]*Message, 0)
 	for i := partitionStart; i < partitionEnd; i++ {

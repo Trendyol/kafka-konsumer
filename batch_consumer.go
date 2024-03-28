@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"errors"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -42,7 +43,7 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 
 	if cfg.RetryEnabled {
 		c.base.setupCronsumer(cfg, func(message kcronsumer.Message) error {
-			return c.consumeFn([]*Message{toMessage(message)})
+			return c.runKonsumerFn(message)
 		})
 	}
 
@@ -51,6 +52,16 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	}
 
 	return &c, nil
+}
+
+func (b *batchConsumer) runKonsumerFn(message kcronsumer.Message) error {
+	msgList := []*Message{toMessage(message)}
+
+	err := b.consumeFn(msgList)
+	if msgList[0].ErrDescription != "" {
+		err = errors.New(msgList[0].ErrDescription)
+	}
+	return err
 }
 
 func (b *batchConsumer) GetMetricCollectors() []prometheus.Collector {

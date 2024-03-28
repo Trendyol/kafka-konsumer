@@ -16,9 +16,9 @@ func main() {
 	})
 
 	producer.ProduceBatch(context.Background(), []kafka.Message{
-		{Value: []byte("message1")},
-		{Value: []byte("message2")},
-		{Value: []byte("message3")},
+		{Key: []byte("key1"), Value: []byte("message1")},
+		{Key: []byte("key2"), Value: []byte("message2")},
+		{Key: []byte("key3"), Value: []byte("message3")},
 	})
 
 	consumerCfg := &kafka.ConsumerConfig{
@@ -40,7 +40,7 @@ func main() {
 			WorkDuration:  20 * time.Second,
 			MaxRetry:      3,
 		},
-		MessageGroupDuration: time.Second,
+		MessageGroupDuration: 5 * time.Second,
 	}
 
 	consumer, _ := kafka.NewConsumer(consumerCfg)
@@ -54,14 +54,19 @@ func main() {
 	<-c
 }
 
-// In order to load topic with data, use:
-// kafka-console-producer --broker-list localhost:29092 --topic standart-topic < examples/load.txt
 func batchConsumeFn(messages []*kafka.Message) error {
 	// you can add custom error handling here & flag messages
 	for i := range messages {
 		if i < 2 {
 			messages[i].IsFailed = true
-			messages[i].ErrDescription = fmt.Sprintf("%d error", i+1)
+
+			var retryCount string
+			retryCountHeader := messages[i].Header("x-retry-count")
+			if retryCountHeader != nil {
+				retryCount = string(retryCountHeader.Value)
+			}
+
+			messages[i].ErrDescription = fmt.Sprintf("Key = %s error, retry count %s", string(messages[i].Key), retryCount)
 		}
 	}
 
