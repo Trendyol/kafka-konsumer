@@ -31,7 +31,11 @@ type Message struct {
 
 	// IsFailed Is only used on transactional retry disabled
 	IsFailed bool
+
 	// ErrDescription specifies the IsFailed message's error
+
+	// If available, kafka-konsumer writes this description into the failed message's
+	// headers as `x-error-message` key when producing retry topic
 	ErrDescription string
 }
 
