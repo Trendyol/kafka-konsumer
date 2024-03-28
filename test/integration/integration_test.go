@@ -242,14 +242,13 @@ func Test_Should_Batch_Retry_Only_Failed_Messages_When_Transactional_Retry_Is_Di
 		RetryConfiguration: kafka.RetryConfiguration{
 			Brokers:       []string{brokerAddress},
 			Topic:         retryTopic,
-			StartTimeCron: "*/1 * * * *",
-			WorkDuration:  50 * time.Second,
+			StartTimeCron: "*/5 * * * *",
+			WorkDuration:  4 * time.Minute,
 			MaxRetry:      3,
-			LogLevel:      "error",
 		},
-		MessageGroupDuration: 5 * time.Second,
+		MessageGroupDuration: 20 * time.Second,
 		BatchConfiguration: &kafka.BatchConfiguration{
-			MessageGroupLimit: 100,
+			MessageGroupLimit: 5,
 			BatchConsumeFn: func(messages []*kafka.Message) error {
 				messages[1].IsFailed = true
 				return errors.New("err")
@@ -369,18 +368,23 @@ func Test_Should_Propagate_Custom_Headers_With_Kafka_Cronsumer_Successfully(t *t
 	assertEventually(t, conditionFunc, 45*time.Second, time.Second)
 	msg, err := retryConn.ReadMessage(10_000)
 	if err != nil {
-		t.Fatalf("error reading message")
+		t.Fatal("error reading message")
 	}
-	if len(msg.Headers) != 1 {
-		t.Fatalf("msg header must be length of 1")
+	if len(msg.Headers) != 2 {
+		t.Fatal("msg header must be length of 2")
 	}
 	if msg.Headers[0].Key != "custom_exception_header" {
-		t.Fatalf("key must be custom_exception_header")
+		t.Fatal("key must be custom_exception_header")
 	}
 	if !bytes.Equal(msg.Headers[0].Value, []byte("custom_exception_value")) {
-		t.Fatalf("value must be custom_exception_value")
+		t.Fatal("value must be custom_exception_value")
 	}
-	_ = msg
+	if msg.Headers[1].Key != "x-error-message" {
+		t.Fatal("key must be x-error-message")
+	}
+	if !bytes.Equal(msg.Headers[1].Value, []byte("err occurred")) {
+		t.Fatal("err occurred")
+	}
 }
 
 func Test_Should_Batch_Consume_With_PreBatch_Enabled(t *testing.T) {

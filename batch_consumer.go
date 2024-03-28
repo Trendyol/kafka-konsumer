@@ -176,14 +176,15 @@ func (b *batchConsumer) process(chunkMessages []*Message) {
 
 		if consumeErr != nil && b.retryEnabled {
 			cronsumerMessages := make([]kcronsumer.Message, 0, len(chunkMessages))
+			errorMessage := consumeErr.Error()
 			if b.transactionalRetry {
 				for i := range chunkMessages {
-					cronsumerMessages = append(cronsumerMessages, chunkMessages[i].toRetryableMessage(b.retryTopic))
+					cronsumerMessages = append(cronsumerMessages, chunkMessages[i].toRetryableMessage(b.retryTopic, errorMessage))
 				}
 			} else {
 				for i := range chunkMessages {
 					if chunkMessages[i].IsFailed {
-						cronsumerMessages = append(cronsumerMessages, chunkMessages[i].toRetryableMessage(b.retryTopic))
+						cronsumerMessages = append(cronsumerMessages, chunkMessages[i].toRetryableMessage(b.retryTopic, errorMessage))
 					}
 				}
 			}
