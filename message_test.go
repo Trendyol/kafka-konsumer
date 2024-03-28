@@ -146,7 +146,7 @@ func TestMessage_toRetryableMessage(t *testing.T) {
 		}
 
 		// When
-		actual := message.toRetryableMessage("retry-topic")
+		actual := message.toRetryableMessage("retry-topic", "consumeFn error")
 
 		// Then
 		if actual.Topic != expected.Topic {
@@ -202,11 +202,15 @@ func TestMessage_toRetryableMessage(t *testing.T) {
 					Key:   "x-custom-client-header",
 					Value: []byte("bar"),
 				},
+				{
+					Key:   "x-error-message",
+					Value: []byte("consumeFn error"),
+				},
 			},
 		}
 
 		// When
-		actual := message.toRetryableMessage("retry-topic")
+		actual := message.toRetryableMessage("retry-topic", "consumeFn error")
 
 		// Then
 		if actual.Topic != expected.Topic {
@@ -221,8 +225,8 @@ func TestMessage_toRetryableMessage(t *testing.T) {
 			t.Errorf("Value must be equal to %q", string(expected.Value))
 		}
 
-		if len(actual.Headers) != 1 {
-			t.Error("Header length must be equal to 1")
+		if len(actual.Headers) != 2 {
+			t.Error("Header length must be equal to 2")
 		}
 
 		if actual.Headers[0].Key != expected.Headers[0].Key {
@@ -231,6 +235,14 @@ func TestMessage_toRetryableMessage(t *testing.T) {
 
 		if !bytes.Equal(actual.Headers[0].Value, expected.Headers[0].Value) {
 			t.Errorf("First Header value must be equal to %q", expected.Headers[0].Value)
+		}
+
+		if actual.Headers[1].Key != expected.Headers[1].Key {
+			t.Errorf("Second Header key must be equal to %q", expected.Headers[1].Key)
+		}
+
+		if !bytes.Equal(actual.Headers[1].Value, expected.Headers[1].Value) {
+			t.Errorf("Second Header value must be equal to %q", expected.Headers[1].Value)
 		}
 	})
 }

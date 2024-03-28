@@ -69,7 +69,7 @@ func fromKafkaMessage(kafkaMessage *kafka.Message) *Message {
 	return message
 }
 
-func (m *Message) toRetryableMessage(retryTopic string) kcronsumer.Message {
+func (m *Message) toRetryableMessage(retryTopic, consumeError string) kcronsumer.Message {
 	headers := make([]kcronsumer.Header, 0, len(m.Headers))
 	for i := range m.Headers {
 		headers = append(headers, kcronsumer.Header{
@@ -78,7 +78,12 @@ func (m *Message) toRetryableMessage(retryTopic string) kcronsumer.Message {
 		})
 	}
 
-	if m.ErrDescription != "" {
+	if m.ErrDescription == "" {
+		headers = append(headers, kcronsumer.Header{
+			Key:   errMessageKey,
+			Value: []byte(consumeError),
+		})
+	} else {
 		headers = append(headers, kcronsumer.Header{
 			Key:   errMessageKey,
 			Value: []byte(m.ErrDescription),
