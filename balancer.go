@@ -24,6 +24,6 @@ func GetBalancerReferenceHash() Balancer {
 	return &kafka.ReferenceHash{}
 }
 
-func GetBalancerRoundRobinh() Balancer {
+func GetBalancerRoundRobin() Balancer {
 	return &kafka.RoundRobin{}
 }
