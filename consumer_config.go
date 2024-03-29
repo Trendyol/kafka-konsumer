@@ -3,14 +3,14 @@ package kafka
 import (
 	"time"
 
+	"github.com/segmentio/kafka-go"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	lcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/logger"
-
-	"github.com/segmentio/kafka-go"
 )
 
 type ReaderConfig kafka.ReaderConfig
@@ -84,6 +84,9 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 			StartOffset:       kcronsumer.ToStringOffset(cfg.Reader.StartOffset),
 			RetentionTime:     cfg.Reader.RetentionTime,
 		},
+		Producer: kcronsumer.ProducerConfig{
+			Balancer: cfg.RetryConfiguration.Balancer,
+		},
 		LogLevel: lcronsumer.Level(cfg.RetryConfiguration.LogLevel),
 	}
 
@@ -155,6 +158,7 @@ type RetryConfiguration struct {
 	Rack                  string
 	LogLevel              LogLevel
 	Brokers               []string
+	Balancer              Balancer
 	MaxRetry              int
 	WorkDuration          time.Duration
 	SkipMessageByHeaderFn SkipMessageByHeaderFn
