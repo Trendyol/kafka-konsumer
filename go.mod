@@ -6,7 +6,7 @@ require (
 	github.com/Trendyol/kafka-cronsumer v1.5.1
 	github.com/Trendyol/otel-kafka-konsumer v0.0.7
 	github.com/ansrivas/fiberprometheus/v2 v2.6.1
-	github.com/gofiber/fiber/v2 v2.52.1
+	github.com/gofiber/fiber/v2 v2.52.4
 	github.com/google/go-cmp v0.6.0
 	github.com/prometheus/client_golang v1.16.0
 	github.com/segmentio/kafka-go v0.4.47
