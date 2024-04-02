@@ -96,7 +96,7 @@ func Test_batchConsumer_startBatch_with_preBatch(t *testing.T) {
 			messageProcessedStream: make(chan struct{}, 1),
 			metric:                 &ConsumerMetric{},
 			wg:                     sync.WaitGroup{},
-			messageGroupDuration:   500 * time.Millisecond,
+			messageGroupDuration:   20 * time.Second,
 			r:                      &mc,
 			concurrency:            1,
 		},
