@@ -21,9 +21,13 @@ type Consumer interface {
 	Consume()
 
 	// Pause function pauses consumer, it is stop consuming new messages
+	// It works idempotent under the hood
+	// Calling with multiple goroutines is safe
 	Pause()
 
 	// Resume function resumes consumer, it is start to working
+	// It works idempotent under the hood
+	// Calling with multiple goroutines is safe
 	Resume()
 
 	// GetMetricCollectors for the purpose of making metric collectors available.
