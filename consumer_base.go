@@ -210,6 +210,7 @@ func (c *base) Pause() {
 	defer c.mu.Unlock()
 
 	if c.consumerState == statePaused {
+		c.logger.Debug("Consumer is already paused mode!")
 		return
 	}
 
@@ -227,6 +228,7 @@ func (c *base) Resume() {
 	defer c.mu.Unlock()
 
 	if c.consumerState == stateRunning {
+		c.logger.Debug("Consumer is already running mode!")
 		return
 	}
 
