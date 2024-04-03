@@ -1,7 +1,9 @@
 package kafka
 
 import (
+	"context"
 	"errors"
+	"sync"
 	"testing"
 )
 
@@ -113,4 +115,52 @@ func Test_consumer_process(t *testing.T) {
 			t.Fatalf("Total Unprocessed Message Counter must equal to 1")
 		}
 	})
+}
+
+func Test_consumer_Pause(t *testing.T) {
+	// Given
+	ctx, cancelFn := context.WithCancel(context.Background())
+	c := consumer{
+		base: &base{
+			logger:  NewZapLogger(LogLevelDebug),
+			pause:   make(chan struct{}),
+			context: ctx, cancelFn: cancelFn,
+			consumerState: stateRunning,
+		},
+	}
+	go func() {
+		<-c.base.pause
+	}()
+
+	// When
+	c.Pause()
+
+	// Then
+	if c.base.consumerState != statePaused {
+		t.Fatal("consumer state must be in paused")
+	}
+}
+
+func Test_consumer_Resume(t *testing.T) {
+	// Given
+	mc := mockReader{}
+	ctx, cancelFn := context.WithCancel(context.Background())
+	c := consumer{
+		base: &base{
+			r:       &mc,
+			logger:  NewZapLogger(LogLevelDebug),
+			pause:   make(chan struct{}),
+			quit:    make(chan struct{}),
+			wg:      sync.WaitGroup{},
+			context: ctx, cancelFn: cancelFn,
+		},
+	}
+
+	// When
+	c.Resume()
+
+	// Then
+	if c.base.consumerState != stateRunning {
+		t.Fatal("consumer state must be in running")
+	}
 }

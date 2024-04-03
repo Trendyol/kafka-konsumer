@@ -8,50 +8,56 @@ import (
 
 const Name = "kafka_konsumer"
 
-type metricCollector struct {
+type MetricCollector struct {
 	consumerMetric *ConsumerMetric
 
 	totalUnprocessedMessagesCounter *prometheus.Desc
 	totalProcessedMessagesCounter   *prometheus.Desc
 }
 
-func (s *metricCollector) Describe(ch chan<- *prometheus.Desc) {
+func NewMetricCollector(metricPrefix string, consumerMetric *ConsumerMetric) *MetricCollector {
+	if metricPrefix == "" {
+		metricPrefix = Name
+	}
+
+	return &MetricCollector{
+		consumerMetric: consumerMetric,
+
+		totalProcessedMessagesCounter: prometheus.NewDesc(
+			prometheus.BuildFQName(metricPrefix, "processed_messages_total", "current"),
+			"Total number of processed messages.",
+			emptyStringList,
+			nil,
+		),
+		totalUnprocessedMessagesCounter: prometheus.NewDesc(
+			prometheus.BuildFQName(metricPrefix, "unprocessed_messages_total", "current"),
+			"Total number of unprocessed messages.",
+			emptyStringList,
+			nil,
+		),
+	}
+}
+
+func (s *MetricCollector) Describe(ch chan<- *prometheus.Desc) {
 	prometheus.DescribeByCollect(s, ch)
 }
 
-func (s *metricCollector) Collect(ch chan<- prometheus.Metric) {
+var emptyStringList []string
+
+func (s *MetricCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(
 		s.totalProcessedMessagesCounter,
 		prometheus.CounterValue,
 		float64(s.consumerMetric.TotalProcessedMessagesCounter),
-		[]string{}...,
+		emptyStringList...,
 	)
 
 	ch <- prometheus.MustNewConstMetric(
 		s.totalUnprocessedMessagesCounter,
 		prometheus.CounterValue,
 		float64(s.consumerMetric.TotalUnprocessedMessagesCounter),
-		[]string{}...,
+		emptyStringList...,
 	)
-}
-
-func newMetricCollector(consumerMetric *ConsumerMetric) *metricCollector {
-	return &metricCollector{
-		consumerMetric: consumerMetric,
-
-		totalProcessedMessagesCounter: prometheus.NewDesc(
-			prometheus.BuildFQName(Name, "processed_messages_total", "current"),
-			"Total number of processed messages.",
-			[]string{},
-			nil,
-		),
-		totalUnprocessedMessagesCounter: prometheus.NewDesc(
-			prometheus.BuildFQName(Name, "unprocessed_messages_total", "current"),
-			"Total number of unprocessed messages.",
-			[]string{},
-			nil,
-		),
-	}
 }
 
 func NewMetricMiddleware(cfg *ConsumerConfig,
@@ -59,7 +65,7 @@ func NewMetricMiddleware(cfg *ConsumerConfig,
 	consumerMetric *ConsumerMetric,
 	metricCollectors ...prometheus.Collector,
 ) (func(ctx *fiber.Ctx) error, error) {
-	prometheus.DefaultRegisterer.MustRegister(newMetricCollector(consumerMetric))
+	prometheus.DefaultRegisterer.MustRegister(NewMetricCollector(cfg.MetricPrefix, consumerMetric))
 	prometheus.DefaultRegisterer.MustRegister(metricCollectors...)
 
 	fiberPrometheus := fiberprometheus.New(cfg.Reader.GroupID)

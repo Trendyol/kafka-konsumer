@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Trendyol/kafka-konsumer"
+	"github.com/Trendyol/kafka-konsumer/v2"
 	"os"
 	"os/signal"
 	"time"

@@ -3,21 +3,25 @@ package kafka
 import (
 	"time"
 
+	"github.com/segmentio/kafka-go"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	lcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/logger"
-
-	"github.com/segmentio/kafka-go"
 )
 
 type ReaderConfig kafka.ReaderConfig
 
 type BatchConsumeFn func([]*Message) error
 
+type PreBatchFn func([]*Message) []*Message
+
 type ConsumeFn func(*Message) error
+
+type SkipMessageByHeaderFn func(header []kafka.Header) bool
 
 type DialConfig struct {
 	Timeout   time.Duration
@@ -25,32 +29,42 @@ type DialConfig struct {
 }
 
 type ConsumerConfig struct {
-	APIConfiguration                APIConfiguration
+	DistributedTracingConfiguration DistributedTracingConfiguration
 	Logger                          LoggerInterface
+	APIConfiguration                APIConfiguration
 	MetricConfiguration             MetricConfiguration
 	SASL                            *SASLConfig
 	TLS                             *TLSConfig
 	Dial                            *DialConfig
 	BatchConfiguration              *BatchConfiguration
 	ConsumeFn                       ConsumeFn
-	ClientID                        string
-	Rack                            string
-	LogLevel                        LogLevel
-	Reader                          ReaderConfig
+	SkipMessageByHeaderFn           SkipMessageByHeaderFn
+	TransactionalRetry              *bool
 	RetryConfiguration              RetryConfiguration
+	LogLevel                        LogLevel
+	Rack                            string
+	ClientID                        string
+	Reader                          ReaderConfig
 	CommitInterval                  time.Duration
-	DistributedTracingEnabled       bool
-	DistributedTracingConfiguration DistributedTracingConfiguration
+	MessageGroupDuration            time.Duration
 	Concurrency                     int
+	DistributedTracingEnabled       bool
 	RetryEnabled                    bool
 	APIEnabled                      bool
-	TransactionalRetry              *bool
+
+	// MetricPrefix is used for prometheus fq name prefix.
+	// If not provided, default metric prefix value is `kafka_konsumer`.
+	// Currently, there are two exposed prometheus metrics. `processed_messages_total_current` and `unprocessed_messages_total_current`.
+	// So, if default metric prefix used, metrics names are `kafka_konsumer_processed_messages_total_current` and
+	// `kafka_konsumer_unprocessed_messages_total_current`.
+	MetricPrefix string
 }
 
 func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 	cronsumerCfg := kcronsumer.Config{
-		ClientID: cfg.RetryConfiguration.ClientID,
-		Brokers:  cfg.RetryConfiguration.Brokers,
+		MetricPrefix: cfg.RetryConfiguration.MetricPrefix,
+		ClientID:     cfg.RetryConfiguration.ClientID,
+		Brokers:      cfg.RetryConfiguration.Brokers,
 		Consumer: kcronsumer.ConsumerConfig{
 			ClientID:          cfg.ClientID,
 			GroupID:           cfg.Reader.GroupID,
@@ -70,7 +84,16 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 			StartOffset:       kcronsumer.ToStringOffset(cfg.Reader.StartOffset),
 			RetentionTime:     cfg.Reader.RetentionTime,
 		},
+		Producer: kcronsumer.ProducerConfig{
+			Balancer: cfg.RetryConfiguration.Balancer,
+		},
 		LogLevel: lcronsumer.Level(cfg.RetryConfiguration.LogLevel),
+	}
+
+	if cfg.RetryConfiguration.SkipMessageByHeaderFn != nil {
+		cronsumerCfg.Consumer.SkipMessageByHeaderFn = func(headers []kcronsumer.Header) bool {
+			return cfg.RetryConfiguration.SkipMessageByHeaderFn(toHeaders(headers))
+		}
 	}
 
 	if !cfg.RetryConfiguration.SASL.IsEmpty() {
@@ -107,24 +130,44 @@ type DistributedTracingConfiguration struct {
 	Propagator     propagation.TextMapPropagator
 }
 
+func toHeaders(cronsumerHeaders []kcronsumer.Header) []Header {
+	headers := make([]Header, 0, len(cronsumerHeaders))
+	for i := range cronsumerHeaders {
+		headers = append(headers, Header{
+			Key:   cronsumerHeaders[i].Key,
+			Value: cronsumerHeaders[i].Value,
+		})
+	}
+	return headers
+}
+
 type RetryConfiguration struct {
-	SASL            *SASLConfig
-	TLS             *TLSConfig
-	ClientID        string
-	StartTimeCron   string
-	Topic           string
-	DeadLetterTopic string
-	Rack            string
-	Brokers         []string
-	MaxRetry        int
-	WorkDuration    time.Duration
-	LogLevel        LogLevel
+	// MetricPrefix is used for prometheus fq name prefix.
+	// If not provided, default metric prefix value is `kafka_cronsumer`.
+	// Currently, there are two exposed prometheus metrics. `retried_messages_total_current` and `discarded_messages_total_current`.
+	// So, if default metric prefix used, metrics names are `kafka_cronsumer_retried_messages_total_current` and
+	// `kafka_cronsumer_discarded_messages_total_current`.
+	MetricPrefix string
+
+	SASL                  *SASLConfig
+	TLS                   *TLSConfig
+	ClientID              string
+	StartTimeCron         string
+	Topic                 string
+	DeadLetterTopic       string
+	Rack                  string
+	LogLevel              LogLevel
+	Brokers               []string
+	Balancer              Balancer
+	MaxRetry              int
+	WorkDuration          time.Duration
+	SkipMessageByHeaderFn SkipMessageByHeaderFn
 }
 
 type BatchConfiguration struct {
-	BatchConsumeFn       BatchConsumeFn
-	MessageGroupLimit    int
-	MessageGroupDuration time.Duration
+	BatchConsumeFn    BatchConsumeFn
+	PreBatchFn        PreBatchFn
+	MessageGroupLimit int
 }
 
 func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
@@ -184,6 +227,10 @@ func (cfg *ConsumerConfig) setDefaults() {
 		cfg.Reader.CommitInterval = time.Second
 	} else {
 		cfg.Reader.CommitInterval = cfg.CommitInterval
+	}
+
+	if cfg.MessageGroupDuration == 0 {
+		cfg.MessageGroupDuration = time.Second
 	}
 
 	if cfg.DistributedTracingEnabled {

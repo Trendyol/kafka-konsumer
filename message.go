@@ -9,10 +9,22 @@ import (
 	"github.com/segmentio/kafka-go/protocol"
 )
 
+const (
+	errMessageKey = "x-error-message"
+)
+
 type Header = protocol.Header
 
 type Message struct {
+	Time       time.Time
+	WriterData interface{}
+
+	// Context To enable distributed tracing support
+	Context       context.Context
 	Topic         string
+	Key           []byte
+	Value         []byte
+	Headers       []Header
 	Partition     int
 	Offset        int64
 	HighWaterMark int64
@@ -20,14 +32,16 @@ type Message struct {
 	// IsFailed Is only used on transactional retry disabled
 	IsFailed bool
 
-	Key        []byte
-	Value      []byte
-	Headers    []Header
-	WriterData interface{}
-	Time       time.Time
+	// ErrDescription specifies the IsFailed message's error
 
-	// Context To enable distributed tracing support
-	Context context.Context
+	// If available, kafka-konsumer writes this description into the failed message's
+	// headers as `x-error-message` key when producing retry topic
+	ErrDescription string
+}
+
+type IncomingMessage struct {
+	kafkaMessage *kafka.Message
+	message      *Message
 }
 
 func (m *Message) toKafkaMessage() kafka.Message {
@@ -44,27 +58,39 @@ func (m *Message) toKafkaMessage() kafka.Message {
 	}
 }
 
-func fromKafkaMessage(message *kafka.Message) *Message {
-	return &Message{
-		Topic:         message.Topic,
-		Partition:     message.Partition,
-		Offset:        message.Offset,
-		HighWaterMark: message.HighWaterMark,
-		Key:           message.Key,
-		Value:         message.Value,
-		Headers:       message.Headers,
-		WriterData:    message.WriterData,
-		Time:          message.Time,
-		Context:       context.TODO(),
-	}
+func fromKafkaMessage(kafkaMessage *kafka.Message) *Message {
+	message := &Message{}
+	message.Topic = kafkaMessage.Topic
+	message.Partition = kafkaMessage.Partition
+	message.Offset = kafkaMessage.Offset
+	message.HighWaterMark = kafkaMessage.HighWaterMark
+	message.Key = kafkaMessage.Key
+	message.Value = kafkaMessage.Value
+	message.Headers = kafkaMessage.Headers
+	message.WriterData = kafkaMessage.WriterData
+	message.Time = kafkaMessage.Time
+	message.Context = context.TODO()
+	return message
 }
 
-func (m *Message) toRetryableMessage(retryTopic string) kcronsumer.Message {
+func (m *Message) toRetryableMessage(retryTopic, consumeError string) kcronsumer.Message {
 	headers := make([]kcronsumer.Header, 0, len(m.Headers))
 	for i := range m.Headers {
 		headers = append(headers, kcronsumer.Header{
 			Key:   m.Headers[i].Key,
 			Value: m.Headers[i].Value,
+		})
+	}
+
+	if m.ErrDescription == "" {
+		headers = append(headers, kcronsumer.Header{
+			Key:   errMessageKey,
+			Value: []byte(consumeError),
+		})
+	} else {
+		headers = append(headers, kcronsumer.Header{
+			Key:   errMessageKey,
+			Value: []byte(m.ErrDescription),
 		})
 	}
 
@@ -87,16 +113,18 @@ func toMessage(message kcronsumer.Message) *Message {
 		})
 	}
 
-	return &Message{
-		Topic:         message.Topic,
-		Partition:     message.Partition,
-		Offset:        message.Offset,
-		HighWaterMark: message.HighWaterMark,
-		Key:           message.Key,
-		Value:         message.Value,
-		Headers:       headers,
-		Time:          message.Time,
-	}
+	msg := &Message{}
+	msg.Topic = message.Topic
+	msg.Partition = message.Partition
+	msg.Offset = message.Offset
+	msg.HighWaterMark = message.HighWaterMark
+	msg.Key = message.Key
+	msg.Value = message.Value
+	msg.Headers = headers
+	msg.Time = message.Time
+	msg.Context = context.Background()
+
+	return msg
 }
 
 func (m *Message) Header(key string) *kafka.Header {

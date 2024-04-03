@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/Trendyol/kafka-konsumer/v2"
 	"os"
 	"os/signal"
 	"strconv"
 	"time"
-
-	"github.com/Trendyol/kafka-konsumer"
 )
 
 type user struct {
@@ -71,6 +71,10 @@ func main() {
 			MaxRetry:      3,
 		},
 		ConsumeFn: func(message *kafka.Message) error {
+			if string(message.Key) == "1" {
+				return errors.New("simulate error behaviour")
+			}
+
 			// mocking some background task
 			time.Sleep(1 * time.Second)
 

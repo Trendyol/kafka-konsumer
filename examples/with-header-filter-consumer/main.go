@@ -5,7 +5,6 @@ import (
 	"github.com/Trendyol/kafka-konsumer/v2"
 	"os"
 	"os/signal"
-	"time"
 )
 
 func main() {
@@ -16,17 +15,9 @@ func main() {
 			Topic:   "standart-topic",
 			GroupID: "standart-cg",
 		},
-		RetryEnabled: true,
-		RetryConfiguration: kafka.RetryConfiguration{
-			Brokers:       []string{"localhost:29092"},
-			Topic:         "retry-topic",
-			StartTimeCron: "*/1 * * * *",
-			WorkDuration:  50 * time.Second,
-			MaxRetry:      3,
-		},
-		LogLevel:   kafka.LogLevelDebug,
-		ConsumeFn:  consumeFn,
-		APIEnabled: true,
+		RetryEnabled:          false,
+		SkipMessageByHeaderFn: skipMessageByHeaderFn,
+		ConsumeFn:             consumeFn,
 	}
 
 	consumer, _ := kafka.NewConsumer(consumerCfg)
@@ -35,12 +26,22 @@ func main() {
 	consumer.Consume()
 
 	fmt.Println("Consumer started...!")
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
 }
 
+func skipMessageByHeaderFn(headers []kafka.Header) bool {
+	for _, header := range headers {
+		if header.Key == "SkipMessage" {
+			return true
+		}
+	}
+	return false
+}
+
 func consumeFn(message *kafka.Message) error {
-	fmt.Printf("Message From %s with value %s", message.Topic, string(message.Value))
+	fmt.Printf("Message From %s with value %s\n", message.Topic, string(message.Value))
 	return nil
 }

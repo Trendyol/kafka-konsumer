@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/Trendyol/kafka-konsumer"
+	"github.com/Trendyol/kafka-konsumer/v2"
 )
 
 func main() {

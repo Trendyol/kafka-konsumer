@@ -1,7 +1,12 @@
 package kafka
 
 import (
+	"errors"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/segmentio/kafka-go"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 )
@@ -9,29 +14,35 @@ import (
 type batchConsumer struct {
 	*base
 
-	consumeFn func([]*Message) error
+	consumeFn  BatchConsumeFn
+	preBatchFn PreBatchFn
 
-	messageGroupLimit    int
-	messageGroupDuration time.Duration
+	messageGroupLimit int
+}
+
+func (b *batchConsumer) Pause() {
+	b.base.Pause()
+}
+
+func (b *batchConsumer) Resume() {
+	b.base.Resume()
 }
 
 func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
-	consumerBase, err := newBase(cfg)
+	consumerBase, err := newBase(cfg, cfg.BatchConfiguration.MessageGroupLimit*cfg.Concurrency)
 	if err != nil {
 		return nil, err
 	}
 
 	c := batchConsumer{
-		base:                 consumerBase,
-		consumeFn:            cfg.BatchConfiguration.BatchConsumeFn,
-		messageGroupLimit:    cfg.BatchConfiguration.MessageGroupLimit,
-		messageGroupDuration: cfg.BatchConfiguration.MessageGroupDuration,
+		base:              consumerBase,
+		consumeFn:         cfg.BatchConfiguration.BatchConsumeFn,
+		preBatchFn:        cfg.BatchConfiguration.PreBatchFn,
+		messageGroupLimit: cfg.BatchConfiguration.MessageGroupLimit,
 	}
 
 	if cfg.RetryEnabled {
-		c.base.setupCronsumer(cfg, func(message kcronsumer.Message) error {
-			return c.consumeFn([]*Message{toMessage(message)})
-		})
+		c.base.setupCronsumer(cfg, c.runKonsumerFn)
 	}
 
 	if cfg.APIEnabled {
@@ -41,19 +52,31 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	return &c, nil
 }
 
-func (b *batchConsumer) GetMetric() *ConsumerMetric {
-	return b.metric
+func (b *batchConsumer) runKonsumerFn(message kcronsumer.Message) error {
+	msgList := []*Message{toMessage(message)}
+
+	err := b.consumeFn(msgList)
+	if msgList[0].ErrDescription != "" {
+		err = errors.New(msgList[0].ErrDescription)
+	}
+	return err
+}
+
+func (b *batchConsumer) GetMetricCollectors() []prometheus.Collector {
+	return b.base.GetMetricCollectors()
 }
 
 func (b *batchConsumer) Consume() {
 	go b.subprocesses.Start()
+
 	b.wg.Add(1)
 	go b.startConsume()
 
-	for i := 0; i < b.concurrency; i++ {
-		b.wg.Add(1)
-		go b.startBatch()
-	}
+	b.wg.Add(b.concurrency)
+	b.setupConcurrentWorkers()
+
+	b.wg.Add(1)
+	go b.startBatch()
 }
 
 func (b *batchConsumer) startBatch() {
@@ -62,7 +85,9 @@ func (b *batchConsumer) startBatch() {
 	ticker := time.NewTicker(b.messageGroupDuration)
 	defer ticker.Stop()
 
-	messages := make([]*Message, 0, b.messageGroupLimit)
+	maximumMessageLimit := b.messageGroupLimit * b.concurrency
+	messages := make([]*Message, 0, maximumMessageLimit)
+	commitMessages := make([]kafka.Message, 0, maximumMessageLimit)
 
 	for {
 		select {
@@ -71,44 +96,104 @@ func (b *batchConsumer) startBatch() {
 				continue
 			}
 
-			b.process(messages)
-			messages = messages[:0]
-		case msg, ok := <-b.messageCh:
+			b.consume(&messages, &commitMessages)
+		case msg, ok := <-b.incomingMessageStream:
 			if !ok {
+				close(b.batchConsumingStream)
+				close(b.messageProcessedStream)
 				return
 			}
 
-			messages = append(messages, msg)
+			messages = append(messages, msg.message)
+			commitMessages = append(commitMessages, *msg.kafkaMessage)
 
-			if len(messages) == b.messageGroupLimit {
-				b.process(messages)
-				messages = messages[:0]
+			if len(messages) == maximumMessageLimit {
+				b.consume(&messages, &commitMessages)
 			}
 		}
 	}
 }
 
-func (b *batchConsumer) process(messages []*Message) {
-	consumeErr := b.consumeFn(messages)
+func (b *batchConsumer) setupConcurrentWorkers() {
+	for i := 0; i < b.concurrency; i++ {
+		go func() {
+			defer b.wg.Done()
+			for messages := range b.batchConsumingStream {
+				b.process(messages)
+				b.messageProcessedStream <- struct{}{}
+			}
+		}()
+	}
+}
+
+func chunkMessages(allMessages *[]*Message, chunkSize int) [][]*Message {
+	var chunks [][]*Message
+
+	allMessageList := *allMessages
+	for i := 0; i < len(allMessageList); i += chunkSize {
+		end := i + chunkSize
+
+		// necessary check to avoid slicing beyond
+		// slice capacity
+		if end > len(allMessageList) {
+			end = len(allMessageList)
+		}
+
+		chunks = append(chunks, allMessageList[i:end])
+	}
+
+	return chunks
+}
+
+func (b *batchConsumer) consume(allMessages *[]*Message, commitMessages *[]kafka.Message) {
+	chunks := chunkMessages(allMessages, b.messageGroupLimit)
+
+	if b.preBatchFn != nil {
+		preBatchResult := b.preBatchFn(*allMessages)
+		chunks = chunkMessages(&preBatchResult, b.messageGroupLimit)
+	}
+
+	// Send the messages to process
+	for _, chunk := range chunks {
+		b.batchConsumingStream <- chunk
+	}
+
+	// Wait the messages to be processed
+	for i := 0; i < len(chunks); i++ {
+		<-b.messageProcessedStream
+	}
+
+	if err := b.r.CommitMessages(*commitMessages); err != nil {
+		b.logger.Errorf("Commit Error %s,", err.Error())
+	}
+
+	// Clearing resources
+	*commitMessages = (*commitMessages)[:0]
+	*allMessages = (*allMessages)[:0]
+}
+
+func (b *batchConsumer) process(chunkMessages []*Message) {
+	consumeErr := b.consumeFn(chunkMessages)
 
 	if consumeErr != nil {
 		b.logger.Warnf("Consume Function Err %s, Messages will be retried", consumeErr.Error())
 		// Try to process same messages again for resolving transient network errors etc.
-		if consumeErr = b.consumeFn(messages); consumeErr != nil {
+		if consumeErr = b.consumeFn(chunkMessages); consumeErr != nil {
 			b.logger.Warnf("Consume Function Again Err %s, messages are sending to exception/retry topic %s", consumeErr.Error(), b.retryTopic)
-			b.metric.TotalUnprocessedMessagesCounter += int64(len(messages))
+			b.metric.TotalUnprocessedMessagesCounter += int64(len(chunkMessages))
 		}
 
 		if consumeErr != nil && b.retryEnabled {
-			cronsumerMessages := make([]kcronsumer.Message, 0, len(messages))
+			cronsumerMessages := make([]kcronsumer.Message, 0, len(chunkMessages))
+			errorMessage := consumeErr.Error()
 			if b.transactionalRetry {
-				for i := range messages {
-					cronsumerMessages = append(cronsumerMessages, messages[i].toRetryableMessage(b.retryTopic))
+				for i := range chunkMessages {
+					cronsumerMessages = append(cronsumerMessages, chunkMessages[i].toRetryableMessage(b.retryTopic, errorMessage))
 				}
 			} else {
-				for i := range messages {
-					if messages[i].IsFailed {
-						cronsumerMessages = append(cronsumerMessages, messages[i].toRetryableMessage(b.retryTopic))
+				for i := range chunkMessages {
+					if chunkMessages[i].IsFailed {
+						cronsumerMessages = append(cronsumerMessages, chunkMessages[i].toRetryableMessage(b.retryTopic, errorMessage))
 					}
 				}
 			}
@@ -120,6 +205,6 @@ func (b *batchConsumer) process(messages []*Message) {
 	}
 
 	if consumeErr == nil {
-		b.metric.TotalProcessedMessagesCounter += int64(len(messages))
+		b.metric.TotalProcessedMessagesCounter += int64(len(chunkMessages))
 	}
 }
