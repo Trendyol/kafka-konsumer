@@ -165,9 +165,10 @@ type RetryConfiguration struct {
 }
 
 type BatchConfiguration struct {
-	BatchConsumeFn    BatchConsumeFn
-	PreBatchFn        PreBatchFn
-	MessageGroupLimit int
+	BatchConsumeFn            BatchConsumeFn
+	PreBatchFn                PreBatchFn
+	MessageGroupLimit         int
+	MessageGroupByteSizeLimit any
 }
 
 func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
