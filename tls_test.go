@@ -26,7 +26,6 @@ func TestTLSConfig_TLSConfig(t *testing.T) {
 
 	// When
 	_, err = tlsCfg.TLSConfig()
-
 	// Then
 	if err != nil {
 		t.Fatalf("Error when settings tls certificates %s", err.Error())

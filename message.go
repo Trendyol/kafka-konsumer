@@ -39,25 +39,25 @@ type Message struct {
 	ErrDescription string
 }
 
-func (msg *Message) TotalSize() int {
-	return 14 + msg.keySize() + msg.valueSize() + msg.headerSize()
+func (m *Message) TotalSize() int {
+	return 14 + m.keySize() + m.valueSize() + m.headerSize()
 }
 
-func (msg *Message) headerSize() int {
+func (m *Message) headerSize() int {
 	s := 0
-	for _, header := range msg.Headers {
+	for _, header := range m.Headers {
 		s += sizeofString(header.Key)
 		s += len(header.Value)
 	}
 	return s
 }
 
-func (msg *Message) keySize() int {
-	return sizeofBytes(msg.Key)
+func (m *Message) keySize() int {
+	return sizeofBytes(m.Key)
 }
 
-func (msg *Message) valueSize() int {
-	return sizeofBytes(msg.Value)
+func (m *Message) valueSize() int {
+	return sizeofBytes(m.Value)
 }
 
 type IncomingMessage struct {
