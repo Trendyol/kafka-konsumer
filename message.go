@@ -57,7 +57,7 @@ func (msg *Message) keySize() int {
 }
 
 func (msg *Message) valueSize() int {
-	return 4 + len(msg.Value)
+	return sizeofBytes(msg.Value)
 }
 
 type IncomingMessage struct {
