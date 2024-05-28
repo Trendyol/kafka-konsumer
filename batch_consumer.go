@@ -35,7 +35,7 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		return nil, err
 	}
 
-	messageGroupByteSizeLimit, err := ResolveUnionIntOrStringValue(cfg.BatchConfiguration.MessageGroupByteSizeLimit)
+	messageGroupByteSizeLimit, err := resolveUnionIntOrStringValue(cfg.BatchConfiguration.MessageGroupByteSizeLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -112,14 +112,18 @@ func (b *batchConsumer) startBatch() {
 				return
 			}
 
-			if maximumMessageByteSizeLimit != 0 && messageByteSize+len(msg.message.Value) > maximumMessageByteSizeLimit {
+			msgSize := msg.message.TotalSize()
+
+			// Check if there is an enough byte in batch, if not flush it.
+			if maximumMessageByteSizeLimit != 0 && messageByteSize+msgSize > maximumMessageByteSizeLimit {
 				b.consume(&messages, &commitMessages, &messageByteSize)
 			}
 
 			messages = append(messages, msg.message)
 			commitMessages = append(commitMessages, *msg.kafkaMessage)
-			messageByteSize += len(msg.message.Value)
+			messageByteSize += msgSize
 
+			// Check if there is an enough size in batch, if not flush it.
 			if len(messages) == maximumMessageLimit {
 				b.consume(&messages, &commitMessages, &messageByteSize)
 			}

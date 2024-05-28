@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func ResolveUnionIntOrStringValue(input any) (int, error) {
+func resolveUnionIntOrStringValue(input any) (int, error) {
 	switch value := input.(type) {
 	case int:
 		return value, nil

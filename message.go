@@ -39,6 +39,27 @@ type Message struct {
 	ErrDescription string
 }
 
+func (msg *Message) TotalSize() int {
+	return 14 + msg.keySize() + msg.valueSize() + msg.headerSize()
+}
+
+func (msg *Message) headerSize() int {
+	s := 0
+	for _, header := range msg.Headers {
+		s += sizeofString(header.Key)
+		s += len(header.Value)
+	}
+	return s
+}
+
+func (msg *Message) keySize() int {
+	return sizeofBytes(msg.Key)
+}
+
+func (msg *Message) valueSize() int {
+	return 4 + len(msg.Value)
+}
+
 type IncomingMessage struct {
 	kafkaMessage *kafka.Message
 	message      *Message
@@ -156,4 +177,12 @@ func (m *Message) RemoveHeader(header Header) {
 			break
 		}
 	}
+}
+
+func sizeofBytes(b []byte) int {
+	return 4 + len(b)
+}
+
+func sizeofString(s string) int {
+	return 2 + len(s)
 }
