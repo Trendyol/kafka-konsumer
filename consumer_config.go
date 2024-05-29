@@ -86,6 +86,7 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 		},
 		Producer: kcronsumer.ProducerConfig{
 			Balancer: cfg.RetryConfiguration.Balancer,
+			Brokers:  cfg.RetryConfiguration.Brokers,
 		},
 		LogLevel: lcronsumer.Level(cfg.RetryConfiguration.LogLevel),
 	}
