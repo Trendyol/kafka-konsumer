@@ -113,6 +113,14 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 	return &cronsumerCfg
 }
 
+func (cfg *ConsumerConfig) getTopics() []string {
+	if len(cfg.Reader.GroupTopics) > 0 {
+		return cfg.Reader.GroupTopics[:]
+	}
+
+	return []string{cfg.Reader.Topic}
+}
+
 type APIConfiguration struct {
 	// Port default is 8090
 	Port *int

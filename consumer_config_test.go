@@ -138,3 +138,38 @@ func Test_toHeader(t *testing.T) {
 		}
 	})
 }
+
+func TestConsumerConfig_getTopics(t *testing.T) {
+	t.Run("Should_Get_Consumer_Group_Topics", func(t *testing.T) {
+		// Given
+		cfg := ConsumerConfig{
+			Reader: ReaderConfig{
+				GroupTopics: []string{"t1", "t2", "t3"},
+			},
+		}
+
+		// When
+		result := cfg.getTopics()
+
+		// Then
+		if len(result) != 3 {
+			t.Error("len of result must be equal 3")
+		}
+	})
+	t.Run("Should_Get_Topic", func(t *testing.T) {
+		// Given
+		cfg := ConsumerConfig{
+			Reader: ReaderConfig{
+				Topic: "t1",
+			},
+		}
+
+		// When
+		result := cfg.getTopics()
+
+		// Then
+		if len(result) != 1 {
+			t.Error("len of result must be equal 1")
+		}
+	})
+}
