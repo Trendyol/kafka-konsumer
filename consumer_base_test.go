@@ -99,50 +99,123 @@ func Test_base_startConsume(t *testing.T) {
 }
 
 func Test_base_Pause(t *testing.T) {
-	// Given
-	ctx, cancelFn := context.WithCancel(context.Background())
-	b := base{
-		logger:  NewZapLogger(LogLevelDebug),
-		pause:   make(chan struct{}),
-		context: ctx, cancelFn: cancelFn,
-		consumerState: stateRunning,
-	}
-	go func() {
-		<-b.pause
-	}()
+	t.Run("Call_One_Goroutine", func(t *testing.T) {
+		// Given
+		ctx, cancelFn := context.WithCancel(context.Background())
+		b := base{
+			logger:  NewZapLogger(LogLevelDebug),
+			pause:   make(chan struct{}),
+			context: ctx, cancelFn: cancelFn,
+			consumerState: stateRunning,
+			mu:            sync.Mutex{},
+		}
+		go func() {
+			<-b.pause
+		}()
 
-	// When
-	b.Pause()
+		// When
+		b.Pause()
 
-	// Then
-	if b.consumerState != statePaused {
-		t.Fatal("consumer state must be in paused")
-	}
+		// Then
+		if b.consumerState != statePaused {
+			t.Fatal("consumer state must be in paused")
+		}
+	})
+	t.Run("Call_Multiple_Goroutine", func(t *testing.T) {
+		// Given
+		ctx, cancelFn := context.WithCancel(context.Background())
+		b := base{
+			logger:  NewZapLogger(LogLevelDebug),
+			pause:   make(chan struct{}),
+			context: ctx, cancelFn: cancelFn,
+			consumerState: stateRunning,
+			mu:            sync.Mutex{},
+		}
+		go func() {
+			<-b.pause
+		}()
+
+		// When
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			b.Pause()
+			wg.Done()
+		}()
+		go func() {
+			b.Pause()
+			wg.Done()
+		}()
+		wg.Wait()
+
+		// Then
+		if b.consumerState != statePaused {
+			t.Fatal("consumer state must be in paused")
+		}
+	})
 }
 
 func Test_base_Resume(t *testing.T) {
-	// Given
-	mc := mockReader{}
-	ctx, cancelFn := context.WithCancel(context.Background())
-	b := base{
-		r:       &mc,
-		logger:  NewZapLogger(LogLevelDebug),
-		pause:   make(chan struct{}),
-		quit:    make(chan struct{}),
-		wg:      sync.WaitGroup{},
-		context: ctx, cancelFn: cancelFn,
-	}
+	t.Run("Call_One_Goroutine", func(t *testing.T) {
+		// Given
+		mc := mockReader{}
+		ctx, cancelFn := context.WithCancel(context.Background())
+		b := base{
+			r:       &mc,
+			logger:  NewZapLogger(LogLevelDebug),
+			pause:   make(chan struct{}),
+			quit:    make(chan struct{}),
+			wg:      sync.WaitGroup{},
+			context: ctx, cancelFn: cancelFn,
+			mu: sync.Mutex{},
+		}
 
-	// When
-	b.Resume()
+		// When
+		b.Resume()
 
-	// Then
-	if b.consumerState != stateRunning {
-		t.Fatal("consumer state must be in running")
-	}
-	if ctx == b.context {
-		t.Fatal("contexts must be differ!")
-	}
+		// Then
+		if b.consumerState != stateRunning {
+			t.Fatal("consumer state must be in running")
+		}
+		if ctx == b.context {
+			t.Fatal("contexts must be differ!")
+		}
+	})
+	t.Run("Call_Multiple_Goroutine", func(t *testing.T) {
+		// Given
+		mc := mockReader{}
+		ctx, cancelFn := context.WithCancel(context.Background())
+		b := base{
+			r:       &mc,
+			logger:  NewZapLogger(LogLevelDebug),
+			pause:   make(chan struct{}),
+			quit:    make(chan struct{}),
+			wg:      sync.WaitGroup{},
+			context: ctx, cancelFn: cancelFn,
+			mu: sync.Mutex{},
+		}
+
+		// When
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			b.Resume()
+			wg.Done()
+		}()
+		go func() {
+			b.Resume()
+			wg.Done()
+		}()
+		wg.Wait()
+
+		// Then
+		if b.consumerState != stateRunning {
+			t.Fatal("consumer state must be in running")
+		}
+		if ctx == b.context {
+			t.Fatal("contexts must be differ!")
+		}
+	})
 }
 
 type mockReader struct {

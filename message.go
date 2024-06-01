@@ -9,6 +9,10 @@ import (
 	"github.com/segmentio/kafka-go/protocol"
 )
 
+const (
+	errMessageKey = "x-error-message"
+)
+
 type Header = protocol.Header
 
 type Message struct {
@@ -27,6 +31,12 @@ type Message struct {
 
 	// IsFailed Is only used on transactional retry disabled
 	IsFailed bool
+
+	// ErrDescription specifies the IsFailed message's error
+
+	// If available, kafka-konsumer writes this description into the failed message's
+	// headers as `x-error-message` key when producing retry topic
+	ErrDescription string
 }
 
 type IncomingMessage struct {
@@ -63,12 +73,24 @@ func fromKafkaMessage(kafkaMessage *kafka.Message) *Message {
 	return message
 }
 
-func (m *Message) toRetryableMessage(retryTopic string) kcronsumer.Message {
+func (m *Message) toRetryableMessage(retryTopic, consumeError string) kcronsumer.Message {
 	headers := make([]kcronsumer.Header, 0, len(m.Headers))
 	for i := range m.Headers {
 		headers = append(headers, kcronsumer.Header{
 			Key:   m.Headers[i].Key,
 			Value: m.Headers[i].Value,
+		})
+	}
+
+	if m.ErrDescription == "" {
+		headers = append(headers, kcronsumer.Header{
+			Key:   errMessageKey,
+			Value: []byte(consumeError),
+		})
+	} else {
+		headers = append(headers, kcronsumer.Header{
+			Key:   errMessageKey,
+			Value: []byte(m.ErrDescription),
 		})
 	}
 

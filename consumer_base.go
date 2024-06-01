@@ -21,9 +21,13 @@ type Consumer interface {
 	Consume()
 
 	// Pause function pauses consumer, it is stop consuming new messages
+	// It works idempotent under the hood
+	// Calling with multiple goroutines is safe
 	Pause()
 
 	// Resume function resumes consumer, it is start to working
+	// It works idempotent under the hood
+	// Calling with multiple goroutines is safe
 	Resume()
 
 	// GetMetricCollectors for the purpose of making metric collectors available.
@@ -67,8 +71,6 @@ type base struct {
 	incomingMessageStream     chan *IncomingMessage
 	singleConsumingStream     chan *Message
 	batchConsumingStream      chan []*Message
-	brokers                   []string
-	topic                     string
 	retryTopic                string
 	subprocesses              subprocesses
 	wg                        sync.WaitGroup
@@ -80,6 +82,7 @@ type base struct {
 	distributedTracingEnabled bool
 	consumerState             state
 	metricPrefix              string
+	mu                        sync.Mutex
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -118,8 +121,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		consumerState:             stateRunning,
 		skipMessageByHeaderFn:     cfg.SkipMessageByHeaderFn,
 		metricPrefix:              cfg.MetricPrefix,
-		brokers:                   cfg.Reader.Brokers,
-		topic:                     cfg.Reader.Topic,
+		mu:                        sync.Mutex{},
 	}
 
 	if cfg.DistributedTracingEnabled {
@@ -177,6 +179,7 @@ func (c *base) startConsume() {
 			m := &kafka.Message{}
 			err := c.r.FetchMessage(c.context, m)
 			if err != nil {
+				c.logger.Debug("c.r.FetchMessage ", err.Error())
 				if c.context.Err() != nil {
 					continue
 				}
@@ -207,7 +210,15 @@ func (c *base) startConsume() {
 }
 
 func (c *base) Pause() {
-	c.logger.Info("Consumer is paused!")
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.consumerState == statePaused {
+		c.logger.Debug("Consumer is already paused mode!")
+		return
+	}
+
+	c.logger.Infof("Consumer is paused!")
 
 	c.cancelFn()
 
@@ -217,6 +228,14 @@ func (c *base) Pause() {
 }
 
 func (c *base) Resume() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.consumerState == stateRunning {
+		c.logger.Debug("Consumer is already running mode!")
+		return
+	}
+
 	c.logger.Info("Consumer is resumed!")
 
 	c.pause = make(chan struct{})

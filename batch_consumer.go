@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"errors"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -41,9 +42,7 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	}
 
 	if cfg.RetryEnabled {
-		c.base.setupCronsumer(cfg, func(message kcronsumer.Message) error {
-			return c.consumeFn([]*Message{toMessage(message)})
-		})
+		c.base.setupCronsumer(cfg, c.runKonsumerFn)
 	}
 
 	if cfg.APIEnabled {
@@ -51,6 +50,16 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	}
 
 	return &c, nil
+}
+
+func (b *batchConsumer) runKonsumerFn(message kcronsumer.Message) error {
+	msgList := []*Message{toMessage(message)}
+
+	err := b.consumeFn(msgList)
+	if msgList[0].ErrDescription != "" {
+		err = errors.New(msgList[0].ErrDescription)
+	}
+	return err
 }
 
 func (b *batchConsumer) GetMetricCollectors() []prometheus.Collector {
@@ -176,14 +185,15 @@ func (b *batchConsumer) process(chunkMessages []*Message) {
 
 		if consumeErr != nil && b.retryEnabled {
 			cronsumerMessages := make([]kcronsumer.Message, 0, len(chunkMessages))
+			errorMessage := consumeErr.Error()
 			if b.transactionalRetry {
 				for i := range chunkMessages {
-					cronsumerMessages = append(cronsumerMessages, chunkMessages[i].toRetryableMessage(b.retryTopic))
+					cronsumerMessages = append(cronsumerMessages, chunkMessages[i].toRetryableMessage(b.retryTopic, errorMessage))
 				}
 			} else {
 				for i := range chunkMessages {
 					if chunkMessages[i].IsFailed {
-						cronsumerMessages = append(cronsumerMessages, chunkMessages[i].toRetryableMessage(b.retryTopic))
+						cronsumerMessages = append(cronsumerMessages, chunkMessages[i].toRetryableMessage(b.retryTopic, errorMessage))
 					}
 				}
 			}
