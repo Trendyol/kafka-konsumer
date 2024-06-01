@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"fmt"
+
 	"github.com/segmentio/kafka-go"
 )
 
@@ -11,12 +12,12 @@ type kafkaClient interface {
 	GetClient() *kafka.Client
 }
 
-type kClient struct {
+type client struct {
 	*kafka.Client
 }
 
 func newKafkaClient(cfg *ConsumerConfig) (kafkaClient, error) {
-	kc := kClient{
+	kc := client{
 		Client: &kafka.Client{
 			Addr: kafka.TCP(cfg.Reader.Brokers...),
 		},
@@ -35,7 +36,7 @@ func newKafkaClient(cfg *ConsumerConfig) (kafkaClient, error) {
 	return &kc, nil
 }
 
-func (k *kClient) GetClient() *kafka.Client {
+func (k *client) GetClient() *kafka.Client {
 	return k.Client
 }
 

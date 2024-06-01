@@ -3,8 +3,9 @@ package kafka
 import (
 	"context"
 	"errors"
-	"github.com/segmentio/kafka-go"
 	"testing"
+
+	"github.com/segmentio/kafka-go"
 )
 
 type mockKafkaClientWrapper struct {

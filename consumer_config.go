@@ -115,7 +115,7 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 
 func (cfg *ConsumerConfig) getTopics() []string {
 	if len(cfg.Reader.GroupTopics) > 0 {
-		return cfg.Reader.GroupTopics[:]
+		return cfg.Reader.GroupTopics
 	}
 
 	return []string{cfg.Reader.Topic}
