@@ -1,7 +1,6 @@
 package kafka
 
 import (
-	"github.com/segmentio/kafka-go/topics"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -55,8 +54,6 @@ func (c *consumer) GetMetricCollectors() []prometheus.Collector {
 
 func (c *consumer) Consume() {
 	go c.subprocesses.Start()
-
-	c.topicExists()
 
 	c.wg.Add(1)
 	go c.startConsume()
@@ -158,28 +155,5 @@ func (c *consumer) process(message *Message) {
 
 	if consumeErr == nil {
 		c.metric.TotalProcessedMessagesCounter++
-	}
-}
-
-func (c *consumer) topicExists() {
-	list, err := topics.List(c.context, &kafka.Client{
-		Addr:    kafka.TCP(c.brokers...),
-		Timeout: 3 * time.Second,
-	})
-
-	if err != nil {
-		c.logger.Errorf("Topic Exists Function Err %s", err.Error())
-	}
-
-	var exist bool
-	for i := range list {
-		if list[i].Name == c.topic {
-			exist = true
-			break
-		}
-	}
-
-	if !exist {
-		c.logger.Errorf("Topic doesn't exist")
 	}
 }
