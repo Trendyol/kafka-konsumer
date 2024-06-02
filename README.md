@@ -276,7 +276,8 @@ Kafka Konsumer offers an API that handles exposing several metrics.
 
 ### Exposed Metrics
 
-| Metric Name                                             | Description                                 | Value Type |
-|---------------------------------------------------------|---------------------------------------------|------------|
-| kafka_konsumer_processed_messages_total_current         | Total number of processed messages.         | Counter    |
-| kafka_konsumer_unprocessed_messages_total_current       | Total number of unprocessed messages.       | Counter    |
+| Metric Name                                                      | Description                                    | Value Type |
+|------------------------------------------------------------------|------------------------------------------------|------------|
+| kafka_konsumer_processed_messages_total_current                  | Total number of processed messages.            | Counter    |
+| kafka_konsumer_unprocessed_messages_total_current                | Total number of unprocessed messages.          | Counter    |
+| kafka_konsumer_error_count_during_fetching_message_total_current | Total number of error during fetching message. | Counter    |
