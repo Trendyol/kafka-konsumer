@@ -72,7 +72,6 @@ func (s *MetricCollector) Collect(ch chan<- prometheus.Metric) {
 		float64(s.consumerMetric.TotalErrorCountDuringFetchingMessage),
 		emptyStringList...,
 	)
-
 }
 
 func NewMetricMiddleware(cfg *ConsumerConfig,
