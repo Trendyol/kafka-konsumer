@@ -97,18 +97,20 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 	log := NewZapLogger(cfg.LogLevel)
 
-	kclient, err := newKafkaClient(cfg)
-	if err != nil {
-		return nil, err
+	if cfg.VerifyTopicOnStartup {
+		kclient, err := newKafkaClient(cfg)
+		if err != nil {
+			return nil, err
+		}
+		exist, err := verifyTopics(kclient, cfg)
+		if err != nil {
+			return nil, err
+		}
+		if !exist {
+			return nil, fmt.Errorf("topics %s does not exist, please check cluster authority etc", cfg.getTopics())
+		}
+		log.Infof("Topic [%s] verified successfully!", cfg.getTopics())
 	}
-	exist, err := verifyTopics(kclient, cfg)
-	if err != nil {
-		return nil, err
-	}
-	if !exist {
-		return nil, fmt.Errorf("topics %s does not exist, please check cluster authority etc", cfg.getTopics())
-	}
-	log.Infof("Topic [%s] verified successfully!", cfg.getTopics())
 
 	reader, err := cfg.newKafkaReader()
 	if err != nil {
