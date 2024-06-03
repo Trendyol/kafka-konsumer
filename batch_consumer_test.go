@@ -301,13 +301,15 @@ func Test_batchConsumer_process(t *testing.T) {
 
 func Test_batchConsumer_chunk(t *testing.T) {
 	tests := []struct {
-		allMessages []*Message
-		expected    [][]*Message
-		chunkSize   int
+		allMessages   []*Message
+		expected      [][]*Message
+		chunkSize     int
+		chunkByteSize int
 	}{
 		{
-			allMessages: createMessages(0, 9),
-			chunkSize:   3,
+			allMessages:   createMessages(0, 9),
+			chunkSize:     3,
+			chunkByteSize: 10000,
 			expected: [][]*Message{
 				createMessages(0, 3),
 				createMessages(3, 6),
@@ -315,20 +317,23 @@ func Test_batchConsumer_chunk(t *testing.T) {
 			},
 		},
 		{
-			allMessages: []*Message{},
-			chunkSize:   3,
-			expected:    [][]*Message{},
+			allMessages:   []*Message{},
+			chunkSize:     3,
+			chunkByteSize: 10000,
+			expected:      [][]*Message{},
 		},
 		{
-			allMessages: createMessages(0, 1),
-			chunkSize:   3,
+			allMessages:   createMessages(0, 1),
+			chunkSize:     3,
+			chunkByteSize: 10000,
 			expected: [][]*Message{
 				createMessages(0, 1),
 			},
 		},
 		{
-			allMessages: createMessages(0, 8),
-			chunkSize:   3,
+			allMessages:   createMessages(0, 8),
+			chunkSize:     3,
+			chunkByteSize: 10000,
 			expected: [][]*Message{
 				createMessages(0, 3),
 				createMessages(3, 6),
@@ -336,17 +341,29 @@ func Test_batchConsumer_chunk(t *testing.T) {
 			},
 		},
 		{
-			allMessages: createMessages(0, 3),
-			chunkSize:   3,
+			allMessages:   createMessages(0, 3),
+			chunkSize:     3,
+			chunkByteSize: 10000,
 			expected: [][]*Message{
 				createMessages(0, 3),
+			},
+		},
+
+		{
+			allMessages:   createMessages(0, 3),
+			chunkSize:     100,
+			chunkByteSize: 4,
+			expected: [][]*Message{
+				createMessages(0, 1),
+				createMessages(1, 2),
+				createMessages(2, 3),
 			},
 		},
 	}
 
 	for i, tc := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			chunkedMessages := chunkMessages(&tc.allMessages, tc.chunkSize)
+			chunkedMessages := chunkMessages(&tc.allMessages, tc.chunkSize, tc.chunkByteSize)
 
 			if !reflect.DeepEqual(chunkedMessages, tc.expected) && !(len(chunkedMessages) == 0 && len(tc.expected) == 0) {
 				t.Errorf("For chunkSize %d, expected %v, but got %v", tc.chunkSize, tc.expected, chunkedMessages)
@@ -444,6 +461,7 @@ func createMessages(partitionStart int, partitionEnd int) []*Message {
 	for i := partitionStart; i < partitionEnd; i++ {
 		messages = append(messages, &Message{
 			Partition: i,
+			Value:     []byte("test"),
 		})
 	}
 	return messages
