@@ -199,6 +199,8 @@ func (c *base) startConsume() {
 				if c.context.Err() != nil {
 					continue
 				}
+
+				c.metric.TotalErrorCountDuringFetchingMessage++
 				c.logger.Warnf("Message could not read, err %s", err.Error())
 				continue
 			}

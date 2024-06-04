@@ -11,8 +11,9 @@ const Name = "kafka_konsumer"
 type MetricCollector struct {
 	consumerMetric *ConsumerMetric
 
-	totalUnprocessedMessagesCounter *prometheus.Desc
-	totalProcessedMessagesCounter   *prometheus.Desc
+	totalUnprocessedMessagesCounter      *prometheus.Desc
+	totalProcessedMessagesCounter        *prometheus.Desc
+	totalErrorCountDuringFetchingMessage *prometheus.Desc
 }
 
 func NewMetricCollector(metricPrefix string, consumerMetric *ConsumerMetric) *MetricCollector {
@@ -32,6 +33,12 @@ func NewMetricCollector(metricPrefix string, consumerMetric *ConsumerMetric) *Me
 		totalUnprocessedMessagesCounter: prometheus.NewDesc(
 			prometheus.BuildFQName(metricPrefix, "unprocessed_messages_total", "current"),
 			"Total number of unprocessed messages.",
+			emptyStringList,
+			nil,
+		),
+		totalErrorCountDuringFetchingMessage: prometheus.NewDesc(
+			prometheus.BuildFQName(metricPrefix, "error_count_during_fetching_message_total", "current"),
+			"Total number of error during fetching message.",
 			emptyStringList,
 			nil,
 		),
@@ -56,6 +63,13 @@ func (s *MetricCollector) Collect(ch chan<- prometheus.Metric) {
 		s.totalUnprocessedMessagesCounter,
 		prometheus.CounterValue,
 		float64(s.consumerMetric.TotalUnprocessedMessagesCounter),
+		emptyStringList...,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		s.totalErrorCountDuringFetchingMessage,
+		prometheus.CounterValue,
+		float64(s.consumerMetric.TotalErrorCountDuringFetchingMessage),
 		emptyStringList...,
 	)
 }
