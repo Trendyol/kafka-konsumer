@@ -43,6 +43,7 @@ type ConsumerConfig struct {
 	RetryConfiguration              RetryConfiguration
 	LogLevel                        LogLevel
 	Rack                            string
+	VerifyTopicOnStartup            bool
 	ClientID                        string
 	Reader                          ReaderConfig
 	CommitInterval                  time.Duration
@@ -66,23 +67,24 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 		ClientID:     cfg.RetryConfiguration.ClientID,
 		Brokers:      cfg.RetryConfiguration.Brokers,
 		Consumer: kcronsumer.ConsumerConfig{
-			ClientID:          cfg.ClientID,
-			GroupID:           cfg.Reader.GroupID,
-			Topic:             cfg.RetryConfiguration.Topic,
-			DeadLetterTopic:   cfg.RetryConfiguration.DeadLetterTopic,
-			Cron:              cfg.RetryConfiguration.StartTimeCron,
-			Duration:          cfg.RetryConfiguration.WorkDuration,
-			Concurrency:       cfg.Concurrency,
-			MinBytes:          cfg.Reader.MinBytes,
-			MaxBytes:          cfg.Reader.MaxBytes,
-			MaxRetry:          cfg.RetryConfiguration.MaxRetry,
-			MaxWait:           cfg.Reader.MaxWait,
-			CommitInterval:    cfg.Reader.CommitInterval,
-			HeartbeatInterval: cfg.Reader.HeartbeatInterval,
-			SessionTimeout:    cfg.Reader.SessionTimeout,
-			RebalanceTimeout:  cfg.Reader.RebalanceTimeout,
-			StartOffset:       kcronsumer.ToStringOffset(cfg.Reader.StartOffset),
-			RetentionTime:     cfg.Reader.RetentionTime,
+			ClientID:             cfg.ClientID,
+			GroupID:              cfg.Reader.GroupID,
+			Topic:                cfg.RetryConfiguration.Topic,
+			DeadLetterTopic:      cfg.RetryConfiguration.DeadLetterTopic,
+			Cron:                 cfg.RetryConfiguration.StartTimeCron,
+			Duration:             cfg.RetryConfiguration.WorkDuration,
+			MaxRetry:             cfg.RetryConfiguration.MaxRetry,
+			VerifyTopicOnStartup: cfg.RetryConfiguration.VerifyTopicOnStartup,
+			Concurrency:          cfg.Concurrency,
+			MinBytes:             cfg.Reader.MinBytes,
+			MaxBytes:             cfg.Reader.MaxBytes,
+			MaxWait:              cfg.Reader.MaxWait,
+			CommitInterval:       cfg.Reader.CommitInterval,
+			HeartbeatInterval:    cfg.Reader.HeartbeatInterval,
+			SessionTimeout:       cfg.Reader.SessionTimeout,
+			RebalanceTimeout:     cfg.Reader.RebalanceTimeout,
+			StartOffset:          kcronsumer.ToStringOffset(cfg.Reader.StartOffset),
+			RetentionTime:        cfg.Reader.RetentionTime,
 		},
 		Producer: kcronsumer.ProducerConfig{
 			Balancer: cfg.RetryConfiguration.Balancer,
@@ -111,6 +113,14 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 	}
 
 	return &cronsumerCfg
+}
+
+func (cfg *ConsumerConfig) getTopics() []string {
+	if len(cfg.Reader.GroupTopics) > 0 {
+		return cfg.Reader.GroupTopics
+	}
+
+	return []string{cfg.Reader.Topic}
 }
 
 type APIConfiguration struct {
@@ -157,6 +167,7 @@ type RetryConfiguration struct {
 	Topic                 string
 	DeadLetterTopic       string
 	Rack                  string
+	VerifyTopicOnStartup  bool
 	LogLevel              LogLevel
 	Brokers               []string
 	Balancer              Balancer
@@ -166,9 +177,10 @@ type RetryConfiguration struct {
 }
 
 type BatchConfiguration struct {
-	BatchConsumeFn    BatchConsumeFn
-	PreBatchFn        PreBatchFn
-	MessageGroupLimit int
+	BatchConsumeFn            BatchConsumeFn
+	PreBatchFn                PreBatchFn
+	MessageGroupLimit         int
+	MessageGroupByteSizeLimit any
 }
 
 func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {

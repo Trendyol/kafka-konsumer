@@ -98,6 +98,25 @@ func TestMessage_AddHeader(t *testing.T) {
 	})
 }
 
+func TestMessage_Size(t *testing.T) {
+	// Given
+	m := Message{
+		Headers: []kafka.Header{
+			{Key: "foo", Value: []byte("fooValue")},
+		},
+		Value: []byte("barValue"),
+		Key:   []byte("bar"),
+	}
+
+	// When
+	s := m.TotalSize()
+
+	// Then
+	if s != 46 {
+		t.Fatalf("Total message size must be equal to 46")
+	}
+}
+
 func TestMessage_RemoveHeader(t *testing.T) {
 	// Given
 	m := Message{

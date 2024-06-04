@@ -1,5 +1,6 @@
-# Kafka Konsumer 
-[![🔨Build And Test](https://github.com/Trendyol/kafka-konsumer/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/Trendyol/kafka-konsumer/actions/workflows/test.yml) 
+# Kafka Konsumer
+
+[![🔨Build And Test](https://github.com/Trendyol/kafka-konsumer/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/Trendyol/kafka-konsumer/actions/workflows/test.yml)
 [![🔨IntegrationTest](https://github.com/Trendyol/kafka-konsumer/actions/workflows/integration-test.yml/badge.svg?branch=main)](https://github.com/Trendyol/kafka-konsumer/actions/workflows/integration-test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Trendyol/kafka-konsumer/v2)](https://goreportcard.com/report/github.com/Trendyol/kafka-konsumer/v2)
 
@@ -13,18 +14,18 @@ manager ([kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer)).
 ## Migration Guide
 
 ### V2 Release Notes
+
 - Added ability for manipulating kafka message headers.
 - Added transactional retry feature. Set false if you want to use exception/retry strategy to only failed messages.
 - Enable manuel commit at both single and batch consuming modes.
 - Enabling consumer resume/pause functionality. Please refer to [its example](examples/with-pause-resume-consumer) and
-[how it works](examples/with-pause-resume-consumer/how-it-works.md) documentation.
+  [how it works](examples/with-pause-resume-consumer/how-it-works.md) documentation.
 - Bumped [kafka-cronsumer](https://github.com/Trendyol/kafka-cronsumer/releases) to the latest version:
-  - Backoff strategy support (linear, exponential options)
-  - Added message key for retried messages 
-  - Added x-error-message to see what was the error of the message during processing
+    - Backoff strategy support (linear, exponential options)
+    - Added message key for retried messages
+    - Added x-error-message to see what was the error of the message during processing
 - Reduce memory allocation.
 - Increase TP on changing internal concurrency structure.
-
 
 ### How to migrate from v1 to v2?
 
@@ -35,7 +36,7 @@ You can get latest version via `go get github.com/Trendyol/kafka-konsumer/v2@lat
 - You need to change your consume function with pointer signature.
 
 - We moved messageGroupDuration from `batchConfiguration.messageGroupDuration` to root level. Because this field is used
-single (non-batch) consumer too.
+  single (non-batch) consumer too.
 
 ### Installation
 
@@ -229,6 +230,7 @@ under [the specified folder](examples/with-sasl-plaintext) and then start the ap
 | `retryEnabled`                                   | Retry/Exception consumer is working or not                                                                                                                                                                                                                                                                                                                                                              | false                       |
 | `transactionalRetry`                             | Set false if you want to use exception/retry strategy to only failed messages                                                                                                                                                                                                                                                                                                                           | true                        |
 | `commitInterval`                                 | indicates the interval at which offsets are committed to the broker.                                                                                                                                                                                                                                                                                                                                    | 1s                          |
+| `verifyTopicOnStartup`                           | it checks existence of the given topic(s) on the kafka cluster.                                                                                                                                                                                                                                                                                                                                         | false                       |
 | `rack`                                           | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go#RackAffinityGroupBalancer)                                                                                                                                                                                                                                                                                                                   |                             |
 | `clientId`                                       | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go#Dialer)                                                                                                                                                                                                                                                                                                                                      |                             |
 | `messageGroupDuration`                           | Maximum time to wait for a batch                                                                                                                                                                                                                                                                                                                                                                        | 1s                          |
@@ -255,7 +257,9 @@ under [the specified folder](examples/with-sasl-plaintext) and then start the ap
 | `retryConfiguration.sasl.username`               | SCRAM OR PLAIN username                                                                                                                                                                                                                                                                                                                                                                                 |                             |
 | `retryConfiguration.sasl.password`               | SCRAM OR PLAIN password                                                                                                                                                                                                                                                                                                                                                                                 |                             |
 | `retryConfiguration.skipMessageByHeaderFn`       | Function to filter messages based on headers, return true if you want to skip the message	                                                                                                                                                                                                                                                                                                              | nil                         |
+| `retryConfiguration.verifyTopicOnStartup`        | it checks existence of the given retry topic on the kafka cluster.  	                                                                                                                                                                                                                                                                                                                                   | false                       |
 | `batchConfiguration.messageGroupLimit`           | Maximum number of messages in a batch                                                                                                                                                                                                                                                                                                                                                                   |                             |
+| `batchConfiguration.messageGroupByteSizeLimit`   | Maximum number of bytes in a batch                                                                                                                                                                                                                                                                                                                                                                      |                             |
 | `batchConfiguration.batchConsumeFn`              | Kafka batch consumer function, if retry enabled it, is also used to consume retriable messages                                                                                                                                                                                                                                                                                                          |                             |
 | `batchConfiguration.preBatchFn`                  | This function enable for transforming messages before batch consuming starts                                                                                                                                                                                                                                                                                                                            |                             |
 | `batchConfiguration.balancer`                    | [see doc](https://pkg.go.dev/github.com/segmentio/kafka-go#Balancer)                                                                                                                                                                                                                                                                                                                                    | leastBytes                  |
