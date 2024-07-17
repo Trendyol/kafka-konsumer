@@ -32,6 +32,22 @@ func TestConsumerConfig_validate(t *testing.T) {
 		if cfg.MessageGroupDuration != time.Second {
 			t.Fatal("Message Group Duration default value must equal to 1s")
 		}
+		if cfg.BatchConfiguration != nil {
+			t.Fatalf("Batch configuration not specified so it must stay as nil")
+		}
+	})
+	t.Run("Set_Defaults_For_BatchConfiguration", func(t *testing.T) {
+		// Given
+		cfg := ConsumerConfig{BatchConfiguration: &BatchConfiguration{}}
+
+		// When
+		cfg.setDefaults()
+
+		// Then
+
+		if cfg.BatchConfiguration.MessageGroupLimit != 100 {
+			t.Fatalf("MessageGroupLimit Batch configuration not specified so it must take default value")
+		}
 	})
 	t.Run("Set_Defaults_When_Distributed_Tracing_Enabled", func(t *testing.T) {
 		// Given
