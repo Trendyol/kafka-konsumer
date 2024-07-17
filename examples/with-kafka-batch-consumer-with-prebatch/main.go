@@ -17,9 +17,8 @@ func main() {
 			GroupID: "standart-cg",
 		},
 		BatchConfiguration: &kafka.BatchConfiguration{
-			MessageGroupLimit: 1000,
-			BatchConsumeFn:    batchConsumeFn,
-			PreBatchFn:        preBatch,
+			BatchConsumeFn: batchConsumeFn,
+			PreBatchFn:     preBatch,
 		},
 		RetryEnabled: true,
 		RetryConfiguration: kafka.RetryConfiguration{

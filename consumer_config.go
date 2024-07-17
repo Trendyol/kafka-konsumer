@@ -246,6 +246,10 @@ func (cfg *ConsumerConfig) setDefaults() {
 		cfg.MessageGroupDuration = time.Second
 	}
 
+	if cfg.BatchConfiguration != nil && cfg.BatchConfiguration.MessageGroupLimit == 0 {
+		cfg.BatchConfiguration.MessageGroupLimit = 100
+	}
+
 	if cfg.DistributedTracingEnabled {
 		if cfg.DistributedTracingConfiguration.Propagator == nil {
 			cfg.DistributedTracingConfiguration.Propagator = otel.GetTextMapPropagator()
