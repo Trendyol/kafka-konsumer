@@ -213,10 +213,14 @@ func (b *batchConsumer) process(chunkMessages []*Message) {
 	consumeErr := b.consumeFn(chunkMessages)
 
 	if consumeErr != nil {
-		b.logger.Warnf("Consume Function Err %s, Messages will be retried", consumeErr.Error())
-		// Try to process same messages again for resolving transient network errors etc.
-		if consumeErr = b.consumeFn(chunkMessages); consumeErr != nil {
-			b.logger.Warnf("Consume Function Again Err %s, messages are sending to exception/retry topic %s", consumeErr.Error(), b.retryTopic)
+		if b.transactionalRetry {
+			b.logger.Warnf("Consume Function Err %s, Messages will be retried", consumeErr.Error())
+			// Try to process same messages again for resolving transient network errors etc.
+			if consumeErr = b.consumeFn(chunkMessages); consumeErr != nil {
+				b.logger.Warnf("Consume Function Again Err %s, messages are sending to exception/retry topic %s", consumeErr.Error(), b.retryTopic)
+				b.metric.TotalUnprocessedMessagesCounter += int64(len(chunkMessages))
+			}
+		} else {
 			b.metric.TotalUnprocessedMessagesCounter += int64(len(chunkMessages))
 		}
 
