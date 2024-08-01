@@ -205,17 +205,17 @@ func (c *base) startConsume() {
 				continue
 			}
 
+			incomingMessage := &IncomingMessage{
+				kafkaMessage: m,
+				message:      fromKafkaMessage(m),
+			}
+
 			if c.skipMessageByHeaderFn != nil && c.skipMessageByHeaderFn(m.Headers) {
-				c.logger.Infof("Message is not processed. Header filter applied. Headers: %v", m.Headers)
+				c.logger.Debugf("Message is not processed. Header filter applied. Headers: %v", incomingMessage.message.Headers.Pretty())
 				if err = c.r.CommitMessages([]kafka.Message{*m}); err != nil {
 					c.logger.Errorf("Commit Error %s,", err.Error())
 				}
 				continue
-			}
-
-			incomingMessage := &IncomingMessage{
-				kafkaMessage: m,
-				message:      fromKafkaMessage(m),
 			}
 
 			if c.distributedTracingEnabled {

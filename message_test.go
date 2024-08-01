@@ -266,3 +266,19 @@ func TestMessage_toRetryableMessage(t *testing.T) {
 		}
 	})
 }
+
+func TestHeaders_Pretty(t *testing.T) {
+	// Given
+	headers := Headers{
+		{Key: "key1", Value: []byte("value1")},
+		{Key: "key2", Value: []byte("value2")},
+	}
+
+	// When
+	result := headers.Pretty()
+
+	// Then
+	if result != "key1: value1, key2: value2" {
+		t.Error("result must be `key1: value1, key2: value2`")
+	}
+}
