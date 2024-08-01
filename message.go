@@ -2,6 +2,8 @@ package kafka
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
@@ -15,6 +17,17 @@ const (
 
 type Header = protocol.Header
 
+type Headers []Header
+
+// Pretty  Writes every header key and value, it is useful for debugging purpose
+func (hs Headers) Pretty() string {
+	headerStrings := make([]string, len(hs))
+	for i := range hs {
+		headerStrings[i] = fmt.Sprintf("%s: %s", hs[i].Key, string(hs[i].Value))
+	}
+	return strings.Join(headerStrings, ", ")
+}
+
 type Message struct {
 	Time       time.Time
 	WriterData interface{}
@@ -24,7 +37,7 @@ type Message struct {
 	Topic         string
 	Key           []byte
 	Value         []byte
-	Headers       []Header
+	Headers       Headers
 	Partition     int
 	Offset        int64
 	HighWaterMark int64
