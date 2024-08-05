@@ -34,7 +34,7 @@ func Test_batchConsumer_startBatch(t *testing.T) {
 			concurrency:            1,
 		},
 		messageGroupLimit: 3,
-		consumeFn: func(messages []*Message) error {
+		consumeFn: func(_ []*Message) error {
 			numberOfBatch++
 			return nil
 		},
@@ -101,7 +101,7 @@ func Test_batchConsumer_startBatch_with_preBatch(t *testing.T) {
 			concurrency:            1,
 		},
 		messageGroupLimit: 2,
-		consumeFn: func(messages []*Message) error {
+		consumeFn: func(_ []*Message) error {
 			numberOfBatch++
 			return nil
 		},
@@ -179,7 +179,7 @@ func Test_batchConsumer_process(t *testing.T) {
 		gotOnlyOneTimeException := true
 		bc := batchConsumer{
 			base: &base{metric: &ConsumerMetric{}, transactionalRetry: true, logger: NewZapLogger(LogLevelDebug)},
-			consumeFn: func(messages []*Message) error {
+			consumeFn: func(_ []*Message) error {
 				if gotOnlyOneTimeException {
 					gotOnlyOneTimeException = false
 					return errors.New("simulate only one time exception")

@@ -23,6 +23,7 @@ func Test_base_startConsume(t *testing.T) {
 			logger:                NewZapLogger(LogLevelError),
 			consumerState:         stateRunning,
 			metric:                &ConsumerMetric{},
+			consumerCfg:           &ConsumerConfig{},
 		}
 		b.context, b.cancelFn = context.WithCancel(context.Background())
 
