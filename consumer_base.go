@@ -84,6 +84,7 @@ type base struct {
 	consumerState             state
 	metricPrefix              string
 	mu                        sync.Mutex
+	consumerCfg               *ConsumerConfig
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -138,6 +139,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		skipMessageByHeaderFn:     cfg.SkipMessageByHeaderFn,
 		metricPrefix:              cfg.MetricPrefix,
 		mu:                        sync.Mutex{},
+		consumerCfg:               cfg,
 	}
 
 	if cfg.DistributedTracingEnabled {
@@ -201,7 +203,7 @@ func (c *base) startConsume() {
 				}
 
 				c.metric.TotalErrorCountDuringFetchingMessage++
-				c.logger.Warnf("Message could not read, err %s", err.Error())
+				c.logger.Warnf("Message could not read, err %s, from topics %s with consumer group %s", err.Error(), c.consumerCfg.getTopics(), c.consumerCfg.Reader.GroupID)
 				continue
 			}
 

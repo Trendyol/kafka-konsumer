@@ -12,7 +12,7 @@ func main() {
 		Concurrency: 1,
 		Reader: kafka.ReaderConfig{
 			Brokers: []string{"localhost:29092"},
-			Topic:   "standart-topic",
+			Topic:   "standart-topicxxxx",
 			GroupID: "standart-cg",
 		},
 		RetryEnabled: false,
