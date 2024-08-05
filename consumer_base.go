@@ -203,6 +203,7 @@ func (c *base) startConsume() {
 				}
 
 				c.metric.TotalErrorCountDuringFetchingMessage++
+				//nolint:lll
 				c.logger.Warnf("Message could not read, err %s, from topics %s with consumer group %s", err.Error(), c.consumerCfg.getTopics(), c.consumerCfg.Reader.GroupID)
 				continue
 			}

@@ -98,7 +98,7 @@ func TestConsumerConfig_newCronsumerConfig(t *testing.T) {
 		// Given
 		cfg := ConsumerConfig{
 			RetryConfiguration: RetryConfiguration{
-				SkipMessageByHeaderFn: func(headers []Header) bool {
+				SkipMessageByHeaderFn: func(_ []Header) bool {
 					return false
 				},
 			},
