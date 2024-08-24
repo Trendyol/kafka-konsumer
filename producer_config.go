@@ -1,6 +1,9 @@
 package kafka
 
 import (
+	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -29,6 +32,11 @@ type WriterConfig struct {
 	AllowAutoTopicCreation bool
 }
 
+func (cfg WriterConfig) Json() string {
+	return fmt.Sprintf(`{"Brokers": ["%s"], "Balancer": %q, "Compression": %q}`,
+		strings.Join(cfg.Brokers, "\", \""), GetBalancerString(cfg.Balancer), cfg.Compression.String())
+}
+
 type TransportConfig struct {
 	MetadataTopics []string
 	DialTimeout    time.Duration
@@ -44,6 +52,25 @@ type ProducerConfig struct {
 	ClientID                        string
 	Writer                          WriterConfig
 	DistributedTracingEnabled       bool
+}
+
+func (cfg *ProducerConfig) String() string {
+	re := regexp.MustCompile(`"(\w+)"\s*:`)
+	modifiedString := re.ReplaceAllString(cfg.Json(), `$1:`)
+	modifiedString = modifiedString[1 : len(modifiedString)-1]
+	return modifiedString
+}
+
+func (cfg *ProducerConfig) Json() string {
+	if cfg == nil {
+		return "{}"
+	}
+	return fmt.Sprintf(`{"Writer": %s, "ClientID": %q, "DistributedTracingEnabled": %t, "SASL": %s, "TLS": %s}`,
+		cfg.Writer.Json(), cfg.ClientID, cfg.DistributedTracingEnabled, cfg.SASL.Json(), cfg.TLS.Json())
+}
+
+func (cfg *ProducerConfig) JsonPretty() string {
+	return jsonPretty(cfg.Json())
 }
 
 func (cfg *ProducerConfig) newKafkaTransport() (*kafka.Transport, error) {

@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"fmt"
 	"github.com/segmentio/kafka-go/sasl"
 	"github.com/segmentio/kafka-go/sasl/plain"
 	"github.com/segmentio/kafka-go/sasl/scram"
@@ -36,4 +37,11 @@ func (s *SASLConfig) plain() sasl.Mechanism {
 
 func (s *SASLConfig) IsEmpty() bool {
 	return s == nil
+}
+
+func (s *SASLConfig) Json() string {
+	if s == nil {
+		return "{}"
+	}
+	return fmt.Sprintf(`{"Mechanism": %q, "Username": %q, "Password": %q}`, s.Type, s.Username, s.Password)
 }

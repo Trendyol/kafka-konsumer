@@ -27,3 +27,22 @@ func GetBalancerReferenceHash() Balancer {
 func GetBalancerRoundRobin() Balancer {
 	return &kafka.RoundRobin{}
 }
+
+func GetBalancerString(balancer Balancer) string {
+	switch balancer.(type) {
+	case *kafka.CRC32Balancer:
+		return "CRC32Balancer"
+	case *kafka.Hash:
+		return "Hash"
+	case *kafka.LeastBytes:
+		return "LeastBytes"
+	case *kafka.Murmur2Balancer:
+		return "Murmur2Balancer"
+	case *kafka.ReferenceHash:
+		return "ReferenceHash"
+	case *kafka.RoundRobin:
+		return "RoundRobin"
+	default:
+		return "Unknown"
+	}
+}

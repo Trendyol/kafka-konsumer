@@ -64,3 +64,55 @@ func TestGetBalancerRoundRobinh(t *testing.T) {
 		t.Errorf("Expected *kafka.RoundRobin, got %s", reflect.TypeOf(balancer).String())
 	}
 }
+
+func TestGetBalancerString(t *testing.T) {
+
+	tests := []struct {
+		name     string
+		balancer Balancer
+		want     string
+	}{
+		{
+			name:     "Should_Return_CRC32Balancer",
+			balancer: GetBalancerCRC32(),
+			want:     "CRC32Balancer",
+		},
+		{
+			name:     "Should_Return_Hash",
+			balancer: GetBalancerHash(),
+			want:     "Hash",
+		},
+		{
+			name:     "Should_Return_LeastBytes",
+			balancer: GetBalancerLeastBytes(),
+			want:     "LeastBytes",
+		},
+		{
+			name:     "Should_Return_Murmur2Balancer",
+			balancer: GetBalancerMurmur2Balancer(),
+			want:     "Murmur2Balancer",
+		},
+		{
+			name:     "Should_Return_ReferenceHash",
+			balancer: GetBalancerReferenceHash(),
+			want:     "ReferenceHash",
+		},
+		{
+			name:     "Should_Return_RoundRobin",
+			balancer: GetBalancerRoundRobin(),
+			want:     "RoundRobin",
+		},
+		{
+			name:     "Should_Return_Unknown",
+			balancer: nil,
+			want:     "Unknown",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := GetBalancerString(tt.balancer); got != tt.want {
+				t.Errorf("GetBalancerString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
