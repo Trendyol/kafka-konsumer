@@ -32,7 +32,7 @@ type WriterConfig struct {
 	AllowAutoTopicCreation bool
 }
 
-func (cfg WriterConfig) Json() string {
+func (cfg WriterConfig) JSON() string {
 	return fmt.Sprintf(`{"Brokers": ["%s"], "Balancer": %q, "Compression": %q}`,
 		strings.Join(cfg.Brokers, "\", \""), GetBalancerString(cfg.Balancer), cfg.Compression.String())
 }
@@ -66,7 +66,7 @@ func (cfg *ProducerConfig) JSON() string {
 		return "{}"
 	}
 	return fmt.Sprintf(`{"Writer": %s, "ClientID": %q, "DistributedTracingEnabled": %t, "SASL": %s, "TLS": %s}`,
-		cfg.Writer.Json(), cfg.ClientID, cfg.DistributedTracingEnabled, cfg.SASL.JSON(), cfg.TLS.JSON())
+		cfg.Writer.JSON(), cfg.ClientID, cfg.DistributedTracingEnabled, cfg.SASL.JSON(), cfg.TLS.JSON())
 }
 
 func (cfg *ProducerConfig) JSONPretty() string {
