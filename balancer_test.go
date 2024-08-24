@@ -66,7 +66,6 @@ func TestGetBalancerRoundRobinh(t *testing.T) {
 }
 
 func TestGetBalancerString(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		balancer Balancer

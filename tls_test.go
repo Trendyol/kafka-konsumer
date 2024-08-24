@@ -73,7 +73,7 @@ func TestTLSConfig_Json(t *testing.T) {
 
 		expected := "{}"
 		// When
-		result := cfg.Json()
+		result := cfg.JSON()
 		// Then
 		if result != expected {
 			t.Fatal("result must be equal to expected")
@@ -88,7 +88,7 @@ func TestTLSConfig_Json(t *testing.T) {
 
 		expected := "{\"RootCAPath\": \"resources/ca\", \"IntermediateCAPath\": \"resources/intCa\"}"
 		// When
-		result := cfg.Json()
+		result := cfg.JSON()
 		// Then
 		if result != expected {
 			t.Fatal("result must be equal to expected")

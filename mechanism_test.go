@@ -9,7 +9,7 @@ func TestSASLConfig_Json(t *testing.T) {
 
 		expected := "{}"
 		// When
-		result := cfg.Json()
+		result := cfg.JSON()
 		// Then
 		if result != expected {
 			t.Fatal("result must be equal to expected")
@@ -25,7 +25,7 @@ func TestSASLConfig_Json(t *testing.T) {
 
 		expected := "{\"Mechanism\": \"scram\", \"Username\": \"user\", \"Password\": \"pass\"}"
 		// When
-		result := cfg.Json()
+		result := cfg.JSON()
 		// Then
 		if result != expected {
 			t.Fatal("result must be equal to expected")

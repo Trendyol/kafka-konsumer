@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"fmt"
+
 	"github.com/segmentio/kafka-go/sasl"
 	"github.com/segmentio/kafka-go/sasl/plain"
 	"github.com/segmentio/kafka-go/sasl/scram"
@@ -39,7 +40,7 @@ func (s *SASLConfig) IsEmpty() bool {
 	return s == nil
 }
 
-func (s *SASLConfig) Json() string {
+func (s *SASLConfig) JSON() string {
 	if s == nil {
 		return "{}"
 	}

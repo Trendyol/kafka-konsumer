@@ -1,8 +1,9 @@
 package kafka
 
 import (
-	"github.com/segmentio/kafka-go"
 	"testing"
+
+	"github.com/segmentio/kafka-go"
 )
 
 func TestProducerConfig_setDefaults(t *testing.T) {
@@ -27,7 +28,7 @@ func TestProducerConfig_Json(t *testing.T) {
 		var config *ProducerConfig
 		expected := "{}"
 		// When
-		result := config.Json()
+		result := config.JSON()
 		// Then
 		if result != expected {
 			t.Fatal("result must be equal to expected")
@@ -35,9 +36,13 @@ func TestProducerConfig_Json(t *testing.T) {
 	})
 	t.Run("Should_Convert_To_Json", func(t *testing.T) {
 		// Given
-		expected := "{\"Writer\": {\"Brokers\": [\"broker-1.test.com\", \"broker-2.test.com\"], \"Balancer\": \"Hash\", \"Compression\": \"gzip\"}, \"ClientID\": \"test-consumer-client-id\", \"DistributedTracingEnabled\": false, \"SASL\": {\"Mechanism\": \"scram\", \"Username\": \"user\", \"Password\": \"pass\"}, \"TLS\": {\"RootCAPath\": \"resources/ca\", \"IntermediateCAPath\": \"resources/intCa\"}}"
+		expected := "{\"Writer\": {\"Brokers\": [\"broker-1.test.com\", \"broker-2.test.com\"], " +
+			"\"Balancer\": \"Hash\", \"Compression\": \"gzip\"}, \"ClientID\": \"test-consumer-client-id\", " +
+			"\"DistributedTracingEnabled\": false, " +
+			"\"SASL\": {\"Mechanism\": \"scram\", \"Username\": \"user\", \"Password\": \"pass\"}, " +
+			"\"TLS\": {\"RootCAPath\": \"resources/ca\", \"IntermediateCAPath\": \"resources/intCa\"}}"
 		// When
-		result := getProducerConfigExample().Json()
+		result := getProducerConfigExample().JSON()
 		// Then
 		if result != expected {
 			t.Fatal("result must be equal to expected")
@@ -45,9 +50,10 @@ func TestProducerConfig_Json(t *testing.T) {
 	})
 	t.Run("Should_Convert_To_Json_Without_Inner_Object", func(t *testing.T) {
 		// Given
-		expected := "{\"Writer\": {\"Brokers\": [\"\"], \"Balancer\": \"Unknown\", \"Compression\": \"uncompressed\"}, \"ClientID\": \"test-consumer-client-id\", \"DistributedTracingEnabled\": false, \"SASL\": {}, \"TLS\": {}}"
+		expected := "{\"Writer\": {\"Brokers\": [\"\"], \"Balancer\": \"Unknown\", \"Compression\": \"uncompressed\"}, " +
+			"\"ClientID\": \"test-consumer-client-id\", \"DistributedTracingEnabled\": false, \"SASL\": {}, \"TLS\": {}}"
 		// When
-		result := getProducerConfigWithoutInnerObjectExample().Json()
+		result := getProducerConfigWithoutInnerObjectExample().JSON()
 		// Then
 		if result != expected {
 			t.Fatal("result must be equal to expected")
@@ -58,9 +64,13 @@ func TestProducerConfig_Json(t *testing.T) {
 func TestProducerConfig_JsonPretty(t *testing.T) {
 	t.Run("Should_Convert_To_Pretty_Json", func(t *testing.T) {
 		// Given
-		expected := "{\n\t\"Writer\": {\n\t\t\"Brokers\": [\n\t\t\t\"broker-1.test.com\",\n\t\t\t\"broker-2.test.com\"\n\t\t],\n\t\t\"Balancer\": \"Hash\",\n\t\t\"Compression\": \"gzip\"\n\t},\n\t\"ClientID\": \"test-consumer-client-id\",\n\t\"DistributedTracingEnabled\": false,\n\t\"SASL\": {\n\t\t\"Mechanism\": \"scram\",\n\t\t\"Username\": \"user\",\n\t\t\"Password\": \"pass\"\n\t},\n\t\"TLS\": {\n\t\t\"RootCAPath\": \"resources/ca\",\n\t\t\"IntermediateCAPath\": \"resources/intCa\"\n\t}\n}"
+		expected := "{\n\t\"Writer\": {\n\t\t\"Brokers\": [\n\t\t\t\"broker-1.test.com\",\n\t\t\t\"broker-2.test.com\"\n\t\t],\n\t\t\"" +
+			"Balancer\": \"Hash\",\n\t\t\"Compression\": \"gzip\"\n\t},\n\t\"ClientID\": \"test-consumer-client-id\",\n\t\"" +
+			"DistributedTracingEnabled\": false,\n\t\"" +
+			"SASL\": {\n\t\t\"Mechanism\": \"scram\",\n\t\t\"Username\": \"user\",\n\t\t\"Password\": \"pass\"\n\t},\n\t\"" +
+			"TLS\": {\n\t\t\"RootCAPath\": \"resources/ca\",\n\t\t\"IntermediateCAPath\": \"resources/intCa\"\n\t}\n}"
 		// When
-		result := getProducerConfigExample().JsonPretty()
+		result := getProducerConfigExample().JSONPretty()
 		// Then
 		if result != expected {
 			t.Fatal("result must be equal to expected")
@@ -68,9 +78,11 @@ func TestProducerConfig_JsonPretty(t *testing.T) {
 	})
 	t.Run("Should_Convert_To_Pretty_Json_Without_Inner_Object", func(t *testing.T) {
 		// Given
-		expected := "{\n\t\"Writer\": {\n\t\t\"Brokers\": [\n\t\t\t\"\"\n\t\t],\n\t\t\"Balancer\": \"Unknown\",\n\t\t\"Compression\": \"uncompressed\"\n\t},\n\t\"ClientID\": \"test-consumer-client-id\",\n\t\"DistributedTracingEnabled\": false,\n\t\"SASL\": {},\n\t\"TLS\": {}\n}"
+		expected := "{\n\t\"Writer\": {\n\t\t\"Brokers\": [\n\t\t\t\"\"\n\t\t],\n\t\t\"Balancer\": \"Unknown\",\n\t\t\"" +
+			"Compression\": \"uncompressed\"\n\t},\n\t\"ClientID\": \"test-consumer-client-id\",\n\t\"" +
+			"DistributedTracingEnabled\": false,\n\t\"SASL\": {},\n\t\"TLS\": {}\n}"
 		// When
-		result := getProducerConfigWithoutInnerObjectExample().JsonPretty()
+		result := getProducerConfigWithoutInnerObjectExample().JSONPretty()
 		// Then
 		if result != expected {
 			t.Fatal("result must be equal to expected")
@@ -81,7 +93,10 @@ func TestProducerConfig_JsonPretty(t *testing.T) {
 func TestProducerConfig_String(t *testing.T) {
 	t.Run("Should_Convert_To_String", func(t *testing.T) {
 		// Given
-		expected := "Writer: {Brokers: [\"broker-1.test.com\", \"broker-2.test.com\"], Balancer: \"Hash\", Compression: \"gzip\"}, ClientID: \"test-consumer-client-id\", DistributedTracingEnabled: false, SASL: {Mechanism: \"scram\", Username: \"user\", Password: \"pass\"}, TLS: {RootCAPath: \"resources/ca\", IntermediateCAPath: \"resources/intCa\"}"
+		expected := "Writer: {Brokers: [\"broker-1.test.com\", \"broker-2.test.com\"], " +
+			"Balancer: \"Hash\", Compression: \"gzip\"}, ClientID: \"test-consumer-client-id\", " +
+			"DistributedTracingEnabled: false, SASL: {Mechanism: \"scram\", Username: \"user\", Password: \"pass\"}, " +
+			"TLS: {RootCAPath: \"resources/ca\", IntermediateCAPath: \"resources/intCa\"}"
 		// When
 		result := getProducerConfigExample().String()
 		// Then
@@ -91,7 +106,8 @@ func TestProducerConfig_String(t *testing.T) {
 	})
 	t.Run("Should_Convert_To_String_Without_Inner_Object", func(t *testing.T) {
 		// Given
-		expected := "Writer: {Brokers: [\"\"], Balancer: \"Unknown\", Compression: \"uncompressed\"}, ClientID: \"test-consumer-client-id\", DistributedTracingEnabled: false, SASL: {}, TLS: {}"
+		expected := "Writer: {Brokers: [\"\"], Balancer: \"Unknown\", Compression: \"uncompressed\"}, " +
+			"ClientID: \"test-consumer-client-id\", DistributedTracingEnabled: false, SASL: {}, TLS: {}"
 		// When
 		result := getProducerConfigWithoutInnerObjectExample().String()
 		// Then

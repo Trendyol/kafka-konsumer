@@ -34,7 +34,7 @@ func (c *TLSConfig) IsEmpty() bool {
 	return c == nil || c.RootCAPath == "" && c.IntermediateCAPath == ""
 }
 
-func (c *TLSConfig) Json() string {
+func (c *TLSConfig) JSON() string {
 	if c == nil {
 		return "{}"
 	}

@@ -56,21 +56,21 @@ type ProducerConfig struct {
 
 func (cfg *ProducerConfig) String() string {
 	re := regexp.MustCompile(`"(\w+)"\s*:`)
-	modifiedString := re.ReplaceAllString(cfg.Json(), `$1:`)
+	modifiedString := re.ReplaceAllString(cfg.JSON(), `$1:`)
 	modifiedString = modifiedString[1 : len(modifiedString)-1]
 	return modifiedString
 }
 
-func (cfg *ProducerConfig) Json() string {
+func (cfg *ProducerConfig) JSON() string {
 	if cfg == nil {
 		return "{}"
 	}
 	return fmt.Sprintf(`{"Writer": %s, "ClientID": %q, "DistributedTracingEnabled": %t, "SASL": %s, "TLS": %s}`,
-		cfg.Writer.Json(), cfg.ClientID, cfg.DistributedTracingEnabled, cfg.SASL.Json(), cfg.TLS.Json())
+		cfg.Writer.Json(), cfg.ClientID, cfg.DistributedTracingEnabled, cfg.SASL.JSON(), cfg.TLS.JSON())
 }
 
-func (cfg *ProducerConfig) JsonPretty() string {
-	return jsonPretty(cfg.Json())
+func (cfg *ProducerConfig) JSONPretty() string {
+	return jsonPretty(cfg.JSON())
 }
 
 func (cfg *ProducerConfig) newKafkaTransport() (*kafka.Transport, error) {
