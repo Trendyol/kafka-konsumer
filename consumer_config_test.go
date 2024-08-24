@@ -202,9 +202,11 @@ func Test_jsonPretty(t *testing.T) {
 			expected: "{\n\t\"key1\": \"value1\",\n\t\"key2\": 2\n}",
 		},
 		{
-			name:     "Nested JSON",
-			input:    `{"key1":"value1","key2":{"nestedKey1":1,"nestedKey2":2},"key3":[1,2,3]}`,
-			expected: "{\n\t\"key1\": \"value1\",\n\t\"key2\": {\n\t\t\"nestedKey1\": 1,\n\t\t\"nestedKey2\": 2\n\t},\n\t\"key3\": [\n\t\t1,\n\t\t2,\n\t\t3\n\t]\n}",
+			name:  "Nested JSON",
+			input: `{"key1":"value1","key2":{"nestedKey1":1,"nestedKey2":2},"key3":[1,2,3]}`,
+			expected: "{\n\t\"key1\": \"value1\",\n\t\"" +
+				"key2\": {\n\t\t\"nestedKey1\": 1,\n\t\t\"nestedKey2\": 2\n\t},\n\t\"" +
+				"key3\": [\n\t\t1,\n\t\t2,\n\t\t3\n\t]\n}",
 		},
 		{
 			name:     "Invalid JSON",
