@@ -1,6 +1,11 @@
 package kafka
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -59,6 +64,51 @@ type ConsumerConfig struct {
 	// So, if default metric prefix used, metrics names are `kafka_konsumer_processed_messages_total_current` and
 	// `kafka_konsumer_unprocessed_messages_total_current`.
 	MetricPrefix string
+}
+
+func (cfg RetryConfiguration) JSON() string {
+	return fmt.Sprintf(`{"Brokers": ["%s"], "Topic": %q, "StartTimeCron": %q, "WorkDuration": %q, `+
+		`"MaxRetry": %d, "VerifyTopicOnStartup": %t, "Rack": %q}`,
+		strings.Join(cfg.Brokers, "\", \""), cfg.Topic, cfg.StartTimeCron,
+		cfg.WorkDuration, cfg.MaxRetry, cfg.VerifyTopicOnStartup, cfg.Rack)
+}
+
+func (cfg *BatchConfiguration) JSON() string {
+	if cfg == nil {
+		return "{}"
+	}
+	return fmt.Sprintf(`{"MessageGroupLimit": %d}`, cfg.MessageGroupLimit)
+}
+
+func (cfg ReaderConfig) JSON() string {
+	return fmt.Sprintf(`{"Brokers": ["%s"], "GroupId": %q, "GroupTopics": ["%s"], `+
+		`"MaxWait": %q, "CommitInterval": %q, "StartOffset": %q}`,
+		strings.Join(cfg.Brokers, "\", \""), cfg.GroupID, strings.Join(cfg.GroupTopics, "\", \""),
+		cfg.MaxWait, cfg.CommitInterval, kcronsumer.ToStringOffset(cfg.StartOffset))
+}
+
+func (cfg *ConsumerConfig) JSON() string {
+	if cfg == nil {
+		return "{}"
+	}
+	return fmt.Sprintf(`{"ClientID": %q, "Reader": %s, "BatchConfiguration": %s, "MessageGroupDuration": %q, `+
+		`"TransactionalRetry": %t, "Concurrency": %d, "RetryEnabled": %t, "RetryConfiguration": %s, `+
+		`"VerifyTopicOnStartup": %t, "Rack": %q, "SASL": %s, "TLS": %s}`,
+		cfg.ClientID, cfg.Reader.JSON(), cfg.BatchConfiguration.JSON(),
+		cfg.MessageGroupDuration, *cfg.TransactionalRetry, cfg.Concurrency,
+		cfg.RetryEnabled, cfg.RetryConfiguration.JSON(), cfg.VerifyTopicOnStartup,
+		cfg.Rack, cfg.SASL.JSON(), cfg.TLS.JSON())
+}
+
+func (cfg *ConsumerConfig) JSONPretty() string {
+	return jsonPretty(cfg.JSON())
+}
+
+func (cfg *ConsumerConfig) String() string {
+	re := regexp.MustCompile(`"(\w+)"\s*:`)
+	modifiedString := re.ReplaceAllString(cfg.JSON(), `$1:`)
+	modifiedString = modifiedString[1 : len(modifiedString)-1]
+	return modifiedString
 }
 
 func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
@@ -265,4 +315,13 @@ func (cfg *ConsumerConfig) setDefaults() {
 
 func NewBoolPtr(value bool) *bool {
 	return &value
+}
+
+func jsonPretty(jsonString string) string {
+	var out bytes.Buffer
+	err := json.Indent(&out, []byte(jsonString), "", "\t")
+	if err != nil {
+		return jsonString
+	}
+	return out.String()
 }

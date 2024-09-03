@@ -65,3 +65,33 @@ func TestTLSConfig_IsEmpty(t *testing.T) {
 		})
 	}
 }
+
+func TestTLSConfig_Json(t *testing.T) {
+	t.Run("Should_Convert_Nil_Config_To_Json", func(t *testing.T) {
+		// Given
+		var cfg *TLSConfig
+
+		expected := "{}"
+		// When
+		result := cfg.JSON()
+		// Then
+		if result != expected {
+			t.Fatal("result must be equal to expected")
+		}
+	})
+	t.Run("Should_Convert_To_Json", func(t *testing.T) {
+		// Given
+		cfg := &TLSConfig{
+			RootCAPath:         "resources/ca",
+			IntermediateCAPath: "resources/intCa",
+		}
+
+		expected := "{\"RootCAPath\": \"resources/ca\", \"IntermediateCAPath\": \"resources/intCa\"}"
+		// When
+		result := cfg.JSON()
+		// Then
+		if result != expected {
+			t.Fatal("result must be equal to expected")
+		}
+	})
+}
