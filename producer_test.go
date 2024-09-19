@@ -2,8 +2,9 @@ package kafka
 
 import (
 	"context"
-	"github.com/gofiber/fiber/v2/utils"
 	"testing"
+
+	"github.com/gofiber/fiber/v2/utils"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -35,7 +36,6 @@ func Test_producer_Produce_interceptor_Successfully(t *testing.T) {
 
 	// When
 	err := p.Produce(context.Background(), msg)
-
 	// Then
 	if err != nil {
 		t.Fatalf("Producing err %s", err.Error())
