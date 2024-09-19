@@ -1,6 +1,11 @@
 package kafka
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -43,6 +48,7 @@ type ConsumerConfig struct {
 	RetryConfiguration              RetryConfiguration
 	LogLevel                        LogLevel
 	Rack                            string
+	VerifyTopicOnStartup            bool
 	ClientID                        string
 	Reader                          ReaderConfig
 	CommitInterval                  time.Duration
@@ -60,32 +66,79 @@ type ConsumerConfig struct {
 	MetricPrefix string
 }
 
+func (cfg RetryConfiguration) JSON() string {
+	return fmt.Sprintf(`{"Brokers": ["%s"], "Topic": %q, "StartTimeCron": %q, "WorkDuration": %q, `+
+		`"MaxRetry": %d, "VerifyTopicOnStartup": %t, "Rack": %q}`,
+		strings.Join(cfg.Brokers, "\", \""), cfg.Topic, cfg.StartTimeCron,
+		cfg.WorkDuration, cfg.MaxRetry, cfg.VerifyTopicOnStartup, cfg.Rack)
+}
+
+func (cfg *BatchConfiguration) JSON() string {
+	if cfg == nil {
+		return "{}"
+	}
+	return fmt.Sprintf(`{"MessageGroupLimit": %d}`, cfg.MessageGroupLimit)
+}
+
+func (cfg ReaderConfig) JSON() string {
+	return fmt.Sprintf(`{"Brokers": ["%s"], "GroupId": %q, "GroupTopics": ["%s"], `+
+		`"MaxWait": %q, "CommitInterval": %q, "StartOffset": %q}`,
+		strings.Join(cfg.Brokers, "\", \""), cfg.GroupID, strings.Join(cfg.GroupTopics, "\", \""),
+		cfg.MaxWait, cfg.CommitInterval, kcronsumer.ToStringOffset(cfg.StartOffset))
+}
+
+func (cfg *ConsumerConfig) JSON() string {
+	if cfg == nil {
+		return "{}"
+	}
+	return fmt.Sprintf(`{"ClientID": %q, "Reader": %s, "BatchConfiguration": %s, "MessageGroupDuration": %q, `+
+		`"TransactionalRetry": %t, "Concurrency": %d, "RetryEnabled": %t, "RetryConfiguration": %s, `+
+		`"VerifyTopicOnStartup": %t, "Rack": %q, "SASL": %s, "TLS": %s}`,
+		cfg.ClientID, cfg.Reader.JSON(), cfg.BatchConfiguration.JSON(),
+		cfg.MessageGroupDuration, *cfg.TransactionalRetry, cfg.Concurrency,
+		cfg.RetryEnabled, cfg.RetryConfiguration.JSON(), cfg.VerifyTopicOnStartup,
+		cfg.Rack, cfg.SASL.JSON(), cfg.TLS.JSON())
+}
+
+func (cfg *ConsumerConfig) JSONPretty() string {
+	return jsonPretty(cfg.JSON())
+}
+
+func (cfg *ConsumerConfig) String() string {
+	re := regexp.MustCompile(`"(\w+)"\s*:`)
+	modifiedString := re.ReplaceAllString(cfg.JSON(), `$1:`)
+	modifiedString = modifiedString[1 : len(modifiedString)-1]
+	return modifiedString
+}
+
 func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 	cronsumerCfg := kcronsumer.Config{
 		MetricPrefix: cfg.RetryConfiguration.MetricPrefix,
 		ClientID:     cfg.RetryConfiguration.ClientID,
 		Brokers:      cfg.RetryConfiguration.Brokers,
 		Consumer: kcronsumer.ConsumerConfig{
-			ClientID:          cfg.ClientID,
-			GroupID:           cfg.Reader.GroupID,
-			Topic:             cfg.RetryConfiguration.Topic,
-			DeadLetterTopic:   cfg.RetryConfiguration.DeadLetterTopic,
-			Cron:              cfg.RetryConfiguration.StartTimeCron,
-			Duration:          cfg.RetryConfiguration.WorkDuration,
-			Concurrency:       cfg.Concurrency,
-			MinBytes:          cfg.Reader.MinBytes,
-			MaxBytes:          cfg.Reader.MaxBytes,
-			MaxRetry:          cfg.RetryConfiguration.MaxRetry,
-			MaxWait:           cfg.Reader.MaxWait,
-			CommitInterval:    cfg.Reader.CommitInterval,
-			HeartbeatInterval: cfg.Reader.HeartbeatInterval,
-			SessionTimeout:    cfg.Reader.SessionTimeout,
-			RebalanceTimeout:  cfg.Reader.RebalanceTimeout,
-			StartOffset:       kcronsumer.ToStringOffset(cfg.Reader.StartOffset),
-			RetentionTime:     cfg.Reader.RetentionTime,
+			ClientID:             cfg.ClientID,
+			GroupID:              cfg.Reader.GroupID,
+			Topic:                cfg.RetryConfiguration.Topic,
+			DeadLetterTopic:      cfg.RetryConfiguration.DeadLetterTopic,
+			Cron:                 cfg.RetryConfiguration.StartTimeCron,
+			Duration:             cfg.RetryConfiguration.WorkDuration,
+			MaxRetry:             cfg.RetryConfiguration.MaxRetry,
+			VerifyTopicOnStartup: cfg.RetryConfiguration.VerifyTopicOnStartup,
+			Concurrency:          cfg.Concurrency,
+			MinBytes:             cfg.Reader.MinBytes,
+			MaxBytes:             cfg.Reader.MaxBytes,
+			MaxWait:              cfg.Reader.MaxWait,
+			CommitInterval:       cfg.Reader.CommitInterval,
+			HeartbeatInterval:    cfg.Reader.HeartbeatInterval,
+			SessionTimeout:       cfg.Reader.SessionTimeout,
+			RebalanceTimeout:     cfg.Reader.RebalanceTimeout,
+			StartOffset:          kcronsumer.ToStringOffset(cfg.Reader.StartOffset),
+			RetentionTime:        cfg.Reader.RetentionTime,
 		},
 		Producer: kcronsumer.ProducerConfig{
 			Balancer: cfg.RetryConfiguration.Balancer,
+			Brokers:  cfg.RetryConfiguration.Brokers,
 		},
 		LogLevel: lcronsumer.Level(cfg.RetryConfiguration.LogLevel),
 	}
@@ -110,6 +163,14 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 	}
 
 	return &cronsumerCfg
+}
+
+func (cfg *ConsumerConfig) getTopics() []string {
+	if len(cfg.Reader.GroupTopics) > 0 {
+		return cfg.Reader.GroupTopics
+	}
+
+	return []string{cfg.Reader.Topic}
 }
 
 type APIConfiguration struct {
@@ -156,6 +217,7 @@ type RetryConfiguration struct {
 	Topic                 string
 	DeadLetterTopic       string
 	Rack                  string
+	VerifyTopicOnStartup  bool
 	LogLevel              LogLevel
 	Brokers               []string
 	Balancer              Balancer
@@ -165,9 +227,10 @@ type RetryConfiguration struct {
 }
 
 type BatchConfiguration struct {
-	BatchConsumeFn    BatchConsumeFn
-	PreBatchFn        PreBatchFn
-	MessageGroupLimit int
+	BatchConsumeFn            BatchConsumeFn
+	PreBatchFn                PreBatchFn
+	MessageGroupLimit         int
+	MessageGroupByteSizeLimit any
 }
 
 func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
@@ -233,6 +296,10 @@ func (cfg *ConsumerConfig) setDefaults() {
 		cfg.MessageGroupDuration = time.Second
 	}
 
+	if cfg.BatchConfiguration != nil && cfg.BatchConfiguration.MessageGroupLimit == 0 {
+		cfg.BatchConfiguration.MessageGroupLimit = 100
+	}
+
 	if cfg.DistributedTracingEnabled {
 		if cfg.DistributedTracingConfiguration.Propagator == nil {
 			cfg.DistributedTracingConfiguration.Propagator = otel.GetTextMapPropagator()
@@ -248,4 +315,13 @@ func (cfg *ConsumerConfig) setDefaults() {
 
 func NewBoolPtr(value bool) *bool {
 	return &value
+}
+
+func jsonPretty(jsonString string) string {
+	var out bytes.Buffer
+	err := json.Indent(&out, []byte(jsonString), "", "\t")
+	if err != nil {
+		return jsonString
+	}
+	return out.String()
 }

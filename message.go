@@ -2,6 +2,8 @@ package kafka
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
@@ -15,6 +17,17 @@ const (
 
 type Header = protocol.Header
 
+type Headers []Header
+
+// Pretty  Writes every header key and value, it is useful for debugging purpose
+func (hs Headers) Pretty() string {
+	headerStrings := make([]string, len(hs))
+	for i := range hs {
+		headerStrings[i] = fmt.Sprintf("%s: %s", hs[i].Key, string(hs[i].Value))
+	}
+	return strings.Join(headerStrings, ", ")
+}
+
 type Message struct {
 	Time       time.Time
 	WriterData interface{}
@@ -24,7 +37,7 @@ type Message struct {
 	Topic         string
 	Key           []byte
 	Value         []byte
-	Headers       []Header
+	Headers       Headers
 	Partition     int
 	Offset        int64
 	HighWaterMark int64
@@ -37,6 +50,27 @@ type Message struct {
 	// If available, kafka-konsumer writes this description into the failed message's
 	// headers as `x-error-message` key when producing retry topic
 	ErrDescription string
+}
+
+func (m *Message) TotalSize() int {
+	return 14 + m.keySize() + m.valueSize() + m.headerSize()
+}
+
+func (m *Message) headerSize() int {
+	s := 0
+	for _, header := range m.Headers {
+		s += sizeofString(header.Key)
+		s += len(header.Value)
+	}
+	return s
+}
+
+func (m *Message) keySize() int {
+	return sizeofBytes(m.Key)
+}
+
+func (m *Message) valueSize() int {
+	return sizeofBytes(m.Value)
 }
 
 type IncomingMessage struct {
@@ -156,4 +190,12 @@ func (m *Message) RemoveHeader(header Header) {
 			break
 		}
 	}
+}
+
+func sizeofBytes(b []byte) int {
+	return 4 + len(b)
+}
+
+func sizeofString(s string) int {
+	return 2 + len(s)
 }

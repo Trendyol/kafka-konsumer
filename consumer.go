@@ -137,10 +137,14 @@ func (c *consumer) process(message *Message) {
 	consumeErr := c.consumeFn(message)
 
 	if consumeErr != nil {
-		c.logger.Warnf("Consume Function Err %s, Message will be retried", consumeErr.Error())
-		// Try to process same message again
-		if consumeErr = c.consumeFn(message); consumeErr != nil {
-			c.logger.Warnf("Consume Function Again Err %s, message is sending to exception/retry topic %s", consumeErr.Error(), c.retryTopic)
+		if c.transactionalRetry {
+			c.logger.Warnf("Consume Function Err %s, Message will be retried", consumeErr.Error())
+			// Try to process same message again
+			if consumeErr = c.consumeFn(message); consumeErr != nil {
+				c.logger.Warnf("Consume Function Again Err %s, message is sending to exception/retry topic %s", consumeErr.Error(), c.retryTopic)
+				c.metric.TotalUnprocessedMessagesCounter++
+			}
+		} else {
 			c.metric.TotalUnprocessedMessagesCounter++
 		}
 	}

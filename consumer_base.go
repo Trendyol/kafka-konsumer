@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -83,6 +84,7 @@ type base struct {
 	consumerState             state
 	metricPrefix              string
 	mu                        sync.Mutex
+	consumerCfg               *ConsumerConfig
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -95,6 +97,21 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 
 func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 	log := NewZapLogger(cfg.LogLevel)
+
+	if cfg.VerifyTopicOnStartup {
+		kclient, err := newKafkaClient(cfg)
+		if err != nil {
+			return nil, err
+		}
+		exist, err := verifyTopics(kclient, cfg)
+		if err != nil {
+			return nil, err
+		}
+		if !exist {
+			return nil, fmt.Errorf("topics %s does not exist, please check cluster authority etc", cfg.getTopics())
+		}
+		log.Infof("Topic [%s] verified successfully!", cfg.getTopics())
+	}
 
 	reader, err := cfg.newKafkaReader()
 	if err != nil {
@@ -122,6 +139,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		skipMessageByHeaderFn:     cfg.SkipMessageByHeaderFn,
 		metricPrefix:              cfg.MetricPrefix,
 		mu:                        sync.Mutex{},
+		consumerCfg:               cfg,
 	}
 
 	if cfg.DistributedTracingEnabled {
@@ -183,21 +201,24 @@ func (c *base) startConsume() {
 				if c.context.Err() != nil {
 					continue
 				}
-				c.logger.Warnf("Message could not read, err %s", err.Error())
-				continue
-			}
 
-			if c.skipMessageByHeaderFn != nil && c.skipMessageByHeaderFn(m.Headers) {
-				c.logger.Infof("Message is not processed. Header filter applied. Headers: %v", m.Headers)
-				if err = c.r.CommitMessages([]kafka.Message{*m}); err != nil {
-					c.logger.Errorf("Commit Error %s,", err.Error())
-				}
+				c.metric.TotalErrorCountDuringFetchingMessage++
+				//nolint:lll
+				c.logger.Warnf("Message could not read, err %s, from topics %s with consumer group %s", err.Error(), c.consumerCfg.getTopics(), c.consumerCfg.Reader.GroupID)
 				continue
 			}
 
 			incomingMessage := &IncomingMessage{
 				kafkaMessage: m,
 				message:      fromKafkaMessage(m),
+			}
+
+			if c.skipMessageByHeaderFn != nil && c.skipMessageByHeaderFn(m.Headers) {
+				c.logger.Debugf("Message is not processed. Header filter applied. Headers: %v", incomingMessage.message.Headers.Pretty())
+				if err = c.r.CommitMessages([]kafka.Message{*m}); err != nil {
+					c.logger.Errorf("Commit Error %s,", err.Error())
+				}
+				continue
 			}
 
 			if c.distributedTracingEnabled {

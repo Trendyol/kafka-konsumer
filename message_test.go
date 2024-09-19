@@ -98,6 +98,25 @@ func TestMessage_AddHeader(t *testing.T) {
 	})
 }
 
+func TestMessage_Size(t *testing.T) {
+	// Given
+	m := Message{
+		Headers: []kafka.Header{
+			{Key: "foo", Value: []byte("fooValue")},
+		},
+		Value: []byte("barValue"),
+		Key:   []byte("bar"),
+	}
+
+	// When
+	s := m.TotalSize()
+
+	// Then
+	if s != 46 {
+		t.Fatalf("Total message size must be equal to 46")
+	}
+}
+
 func TestMessage_RemoveHeader(t *testing.T) {
 	// Given
 	m := Message{
@@ -246,4 +265,20 @@ func TestMessage_toRetryableMessage(t *testing.T) {
 			t.Errorf("Second Header value must be equal to %q", expected.Headers[1].Value)
 		}
 	})
+}
+
+func TestHeaders_Pretty(t *testing.T) {
+	// Given
+	headers := Headers{
+		{Key: "key1", Value: []byte("value1")},
+		{Key: "key2", Value: []byte("value2")},
+	}
+
+	// When
+	result := headers.Pretty()
+
+	// Then
+	if result != "key1: value1, key2: value2" {
+		t.Error("result must be `key1: value1, key2: value2`")
+	}
 }

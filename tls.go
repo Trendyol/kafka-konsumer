@@ -33,3 +33,10 @@ func (c *TLSConfig) TLSConfig() (*tls.Config, error) {
 func (c *TLSConfig) IsEmpty() bool {
 	return c == nil || c.RootCAPath == "" && c.IntermediateCAPath == ""
 }
+
+func (c *TLSConfig) JSON() string {
+	if c == nil {
+		return "{}"
+	}
+	return fmt.Sprintf(`{"RootCAPath": %q, "IntermediateCAPath": %q}`, c.RootCAPath, c.IntermediateCAPath)
+}

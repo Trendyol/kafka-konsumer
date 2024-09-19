@@ -32,7 +32,7 @@ func Test_consumer_process(t *testing.T) {
 		// Given
 		gotOnlyOneTimeException := true
 		c := consumer{
-			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug)},
+			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), transactionalRetry: true},
 			consumeFn: func(*Message) error {
 				if gotOnlyOneTimeException {
 					gotOnlyOneTimeException = false
@@ -47,7 +47,7 @@ func Test_consumer_process(t *testing.T) {
 
 		// Then
 		if c.metric.TotalProcessedMessagesCounter != 1 {
-			t.Fatalf("Total Processed Message Counter must equal to 3")
+			t.Fatalf("Total Processed Message Counter must equal to 1")
 		}
 		if c.metric.TotalUnprocessedMessagesCounter != 0 {
 			t.Fatalf("Total Unprocessed Message Counter must equal to 0")
