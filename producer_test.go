@@ -2,7 +2,6 @@ package kafka
 
 import (
 	"context"
-	stubData "github.com/Trendyol/kafka-konsumer/v2/test/stub-data"
 	"github.com/gofiber/fiber/v2/utils"
 	"testing"
 
@@ -30,7 +29,7 @@ func Test_producer_Produce_interceptor_Successfully(t *testing.T) {
 		Key:   "x-correlation-id",
 		Value: []byte(utils.UUIDv4()),
 	})
-	interceptor := stubData.NewMockProducerInterceptor()
+	interceptor := newMockProducerInterceptor()
 
 	p := producer{w: mw, interceptor: &interceptor}
 
@@ -59,7 +58,7 @@ func Test_producer_ProduceBatch_Successfully(t *testing.T) {
 func Test_producer_ProduceBatch_interceptor_Successfully(t *testing.T) {
 	// Given
 	mw := &mockWriter{}
-	interceptor := stubData.NewMockProducerInterceptor()
+	interceptor := newMockProducerInterceptor()
 	p := producer{w: mw, interceptor: &interceptor}
 
 	// When
@@ -91,4 +90,17 @@ func (m *mockWriter) WriteMessages(_ context.Context, msg ...kafka.Message) erro
 
 func (m *mockWriter) Close() error {
 	return nil
+}
+
+type mockProducerInterceptor struct{}
+
+func (i *mockProducerInterceptor) OnProduce(ctx ProducerInterceptorContext) {
+	ctx.Message.Headers = append(ctx.Message.Headers, kafka.Header{
+		Key:   "test",
+		Value: []byte("test"),
+	})
+}
+
+func newMockProducerInterceptor() ProducerInterceptor {
+	return &mockProducerInterceptor{}
 }

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Trendyol/kafka-konsumer/v2"
-	stub_data "github.com/Trendyol/kafka-konsumer/v2/test/stub-data"
+	stubdata "github.com/Trendyol/kafka-konsumer/v2/test/stubdata"
 	segmentio "github.com/segmentio/kafka-go"
 	"testing"
 	"time"
@@ -46,7 +46,7 @@ func Test_Should_Produce_Successfully(t *testing.T) {
 		// Given
 		topic := "produce-interceptor-topic"
 		consumerGroup := "produce-topic-cg"
-		interceptor := stub_data.NewMockProducerInterceptor()
+		interceptor := stubdata.NewMockProducerInterceptor()
 
 		producer, _ := kafka.NewProducer(&kafka.ProducerConfig{
 			Writer: kafka.WriterConfig{AllowAutoTopicCreation: true, Topic: topic, Brokers: []string{brokerAddress}},
@@ -94,10 +94,10 @@ func Test_Should_Produce_Successfully(t *testing.T) {
 		if len(actual.Headers) != 1 {
 			t.Fatalf("Header size does not equal %d", len(actual.Headers))
 		}
-		if string(actual.Headers[0].Key) != stub_data.XSourceAppKey {
+		if string(actual.Headers[0].Key) != stubdata.XSourceAppKey {
 			t.Fatalf("Header key does not equal %s", actual.Headers[0].Key)
 		}
-		if string(actual.Headers[0].Value) != stub_data.XSourceAppValue {
+		if string(actual.Headers[0].Value) != stubdata.XSourceAppValue {
 			t.Fatalf("Header value does not equal %s", actual.Headers[0].Value)
 		}
 	})
@@ -133,7 +133,7 @@ func Test_Should_Batch_Produce_Successfully(t *testing.T) {
 	})
 
 	t.Run("with interceptor", func(t *testing.T) {
-		interceptor := stub_data.NewMockProducerInterceptor()
+		interceptor := stubdata.NewMockProducerInterceptor()
 
 		producer, _ := kafka.NewProducer(&kafka.ProducerConfig{
 			Writer: kafka.WriterConfig{AllowAutoTopicCreation: true, Topic: topic, Brokers: []string{brokerAddress}}}, &interceptor)

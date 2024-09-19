@@ -31,7 +31,7 @@ func main() {
 		Writer: kafka.WriterConfig{
 			Brokers: []string{"localhost:29092"},
 		},
-	})
+	}, nil)
 	defer producer.Close()
 
 	go func() {
