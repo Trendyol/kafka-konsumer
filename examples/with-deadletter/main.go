@@ -21,7 +21,7 @@ func main() {
 		Writer: kafka.WriterConfig{
 			Brokers: []string{"localhost:29092"},
 		},
-	}, nil)
+	})
 
 	_ = producer.Produce(context.Background(), kafka.Message{
 		Topic: topicName,

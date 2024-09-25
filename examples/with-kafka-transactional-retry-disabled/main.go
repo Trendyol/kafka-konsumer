@@ -13,7 +13,7 @@ import (
 func main() {
 	producer, _ := kafka.NewProducer(&kafka.ProducerConfig{
 		Writer: kafka.WriterConfig{Brokers: []string{"localhost:29092"}, Topic: "standart-topic"},
-	}, nil)
+	})
 
 	producer.ProduceBatch(context.Background(), []kafka.Message{
 		{Key: []byte("key1"), Value: []byte("message1")},

@@ -10,7 +10,7 @@ func main() {
 		Writer: kafka.WriterConfig{
 			Brokers: []string{"localhost:29092"},
 		},
-	}, nil)
+	})
 
 	const topicName = "standart-topic"
 
