@@ -32,7 +32,7 @@ func Test_producer_Produce_interceptor_Successfully(t *testing.T) {
 	})
 	interceptor := newMockProducerInterceptor()
 
-	p := producer{w: mw, interceptor: &interceptor}
+	p := producer{w: mw, interceptors: interceptor}
 
 	// When
 	err := p.Produce(context.Background(), msg)
@@ -59,7 +59,7 @@ func Test_producer_ProduceBatch_interceptor_Successfully(t *testing.T) {
 	// Given
 	mw := &mockWriter{}
 	interceptor := newMockProducerInterceptor()
-	p := producer{w: mw, interceptor: &interceptor}
+	p := producer{w: mw, interceptors: interceptor}
 
 	// When
 	err := p.ProduceBatch(context.Background(), []Message{{}, {}, {}})
@@ -101,6 +101,6 @@ func (i *mockProducerInterceptor) OnProduce(ctx ProducerInterceptorContext) {
 	})
 }
 
-func newMockProducerInterceptor() ProducerInterceptor {
-	return &mockProducerInterceptor{}
+func newMockProducerInterceptor() []ProducerInterceptor {
+	return []ProducerInterceptor{&mockProducerInterceptor{}}
 }

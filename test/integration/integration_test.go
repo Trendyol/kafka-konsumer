@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Trendyol/kafka-konsumer/v2"
-	stubdata "github.com/Trendyol/kafka-konsumer/v2/test/stubdata"
 	segmentio "github.com/segmentio/kafka-go"
 	"testing"
 	"time"
@@ -28,7 +27,7 @@ func Test_Should_Produce_Successfully(t *testing.T) {
 					topic,
 				},
 			},
-		}, nil)
+		})
 
 		// When
 		err := producer.Produce(context.Background(), kafka.Message{
@@ -46,7 +45,7 @@ func Test_Should_Produce_Successfully(t *testing.T) {
 		// Given
 		topic := "produce-interceptor-topic"
 		consumerGroup := "produce-topic-cg"
-		interceptor := stubdata.NewMockProducerInterceptor()
+		interceptor := newMockProducerInterceptor()
 
 		producer, _ := kafka.NewProducer(&kafka.ProducerConfig{
 			Writer: kafka.WriterConfig{AllowAutoTopicCreation: true, Topic: topic, Brokers: []string{brokerAddress}},
@@ -55,7 +54,7 @@ func Test_Should_Produce_Successfully(t *testing.T) {
 					topic,
 				},
 			},
-		}, &interceptor)
+		}, interceptor...)
 
 		// When
 		err := producer.Produce(context.Background(), kafka.Message{
@@ -94,10 +93,10 @@ func Test_Should_Produce_Successfully(t *testing.T) {
 		if len(actual.Headers) != 1 {
 			t.Fatalf("Header size does not equal %d", len(actual.Headers))
 		}
-		if string(actual.Headers[0].Key) != stubdata.XSourceAppKey {
+		if string(actual.Headers[0].Key) != xSourceAppKey {
 			t.Fatalf("Header key does not equal %s", actual.Headers[0].Key)
 		}
-		if string(actual.Headers[0].Value) != stubdata.XSourceAppValue {
+		if string(actual.Headers[0].Value) != xSourceAppValue {
 			t.Fatalf("Header value does not equal %s", actual.Headers[0].Value)
 		}
 	})
@@ -121,7 +120,7 @@ func Test_Should_Batch_Produce_Successfully(t *testing.T) {
 
 	t.Run("without interceptor", func(t *testing.T) {
 		producer, _ := kafka.NewProducer(&kafka.ProducerConfig{
-			Writer: kafka.WriterConfig{AllowAutoTopicCreation: true, Topic: topic, Brokers: []string{brokerAddress}}}, nil)
+			Writer: kafka.WriterConfig{AllowAutoTopicCreation: true, Topic: topic, Brokers: []string{brokerAddress}}})
 
 		// When
 		err := producer.ProduceBatch(context.Background(), msgs)
@@ -133,10 +132,10 @@ func Test_Should_Batch_Produce_Successfully(t *testing.T) {
 	})
 
 	t.Run("with interceptor", func(t *testing.T) {
-		interceptor := stubdata.NewMockProducerInterceptor()
+		interceptors := newMockProducerInterceptor()
 
 		producer, _ := kafka.NewProducer(&kafka.ProducerConfig{
-			Writer: kafka.WriterConfig{AllowAutoTopicCreation: true, Topic: topic, Brokers: []string{brokerAddress}}}, &interceptor)
+			Writer: kafka.WriterConfig{AllowAutoTopicCreation: true, Topic: topic, Brokers: []string{brokerAddress}}}, interceptors...)
 
 		// When
 		err := producer.ProduceBatch(context.Background(), msgs)
@@ -642,4 +641,22 @@ func assertEventually(t *testing.T, condition func() bool, waitFor time.Duration
 			tick = ticker.C
 		}
 	}
+}
+
+type mockProducerInterceptor struct{}
+
+const (
+	xSourceAppKey   = "x-source-app"
+	xSourceAppValue = "kafka-konsumer"
+)
+
+func (i *mockProducerInterceptor) OnProduce(ctx kafka.ProducerInterceptorContext) {
+	ctx.Message.Headers = append(ctx.Message.Headers, kafka.Header{
+		Key:   xSourceAppKey,
+		Value: []byte(xSourceAppValue),
+	})
+}
+
+func newMockProducerInterceptor() []kafka.ProducerInterceptor {
+	return []kafka.ProducerInterceptor{&mockProducerInterceptor{}}
 }
