@@ -18,10 +18,11 @@ type Writer interface {
 }
 
 type producer struct {
-	w Writer
+	w            Writer
+	interceptors []ProducerInterceptor
 }
 
-func NewProducer(cfg *ProducerConfig) (Producer, error) {
+func NewProducer(cfg *ProducerConfig, interceptors ...ProducerInterceptor) (Producer, error) {
 	kafkaWriter := &kafka.Writer{
 		Addr:                   kafka.TCP(cfg.Writer.Brokers...),
 		Topic:                  cfg.Writer.Topic,
@@ -51,7 +52,7 @@ func NewProducer(cfg *ProducerConfig) (Producer, error) {
 		kafkaWriter.Transport = transport
 	}
 
-	p := &producer{w: kafkaWriter}
+	p := &producer{w: kafkaWriter, interceptors: interceptors}
 
 	if cfg.DistributedTracingEnabled {
 		otelWriter, err := NewOtelProducer(cfg, kafkaWriter)
@@ -64,18 +65,33 @@ func NewProducer(cfg *ProducerConfig) (Producer, error) {
 	return p, nil
 }
 
-func (c *producer) Produce(ctx context.Context, message Message) error {
-	return c.w.WriteMessages(ctx, message.toKafkaMessage())
+func (p *producer) Produce(ctx context.Context, message Message) error {
+	if len(p.interceptors) > 0 {
+		p.executeInterceptors(ctx, &message)
+	}
+
+	return p.w.WriteMessages(ctx, message.toKafkaMessage())
 }
 
-func (c *producer) ProduceBatch(ctx context.Context, messages []Message) error {
+func (p *producer) ProduceBatch(ctx context.Context, messages []Message) error {
 	kafkaMessages := make([]kafka.Message, 0, len(messages))
 	for i := range messages {
+		if len(p.interceptors) > 0 {
+			p.executeInterceptors(ctx, &messages[i])
+		}
+
 		kafkaMessages = append(kafkaMessages, messages[i].toKafkaMessage())
 	}
-	return c.w.WriteMessages(ctx, kafkaMessages...)
+
+	return p.w.WriteMessages(ctx, kafkaMessages...)
 }
 
-func (c *producer) Close() error {
-	return c.w.Close()
+func (p *producer) executeInterceptors(ctx context.Context, message *Message) {
+	for _, interceptor := range p.interceptors {
+		interceptor.OnProduce(ProducerInterceptorContext{Context: ctx, Message: message})
+	}
+}
+
+func (p *producer) Close() error {
+	return p.w.Close()
 }

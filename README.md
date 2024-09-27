@@ -196,6 +196,10 @@ After running `docker-compose up` command, you can run any application you want.
 
 </details>
 
+#### With Producer Interceptor
+
+Please refer to [Producer Interceptor Example](examples/with-kafka-producer-interceptor)
+
 #### With Distributed Tracing Support
 
 Please refer to [Tracing Example](examples/with-tracing/README.md)
