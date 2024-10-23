@@ -125,7 +125,7 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 			Duration:             cfg.RetryConfiguration.WorkDuration,
 			MaxRetry:             cfg.RetryConfiguration.MaxRetry,
 			VerifyTopicOnStartup: cfg.RetryConfiguration.VerifyTopicOnStartup,
-			Concurrency:          cfg.Concurrency,
+			Concurrency:          cfg.RetryConfiguration.Concurrency,
 			MinBytes:             cfg.Reader.MinBytes,
 			MaxBytes:             cfg.Reader.MaxBytes,
 			MaxWait:              cfg.Reader.MaxWait,
@@ -224,6 +224,7 @@ type RetryConfiguration struct {
 	MaxRetry              int
 	WorkDuration          time.Duration
 	SkipMessageByHeaderFn SkipMessageByHeaderFn
+	Concurrency           int
 }
 
 type BatchConfiguration struct {
@@ -282,6 +283,10 @@ func (cfg *ConsumerConfig) newKafkaReader() (Reader, error) {
 func (cfg *ConsumerConfig) setDefaults() {
 	if cfg.Concurrency == 0 {
 		cfg.Concurrency = 1
+	}
+
+	if cfg.RetryConfiguration.Concurrency == 0 {
+		cfg.RetryConfiguration.Concurrency = cfg.Concurrency
 	}
 
 	if cfg.CommitInterval == 0 {

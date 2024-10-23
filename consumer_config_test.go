@@ -35,6 +35,9 @@ func TestConsumerConfig_validate(t *testing.T) {
 		if cfg.BatchConfiguration != nil {
 			t.Fatalf("Batch configuration not specified so it must stay as nil")
 		}
+		if cfg.RetryConfiguration.Concurrency != 1 {
+			t.Fatal("Retry Configuration Concurrency must equal to 1")
+		}
 	})
 	t.Run("Set_Defaults_For_BatchConfiguration", func(t *testing.T) {
 		// Given
