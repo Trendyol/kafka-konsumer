@@ -10,7 +10,7 @@ require (
 )
 
 require (
-	github.com/Trendyol/kafka-cronsumer v1.5.4 // indirect
+	github.com/Trendyol/kafka-cronsumer v1.5.5-0.20241024185446-b44371b7a3ec // indirect
 	github.com/Trendyol/otel-kafka-konsumer v0.0.7 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/ansrivas/fiberprometheus/v2 v2.6.1 // indirect

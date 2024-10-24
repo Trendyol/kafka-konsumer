@@ -126,6 +126,7 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 			MaxRetry:             cfg.RetryConfiguration.MaxRetry,
 			VerifyTopicOnStartup: cfg.RetryConfiguration.VerifyTopicOnStartup,
 			Concurrency:          cfg.RetryConfiguration.Concurrency,
+			QueueCapacity:        cfg.RetryConfiguration.QueueCapacity,
 			MinBytes:             cfg.Reader.MinBytes,
 			MaxBytes:             cfg.Reader.MaxBytes,
 			MaxWait:              cfg.Reader.MaxWait,
@@ -225,6 +226,7 @@ type RetryConfiguration struct {
 	WorkDuration          time.Duration
 	SkipMessageByHeaderFn SkipMessageByHeaderFn
 	Concurrency           int
+	QueueCapacity         int
 }
 
 type BatchConfiguration struct {
