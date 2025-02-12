@@ -18,14 +18,18 @@ func (c *TLSConfig) TLSConfig() (*tls.Config, error) {
 		return nil, fmt.Errorf("Error while reading Root CA file: " + c.RootCAPath + " error: " + err.Error())
 	}
 
-	interCA, err := os.ReadFile(c.IntermediateCAPath)
-	if err != nil {
-		return nil, fmt.Errorf("Error while reading Intermediate CA file: " + c.IntermediateCAPath + " error: " + err.Error())
+	caCertPool := x509.NewCertPool()
+	if ok := caCertPool.AppendCertsFromPEM(rootCA); !ok {
+		return nil, fmt.Errorf("failed to append Root CA certificates from file: %s", c.RootCAPath)
 	}
 
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(rootCA)
-	caCertPool.AppendCertsFromPEM(interCA)
+	interCA, err := os.ReadFile(c.IntermediateCAPath)
+	if err != nil {
+		fmt.Printf("Warning: Unable to read Intermediate CA file: %s, error: %v", c.IntermediateCAPath, err)
+		fmt.Println("Intermediate CA will be skipped.")
+	} else if ok := caCertPool.AppendCertsFromPEM(interCA); !ok {
+		fmt.Printf("Warning: Failed to append Intermediate CA certificates from file: %s", c.IntermediateCAPath)
+	}
 
 	return &tls.Config{RootCAs: caCertPool}, nil //nolint:gosec
 }
