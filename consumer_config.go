@@ -262,7 +262,7 @@ func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
 		return dialer.Dialer, nil
 	}
 
-	if err := fillLayer(dialer, cfg.SASL, cfg.TLS); err != nil {
+	if err := fillLayer(dialer, cfg.SASL, cfg.TLS, cfg.Logger); err != nil {
 		return nil, err
 	}
 

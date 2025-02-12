@@ -53,8 +53,10 @@ func TestTLSConfig_TLSConfig(t *testing.T) {
 		IntermediateCAPath: intermediate.Name(),
 	}
 
+	logger := NewZapLogger(LogLevelInfo)
+
 	// When
-	_, err = tlsCfg.TLSConfig()
+	_, err = tlsCfg.TLSConfig(logger)
 	// Then
 	if err != nil {
 		t.Fatalf("Error when settings tls certificates %s", err.Error())

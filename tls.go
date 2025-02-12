@@ -12,7 +12,7 @@ type TLSConfig struct {
 	IntermediateCAPath string
 }
 
-func (c *TLSConfig) TLSConfig() (*tls.Config, error) {
+func (c *TLSConfig) TLSConfig(logger LoggerInterface) (*tls.Config, error) {
 	rootCA, err := os.ReadFile(c.RootCAPath)
 	if err != nil {
 		return nil, fmt.Errorf("Error while reading Root CA file: " + c.RootCAPath + " error: " + err.Error())
@@ -25,10 +25,10 @@ func (c *TLSConfig) TLSConfig() (*tls.Config, error) {
 
 	interCA, err := os.ReadFile(c.IntermediateCAPath)
 	if err != nil {
-		fmt.Printf("Warning: Unable to read Intermediate CA file: %s, error: %v", c.IntermediateCAPath, err)
-		fmt.Println("Intermediate CA will be skipped.")
+		logger.Warnf("Unable to read Intermediate CA file: %s, error: %v", c.IntermediateCAPath, err)
+		logger.Info("Intermediate CA will be skipped.")
 	} else if ok := caCertPool.AppendCertsFromPEM(interCA); !ok {
-		fmt.Printf("Warning: Failed to append Intermediate CA certificates from file: %s", c.IntermediateCAPath)
+		logger.Warnf("Failed to append Intermediate CA certificates from file: %s", c.IntermediateCAPath)
 	}
 
 	return &tls.Config{RootCAs: caCertPool}, nil //nolint:gosec

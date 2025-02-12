@@ -29,7 +29,7 @@ func newKafkaClient(cfg *ConsumerConfig) (kafkaClient, error) {
 			MetadataTopics: cfg.getTopics(),
 		},
 	}
-	if err = fillLayer(transport, cfg.SASL, cfg.TLS); err != nil {
+	if err = fillLayer(transport, cfg.SASL, cfg.TLS, cfg.Logger); err != nil {
 		err = fmt.Errorf("error when initializing kafka client for verify topic purpose %w", err)
 		return nil, err
 	}

@@ -52,6 +52,8 @@ type TransportConfig struct {
 
 type ProducerConfig struct {
 	DistributedTracingConfiguration DistributedTracingConfiguration
+	Logger                          LoggerInterface
+	LogLevel                        LogLevel
 	Transport                       *TransportConfig
 	SASL                            *SASLConfig
 	TLS                             *TLSConfig
@@ -93,7 +95,7 @@ func (cfg *ProducerConfig) newKafkaTransport() (*kafka.Transport, error) {
 		transport.Transport.MetadataTopics = cfg.Transport.MetadataTopics
 	}
 
-	if err := fillLayer(transport, cfg.SASL, cfg.TLS); err != nil {
+	if err := fillLayer(transport, cfg.SASL, cfg.TLS, cfg.Logger); err != nil {
 		return nil, err
 	}
 

@@ -11,7 +11,7 @@ type Layer interface {
 	SetSASL(mechanism sasl.Mechanism)
 }
 
-func fillLayer(layer Layer, sasl *SASLConfig, tls *TLSConfig) error {
+func fillLayer(layer Layer, sasl *SASLConfig, tls *TLSConfig, logger LoggerInterface) error {
 	if sasl != nil {
 		mechanism, err := sasl.Mechanism()
 		if err != nil {
@@ -22,7 +22,7 @@ func fillLayer(layer Layer, sasl *SASLConfig, tls *TLSConfig) error {
 	}
 
 	if tls != nil {
-		config, err := tls.TLSConfig()
+		config, err := tls.TLSConfig(logger)
 		if err != nil {
 			return err
 		}
