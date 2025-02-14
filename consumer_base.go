@@ -96,17 +96,17 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 }
 
 func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
-	cfg.Logger = NewZapLogger(cfg.LogLevel)
+	log := NewZapLogger(cfg.LogLevel)
 
 	if err := verifyTopicOnStartup(cfg); err != nil {
 		return nil, err
 	}
 
-	cfg.Logger.Infof("Topic [%s] verified successfully!", cfg.getTopics())
+	log.Infof("Topic [%s] verified successfully!", cfg.getTopics())
 
-	reader, err := cfg.newKafkaReader()
+	reader, err := cfg.newKafkaReader(log)
 	if err != nil {
-		cfg.Logger.Errorf("Error when initializing kafka reader %v", err)
+		log.Errorf("Error when initializing kafka reader %v", err)
 		return nil, err
 	}
 
@@ -119,7 +119,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		retryEnabled:              cfg.RetryEnabled,
 		transactionalRetry:        *cfg.TransactionalRetry,
 		distributedTracingEnabled: cfg.DistributedTracingEnabled,
-		logger:                    cfg.Logger,
+		logger:                    log,
 		subprocesses:              newSubProcesses(),
 		r:                         reader,
 		messageGroupDuration:      cfg.MessageGroupDuration,
