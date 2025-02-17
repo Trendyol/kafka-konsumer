@@ -104,7 +104,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 
 	log.Infof("Topic [%s] verified successfully!", cfg.getTopics())
 
-	reader, err := cfg.newKafkaReader()
+	reader, err := cfg.newKafkaReader(log)
 	if err != nil {
 		log.Errorf("Error when initializing kafka reader %v", err)
 		return nil, err

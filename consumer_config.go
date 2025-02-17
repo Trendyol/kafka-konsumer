@@ -246,7 +246,7 @@ type BatchConfiguration struct {
 	MessageGroupByteSizeLimit any
 }
 
-func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
+func (cfg *ConsumerConfig) newKafkaDialer(logger LoggerInterface) (*kafka.Dialer, error) {
 	dialer := &Dialer{
 		Dialer: &kafka.Dialer{
 			ClientID: cfg.ClientID,
@@ -262,17 +262,17 @@ func (cfg *ConsumerConfig) newKafkaDialer() (*kafka.Dialer, error) {
 		return dialer.Dialer, nil
 	}
 
-	if err := fillLayer(dialer, cfg.SASL, cfg.TLS); err != nil {
+	if err := fillLayer(dialer, cfg.SASL, cfg.TLS, logger); err != nil {
 		return nil, err
 	}
 
 	return dialer.Dialer, nil
 }
 
-func (cfg *ConsumerConfig) newKafkaReader() (Reader, error) {
+func (cfg *ConsumerConfig) newKafkaReader(logger LoggerInterface) (Reader, error) {
 	cfg.setDefaults()
 
-	dialer, err := cfg.newKafkaDialer()
+	dialer, err := cfg.newKafkaDialer(logger)
 	if err != nil {
 		return nil, err
 	}

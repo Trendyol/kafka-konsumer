@@ -45,6 +45,8 @@ func NewProducer(cfg *ProducerConfig, interceptors ...ProducerInterceptor) (Prod
 		AllowAutoTopicCreation: cfg.Writer.AllowAutoTopicCreation,
 	}
 
+	cfg.Logger = NewZapLogger(cfg.LogLevel)
+
 	if cfg.SASL != nil || cfg.TLS != nil {
 		transport, err := cfg.newKafkaTransport()
 		if err != nil {
