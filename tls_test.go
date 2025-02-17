@@ -44,7 +44,7 @@ func TestTLSConfig_TLSConfig(t *testing.T) {
 	}
 	defer os.Remove(intermediate.Name())
 
-	if err := os.WriteFile(rootca.Name(), []byte(testRootCA), 0644); err != nil {
+	if err := os.WriteFile(rootca.Name(), []byte(testRootCA), 0o644); err != nil {
 		t.Fatalf("Error writing root CA to file: %s", err.Error())
 	}
 
