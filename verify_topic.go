@@ -16,7 +16,7 @@ type client struct {
 	*kafka.Client
 }
 
-func newKafkaClient(cfg *ConsumerConfig) (kafkaClient, error) {
+func newKafkaClient(cfg *ConsumerConfig, logger LoggerInterface) (kafkaClient, error) {
 	var err error
 	kc := &client{
 		Client: &kafka.Client{
@@ -29,7 +29,7 @@ func newKafkaClient(cfg *ConsumerConfig) (kafkaClient, error) {
 			MetadataTopics: cfg.getTopics(),
 		},
 	}
-	if err = fillLayer(transport, cfg.SASL, cfg.TLS, cfg.Logger); err != nil {
+	if err = fillLayer(transport, cfg.SASL, cfg.TLS, logger); err != nil {
 		err = fmt.Errorf("error when initializing kafka client for verify topic purpose %w", err)
 		return nil, err
 	}

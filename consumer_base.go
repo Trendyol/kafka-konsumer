@@ -98,7 +98,7 @@ func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
 func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 	log := NewZapLogger(cfg.LogLevel)
 
-	if err := verifyTopicOnStartup(cfg); err != nil {
+	if err := verifyTopicOnStartup(cfg, log); err != nil {
 		return nil, err
 	}
 
@@ -142,8 +142,8 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 	return &c, nil
 }
 
-func verifyTopicOnStartup(cfg *ConsumerConfig) error {
-	kclient, err := newKafkaClient(cfg)
+func verifyTopicOnStartup(cfg *ConsumerConfig, logger LoggerInterface) error {
+	kclient, err := newKafkaClient(cfg, logger)
 	if err != nil {
 		return err
 	}

@@ -105,7 +105,7 @@ func Test_newKafkaClient(t *testing.T) {
 	}
 
 	// When
-	client, err := newKafkaClient(cfg)
+	client, err := newKafkaClient(cfg, NewZapLogger(LogLevelDebug))
 
 	// Then
 	if client.GetClient().Addr.String() != "127.0.0.1:9092" {
