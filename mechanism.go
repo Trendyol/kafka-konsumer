@@ -11,8 +11,10 @@ import (
 type Mechanism string
 
 const (
-	MechanismScram = "scram"
-	MechanismPlain = "plain"
+	MechanismScram       = "scram"
+	MechanismScramSHA256 = "scram-sha-256"
+	MechanismScramSHA512 = "scram-sha-512"
+	MechanismPlain       = "plain"
 )
 
 type SASLConfig struct {
@@ -22,8 +24,12 @@ type SASLConfig struct {
 }
 
 func (s *SASLConfig) Mechanism() (sasl.Mechanism, error) {
-	if s.Type == MechanismScram {
+	if s.Type == MechanismScram || s.Type == MechanismScramSHA512 {
 		return scram.Mechanism(scram.SHA512, s.Username, s.Password)
+	}
+
+	if s.Type == MechanismScramSHA256 {
+		return scram.Mechanism(scram.SHA256, s.Username, s.Password)
 	}
 
 	return s.plain(), nil
