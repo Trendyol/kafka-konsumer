@@ -111,4 +111,8 @@ func (cfg *ProducerConfig) setDefaults() {
 			cfg.DistributedTracingConfiguration.Propagator = otel.GetTextMapPropagator()
 		}
 	}
+
+	if cfg.Writer.Balancer == nil {
+		cfg.Writer.Balancer = &DefaultBalancer{}
+	}
 }

@@ -8,19 +8,43 @@ import (
 )
 
 func TestProducerConfig_setDefaults(t *testing.T) {
-	// Given
-	cfg := ProducerConfig{DistributedTracingEnabled: true}
+	t.Run("Should_Set_Default_DistributedTracing_Fields", func(t *testing.T) {
+		// Given
+		cfg := ProducerConfig{DistributedTracingEnabled: true}
 
-	// When
-	cfg.setDefaults()
+		// When
+		cfg.setDefaults()
 
-	// Then
-	if cfg.DistributedTracingConfiguration.TracerProvider == nil {
-		t.Fatal("Traceprovider cannot be null")
-	}
-	if cfg.DistributedTracingConfiguration.Propagator == nil {
-		t.Fatal("Propagator cannot be null")
-	}
+		// Then
+		if cfg.DistributedTracingConfiguration.TracerProvider == nil {
+			t.Fatal("TracerProvider cannot be nil")
+		}
+		if cfg.DistributedTracingConfiguration.Propagator == nil {
+			t.Fatal("Propagator cannot be nil")
+		}
+	})
+
+	t.Run("Should_Set_Default_Balancer_When_Nil", func(t *testing.T) {
+		// Given
+		cfg := ProducerConfig{
+			Writer: WriterConfig{
+				Balancer: nil,
+			},
+		}
+
+		// When
+		cfg.setDefaults()
+
+		// Then
+		if cfg.Writer.Balancer == nil {
+			t.Fatal("Balancer should not be nil")
+		}
+
+		_, ok := cfg.Writer.Balancer.(*DefaultBalancer)
+		if !ok {
+			t.Fatalf("Expected balancer to be of type *DefaultBalancer, but got %T", cfg.Writer.Balancer)
+		}
+	})
 }
 
 func TestProducerConfig_Json(t *testing.T) {

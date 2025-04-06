@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"github.com/segmentio/kafka-go"
 	"reflect"
 	"testing"
 )
@@ -114,4 +115,38 @@ func TestGetBalancerString(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDefaultBalancer_Balance(t *testing.T) {
+	partitions := []int{0, 1, 2, 3}
+
+	t.Run("Should_Use_RoundRobin_When_Key_Is_Nil", func(t *testing.T) {
+		// Given
+		msg := kafka.Message{Key: nil}
+		balancer := &DefaultBalancer{}
+		expected := GetBalancerRoundRobin().Balance(msg, partitions...)
+
+		// When
+		result := balancer.Balance(msg, partitions...)
+
+		// Then
+		if result != expected {
+			t.Errorf("Expected RoundRobin partition %d, got %d", expected, result)
+		}
+	})
+
+	t.Run("Should_Use_Murmur2_When_Key_Is_Not_Nil", func(t *testing.T) {
+		// Given
+		msg := kafka.Message{Key: []byte("key")}
+		balancer := &DefaultBalancer{}
+		expected := GetBalancerMurmur2Balancer().Balance(msg, partitions...)
+
+		// When
+		result := balancer.Balance(msg, partitions...)
+
+		// Then
+		if result != expected {
+			t.Errorf("Expected Murmur2Balancer partition %d, got %d", expected, result)
+		}
+	})
 }

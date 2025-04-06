@@ -27,7 +27,7 @@ func NewProducer(cfg *ProducerConfig, interceptors ...ProducerInterceptor) (Prod
 	kafkaWriter := &kafka.Writer{
 		Addr:                   kafka.TCP(cfg.Writer.Brokers...),
 		Topic:                  cfg.Writer.Topic,
-		Balancer:               cfg.Writer.Balancer,
+		Balancer:               &DefaultBalancer{},
 		MaxAttempts:            cfg.Writer.MaxAttempts,
 		WriteBackoffMin:        cfg.Writer.WriteBackoffMin,
 		WriteBackoffMax:        cfg.Writer.WriteBackoffMax,

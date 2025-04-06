@@ -4,6 +4,15 @@ import "github.com/segmentio/kafka-go"
 
 type Balancer kafka.Balancer
 
+type DefaultBalancer struct{}
+
+func (s *DefaultBalancer) Balance(msg kafka.Message, partitions ...int) (partition int) {
+	if msg.Key == nil {
+		return GetBalancerRoundRobin().Balance(msg, partitions...)
+	}
+	return GetBalancerMurmur2Balancer().Balance(msg, partitions...)
+}
+
 func GetBalancerCRC32() Balancer {
 	return &kafka.CRC32Balancer{}
 }
