@@ -121,32 +121,62 @@ func TestDefaultBalancer_Balance(t *testing.T) {
 	partitions := []int{0, 1, 2, 3}
 
 	t.Run("Should_Use_RoundRobin_When_Key_Is_Nil", func(t *testing.T) {
-		// Given
 		msg := kafka.Message{Key: nil}
 		balancer := &DefaultBalancer{}
 		expected := GetBalancerRoundRobin().Balance(msg, partitions...)
-
-		// When
 		result := balancer.Balance(msg, partitions...)
-
-		// Then
 		if result != expected {
 			t.Errorf("Expected RoundRobin partition %d, got %d", expected, result)
 		}
 	})
 
 	t.Run("Should_Use_Murmur2_When_Key_Is_Not_Nil", func(t *testing.T) {
-		// Given
 		msg := kafka.Message{Key: []byte("key")}
 		balancer := &DefaultBalancer{}
 		expected := GetBalancerMurmur2Balancer().Balance(msg, partitions...)
-
-		// When
 		result := balancer.Balance(msg, partitions...)
-
-		// Then
 		if result != expected {
 			t.Errorf("Expected Murmur2Balancer partition %d, got %d", expected, result)
 		}
 	})
+}
+
+type optimizedBalancer struct{}
+
+func (s *optimizedBalancer) Balance(msg kafka.Message, partitions ...int) int {
+	if msg.Key == nil {
+		return balancerRoundRobin.Balance(msg, partitions...)
+	}
+	return balancerMurmur.Balance(msg, partitions...)
+}
+
+func BenchmarkDefaultBalancer_WithAlloc(b *testing.B) {
+	partitions := []int{0, 1, 2, 3}
+	msgWithKey := kafka.Message{Key: []byte("key")}
+	msgWithoutKey := kafka.Message{Key: nil}
+	balancer := &DefaultBalancer{} // her çağrıda GetBalancerX() çalışır
+
+	for i := 0; i < b.N; i++ {
+		if i%2 == 0 {
+			balancer.Balance(msgWithKey, partitions...)
+		} else {
+			balancer.Balance(msgWithoutKey, partitions...)
+		}
+	}
+}
+
+func BenchmarkDefaultBalancer_Optimized(b *testing.B) {
+	partitions := []int{0, 1, 2, 3}
+	msgWithKey := kafka.Message{Key: []byte("key")}
+	msgWithoutKey := kafka.Message{Key: nil}
+
+	balancer := &optimizedBalancer{}
+
+	for i := 0; i < b.N; i++ {
+		if i%2 == 0 {
+			balancer.Balance(msgWithKey, partitions...)
+		} else {
+			balancer.Balance(msgWithoutKey, partitions...)
+		}
+	}
 }

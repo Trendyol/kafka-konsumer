@@ -2,15 +2,20 @@ package kafka
 
 import "github.com/segmentio/kafka-go"
 
+var (
+	balancerRoundRobin = GetBalancerRoundRobin()
+	balancerMurmur     = GetBalancerMurmur2Balancer()
+)
+
 type Balancer kafka.Balancer
 
 type DefaultBalancer struct{}
 
 func (s *DefaultBalancer) Balance(msg kafka.Message, partitions ...int) (partition int) {
 	if msg.Key == nil {
-		return GetBalancerRoundRobin().Balance(msg, partitions...)
+		return balancerRoundRobin.Balance(msg, partitions...)
 	}
-	return GetBalancerMurmur2Balancer().Balance(msg, partitions...)
+	return balancerMurmur.Balance(msg, partitions...)
 }
 
 func GetBalancerCRC32() Balancer {
