@@ -40,7 +40,7 @@ func TestProducerConfig_setDefaults(t *testing.T) {
 			t.Fatal("Balancer should not be nil")
 		}
 
-		_, ok := cfg.Writer.Balancer.(*DefaultBalancer)
+		_, ok := cfg.Writer.Balancer.(*defaultBalancer)
 		if !ok {
 			t.Fatalf("Expected balancer to be of type *DefaultBalancer, but got %T", cfg.Writer.Balancer)
 		}

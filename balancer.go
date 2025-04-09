@@ -9,9 +9,9 @@ var (
 
 type Balancer kafka.Balancer
 
-type DefaultBalancer struct{}
+type defaultBalancer struct{}
 
-func (s *DefaultBalancer) Balance(msg kafka.Message, partitions ...int) (partition int) {
+func (s *defaultBalancer) Balance(msg kafka.Message, partitions ...int) (partition int) {
 	if msg.Key == nil {
 		return balancerRoundRobin.Balance(msg, partitions...)
 	}

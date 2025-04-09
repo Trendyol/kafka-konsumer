@@ -123,7 +123,7 @@ func TestDefaultBalancer_Balance(t *testing.T) {
 	t.Run("Should_Use_RoundRobin_When_Key_Is_Nil", func(t *testing.T) {
 		// Given
 		msg := kafka.Message{Key: nil}
-		balancer := &DefaultBalancer{}
+		balancer := &defaultBalancer{}
 		expected := GetBalancerRoundRobin().Balance(msg, partitions...)
 
 		// When
@@ -138,7 +138,7 @@ func TestDefaultBalancer_Balance(t *testing.T) {
 	t.Run("Should_Use_Murmur2_When_Key_Is_Not_Nil", func(t *testing.T) {
 		// Given
 		msg := kafka.Message{Key: []byte("key")}
-		balancer := &DefaultBalancer{}
+		balancer := &defaultBalancer{}
 		expected := GetBalancerMurmur2Balancer().Balance(msg, partitions...)
 
 		// When
@@ -154,17 +154,23 @@ func TestDefaultBalancer_Balance(t *testing.T) {
 type optimizedBalancer struct{}
 
 func (s *optimizedBalancer) Balance(msg kafka.Message, partitions ...int) int {
+	var balancer kafka.Balancer
 	if msg.Key == nil {
-		return balancerRoundRobin.Balance(msg, partitions...)
+		balancer = balancerRoundRobin
+	} else {
+		balancer = balancerMurmur
 	}
-	return balancerMurmur.Balance(msg, partitions...)
+	return balancer.Balance(msg, partitions...)
 }
 
 func BenchmarkDefaultBalancer_WithAlloc(b *testing.B) {
 	partitions := []int{0, 1, 2, 3}
 	msgWithKey := kafka.Message{Key: []byte("key")}
 	msgWithoutKey := kafka.Message{Key: nil}
-	balancer := &DefaultBalancer{} // her çağrıda GetBalancerX() çalışır
+	balancer := &defaultBalancer{}
+
+	b.ReportAllocs()
+	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		if i%2 == 0 {
@@ -179,8 +185,28 @@ func BenchmarkDefaultBalancer_Optimized(b *testing.B) {
 	partitions := []int{0, 1, 2, 3}
 	msgWithKey := kafka.Message{Key: []byte("key")}
 	msgWithoutKey := kafka.Message{Key: nil}
-
 	balancer := &optimizedBalancer{}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if i%2 == 0 {
+			balancer.Balance(msgWithKey, partitions...)
+		} else {
+			balancer.Balance(msgWithoutKey, partitions...)
+		}
+	}
+}
+
+func BenchmarkDefaultBalancer_Direct(b *testing.B) {
+	partitions := []int{0, 1, 2, 3}
+	msgWithKey := kafka.Message{Key: []byte("key")}
+	msgWithoutKey := kafka.Message{Key: nil}
+	balancer := &optimizedBalancer{}
+
+	b.ReportAllocs()
+	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		if i%2 == 0 {

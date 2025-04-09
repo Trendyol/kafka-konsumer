@@ -113,6 +113,6 @@ func (cfg *ProducerConfig) setDefaults() {
 	}
 
 	if cfg.Writer.Balancer == nil {
-		cfg.Writer.Balancer = &DefaultBalancer{}
+		cfg.Writer.Balancer = &defaultBalancer{}
 	}
 }
