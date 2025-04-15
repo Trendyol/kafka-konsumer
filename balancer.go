@@ -2,7 +2,21 @@ package kafka
 
 import "github.com/segmentio/kafka-go"
 
+var (
+	balancerRoundRobin = GetBalancerRoundRobin()
+	balancerMurmur     = GetBalancerMurmur2Balancer()
+)
+
 type Balancer kafka.Balancer
+
+type defaultBalancer struct{}
+
+func (s *defaultBalancer) Balance(msg kafka.Message, partitions ...int) (partition int) {
+	if msg.Key == nil {
+		return balancerRoundRobin.Balance(msg, partitions...)
+	}
+	return balancerMurmur.Balance(msg, partitions...)
+}
 
 func GetBalancerCRC32() Balancer {
 	return &kafka.CRC32Balancer{}

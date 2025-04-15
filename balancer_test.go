@@ -3,6 +3,8 @@ package kafka
 import (
 	"reflect"
 	"testing"
+
+	"github.com/segmentio/kafka-go"
 )
 
 func TestGetBalancerCRC32(t *testing.T) {
@@ -113,5 +115,105 @@ func TestGetBalancerString(t *testing.T) {
 				t.Errorf("GetBalancerString() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestDefaultBalancer_Balance(t *testing.T) {
+	partitions := []int{0, 1, 2, 3}
+
+	t.Run("Should_Use_RoundRobin_When_Key_Is_Nil", func(t *testing.T) {
+		// Given
+		msg := kafka.Message{Key: nil}
+		balancer := &defaultBalancer{}
+		expected := GetBalancerRoundRobin().Balance(msg, partitions...)
+
+		// When
+		result := balancer.Balance(msg, partitions...)
+
+		// Then
+		if result != expected {
+			t.Errorf("Expected RoundRobin partition %d, got %d", expected, result)
+		}
+	})
+
+	t.Run("Should_Use_Murmur2_When_Key_Is_Not_Nil", func(t *testing.T) {
+		// Given
+		msg := kafka.Message{Key: []byte("key")}
+		balancer := &defaultBalancer{}
+		expected := GetBalancerMurmur2Balancer().Balance(msg, partitions...)
+
+		// When
+		result := balancer.Balance(msg, partitions...)
+
+		// Then
+		if result != expected {
+			t.Errorf("Expected Murmur2Balancer partition %d, got %d", expected, result)
+		}
+	})
+}
+
+type optimizedBalancer struct{}
+
+func (s *optimizedBalancer) Balance(msg kafka.Message, partitions ...int) int {
+	var balancer kafka.Balancer
+	if msg.Key == nil {
+		balancer = balancerRoundRobin
+	} else {
+		balancer = balancerMurmur
+	}
+	return balancer.Balance(msg, partitions...)
+}
+
+func BenchmarkDefaultBalancer_WithAlloc(b *testing.B) {
+	partitions := []int{0, 1, 2, 3}
+	msgWithKey := kafka.Message{Key: []byte("key")}
+	msgWithoutKey := kafka.Message{Key: nil}
+	balancer := &defaultBalancer{}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if i%2 == 0 {
+			balancer.Balance(msgWithKey, partitions...)
+		} else {
+			balancer.Balance(msgWithoutKey, partitions...)
+		}
+	}
+}
+
+func BenchmarkDefaultBalancer_Optimized(b *testing.B) {
+	partitions := []int{0, 1, 2, 3}
+	msgWithKey := kafka.Message{Key: []byte("key")}
+	msgWithoutKey := kafka.Message{Key: nil}
+	balancer := &optimizedBalancer{}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if i%2 == 0 {
+			balancer.Balance(msgWithKey, partitions...)
+		} else {
+			balancer.Balance(msgWithoutKey, partitions...)
+		}
+	}
+}
+
+func BenchmarkDefaultBalancer_Direct(b *testing.B) {
+	partitions := []int{0, 1, 2, 3}
+	msgWithKey := kafka.Message{Key: []byte("key")}
+	msgWithoutKey := kafka.Message{Key: nil}
+	balancer := &optimizedBalancer{}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if i%2 == 0 {
+			balancer.Balance(msgWithKey, partitions...)
+		} else {
+			balancer.Balance(msgWithoutKey, partitions...)
+		}
 	}
 }
