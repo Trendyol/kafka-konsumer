@@ -124,7 +124,7 @@ func TestDefaultBalancer_Balance(t *testing.T) {
 		// Given
 		msg := kafka.Message{Key: nil}
 		balancer := &defaultBalancer{}
-		expected := balancer.Balance(msg, partitions...)
+		expected := GetBalancerRoundRobin().Balance(msg, partitions...)
 
 		// When
 		result := balancer.Balance(msg, partitions...)
@@ -139,7 +139,7 @@ func TestDefaultBalancer_Balance(t *testing.T) {
 		// Given
 		msg := kafka.Message{Key: []byte("key")}
 		balancer := &defaultBalancer{}
-		expected := balancer.Balance(msg, partitions...)
+		expected := GetBalancerMurmur2Balancer().Balance(msg, partitions...)
 
 		// When
 		result := balancer.Balance(msg, partitions...)
