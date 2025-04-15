@@ -1,9 +1,10 @@
 package kafka
 
 import (
-	"github.com/segmentio/kafka-go"
 	"reflect"
 	"testing"
+
+	"github.com/segmentio/kafka-go"
 )
 
 func TestGetBalancerCRC32(t *testing.T) {
