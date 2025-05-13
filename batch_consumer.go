@@ -238,6 +238,16 @@ func (b *batchConsumer) consume(allMessages *[]*Message, commitMessages *[]kafka
 	*messageByteSizeLimit = 0
 }
 
+func countFailedMessages(chunkMessages []*Message) int64 {
+	var errorCount int64
+	for i := range chunkMessages {
+		if chunkMessages[i].IsFailed {
+			errorCount++
+		}
+	}
+	return errorCount
+}
+
 func (b *batchConsumer) process(chunkMessages []*Message) {
 	consumeErr := b.consumeFn(chunkMessages)
 
@@ -250,7 +260,9 @@ func (b *batchConsumer) process(chunkMessages []*Message) {
 				b.metric.IncrementTotalUnprocessedMessagesCounter(int64(len(chunkMessages)))
 			}
 		} else {
-			b.metric.IncrementTotalUnprocessedMessagesCounter(int64(len(chunkMessages)))
+			failedCount := countFailedMessages(chunkMessages)
+			b.metric.IncrementTotalUnprocessedMessagesCounter(failedCount)
+			b.metric.IncrementTotalProcessedMessagesCounter(int64(len(chunkMessages)) - failedCount)
 		}
 
 		if consumeErr != nil && b.retryEnabled {

@@ -176,6 +176,30 @@ func Test_batchConsumer_process(t *testing.T) {
 			t.Fatalf("Total Unprocessed Message Counter must equal to 0")
 		}
 	})
+	t.Run("When_Processing_Is_Partial_Successful_And_Transactional_Retry_Disabled", func(t *testing.T) {
+		// Given
+		bc := batchConsumer{
+			base: &base{metric: &ConsumerMetric{}, transactionalRetry: false},
+			consumeFn: func(messages []*Message) error {
+				messages[0].IsFailed = true
+				messages[1].IsFailed = false
+				messages[2].IsFailed = true
+
+				return errors.New("error case")
+			},
+		}
+
+		// When
+		bc.process([]*Message{{}, {}, {}})
+
+		// Then
+		if bc.metric.totalUnprocessedMessagesCounter != 2 {
+			t.Fatalf("Total Unprocessed Message Counter must equal to 2")
+		}
+		if bc.metric.totalProcessedMessagesCounter != 1 {
+			t.Fatalf("Total Processed Message Counter must equal to 1")
+		}
+	})
 	t.Run("When_Re-processing_Is_Successful", func(t *testing.T) {
 		// Given
 		gotOnlyOneTimeException := true
