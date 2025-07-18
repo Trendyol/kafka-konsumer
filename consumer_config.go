@@ -56,6 +56,7 @@ type ConsumerConfig struct {
 	DistributedTracingEnabled       bool
 	RetryEnabled                    bool
 	APIEnabled                      bool
+	DeadLetterTopic                 string
 
 	// MetricPrefix is used for prometheus fq name prefix.
 	// If not provided, default metric prefix value is `kafka_konsumer`.

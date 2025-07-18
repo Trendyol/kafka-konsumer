@@ -50,6 +50,10 @@ type Message struct {
 	// If available, kafka-konsumer writes this description into the failed message's
 	// headers as `x-error-message` key when producing retry topic
 	ErrDescription string
+
+	// SendDirectToDeadLetter When set to true, the message will be sent directly to the dead letter topic
+	// without attempting to process it. This is useful for messages that are known to be unprocessable.
+	SendDirectToDeadLetter bool
 }
 
 func (m *Message) TotalSize() int {

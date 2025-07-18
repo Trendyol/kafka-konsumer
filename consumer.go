@@ -36,7 +36,7 @@ func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		consumeFn: cfg.ConsumeFn,
 	}
 
-	if cfg.RetryEnabled {
+	if cfg.RetryEnabled || (cfg.DeadLetterTopic != "") {
 		c.base.setupCronsumer(cfg, func(message kcronsumer.Message) error {
 			return c.consumeFn(toMessage(message))
 		})
@@ -161,6 +161,32 @@ func (c *consumer) process(message *Message) {
 	consumeErr := c.consumeFn(message)
 
 	if consumeErr != nil {
+		if message.SendDirectToDeadLetter {
+			deadLetterTopic := c.deadLetterTopic
+			if deadLetterTopic == "" && c.consumerCfg != nil && c.consumerCfg.RetryConfiguration.DeadLetterTopic != "" {
+				deadLetterTopic = c.consumerCfg.RetryConfiguration.DeadLetterTopic
+			}
+
+			if deadLetterTopic != "" && c.cronsumer != nil {
+				c.logger.Warnf("Message with error is being sent directly to dead letter topic: %s", deadLetterTopic)
+				retryableMsg := message.toRetryableMessage(deadLetterTopic, consumeErr.Error())
+				if err := c.retryWithBackoff(retryableMsg); err != nil {
+					errorMessage := fmt.Sprintf(
+						"Error producing message %s to dead letter topic %s. Error: %s",
+						string(message.Value), deadLetterTopic, err.Error())
+					c.logger.Error(errorMessage)
+					panic(err.Error())
+				}
+				c.metric.IncrementTotalUnprocessedMessagesCounter(1)
+			} else if deadLetterTopic == "" {
+				c.logger.Warn("SendDirectToDeadLetter is true but no dead letter topic is configured")
+			} else if c.cronsumer == nil {
+				c.logger.Warn("SendDirectToDeadLetter is true but cronsumer is not initialized. " +
+					"Make sure RetryEnabled is true or RetryConfiguration.DeadLetterTopic is configured")
+			}
+			return
+		}
+
 		if c.transactionalRetry {
 			c.logger.Warnf("Consume Function Err %s, Message will be retried", consumeErr.Error())
 			// Try to process same message again
