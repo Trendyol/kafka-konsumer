@@ -80,6 +80,7 @@ type base struct {
 	once                      sync.Once
 	retryEnabled              bool
 	transactionalRetry        bool
+	deadLetterTopic           string
 	distributedTracingEnabled bool
 	consumerState             state
 	metricPrefix              string
@@ -118,6 +119,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		concurrency:               cfg.Concurrency,
 		retryEnabled:              cfg.RetryEnabled,
 		transactionalRetry:        *cfg.TransactionalRetry,
+		deadLetterTopic:           cfg.DeadLetterTopic,
 		distributedTracingEnabled: cfg.DistributedTracingEnabled,
 		logger:                    log,
 		subprocesses:              newSubProcesses(),
