@@ -262,6 +262,7 @@ func (b *batchConsumer) process(chunkMessages []*Message) {
 					Key:   errMessageKey,
 					Value: []byte(getErrorMessage(consumeErr, msg)),
 				})
+				msg.Topic = "" // we set on initialize for dead letter producer
 				deadLetterMessages = append(deadLetterMessages, *msg)
 			} else {
 				remainingMessages = append(remainingMessages, msg)

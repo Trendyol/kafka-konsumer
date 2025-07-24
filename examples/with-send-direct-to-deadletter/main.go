@@ -53,16 +53,8 @@ func runSingleExample() {
 			Topic:   topicName,
 			GroupID: "konsumer.group.test",
 		},
-		RetryEnabled: true,
-		RetryConfiguration: kafka.RetryConfiguration{
-			DeadLetterTopic: deadLetterTopicName,
-			Brokers:         []string{"localhost:29092"},
-			Topic:           retryTopicName,
-			StartTimeCron:   "*/1 * * * *",
-			WorkDuration:    50 * time.Second,
-			MaxRetry:        1,
-		},
-		ConsumeFn: consumeFn,
+		DeadLetterTopic: deadLetterTopicName,
+		ConsumeFn:       consumeFn,
 	}
 
 	consumer, _ := kafka.NewConsumer(consumerCfg)
@@ -99,10 +91,10 @@ func runBatchExample() {
 			GroupID: "batch.konsumer.group.test",
 		},
 		BatchConfiguration: &kafka.BatchConfiguration{
-			MessageGroupLimit: 10,
-			BatchConsumeFn:    batchConsumeFn,
+			BatchConsumeFn: batchConsumeFn,
 		},
-		RetryEnabled: true,
+		TransactionalRetry: kafka.NewBoolPtr(false),
+		RetryEnabled:       true,
 		RetryConfiguration: kafka.RetryConfiguration{
 			DeadLetterTopic: deadLetterTopicName,
 			Brokers:         []string{"localhost:29092"},
@@ -111,7 +103,6 @@ func runBatchExample() {
 			WorkDuration:    50 * time.Second,
 			MaxRetry:        1,
 		},
-		MessageGroupDuration: 2 * time.Second,
 	}
 
 	consumer, _ := kafka.NewConsumer(consumerCfg)
@@ -142,6 +133,7 @@ func batchConsumeFn(messages []*kafka.Message) error {
 		// Send messages with even keys directly to dead letter
 		if string(message.Key) == "2" || string(message.Key) == "4" {
 			message.SendDirectToDeadLetter = true
+			message.ErrDescription = string(message.Key) + " error"
 			fmt.Printf("  -> Marked for direct dead letter: %s\n", string(message.Key))
 		}
 	}

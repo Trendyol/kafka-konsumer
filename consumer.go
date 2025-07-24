@@ -166,7 +166,7 @@ func (c *consumer) process(message *Message) {
 				Key:   errMessageKey,
 				Value: []byte(getErrorMessage(consumeErr, message)),
 			})
-
+			message.Topic = "" // we set on initialize for dead letter producer
 			if err := c.sendToDeadLetterWithBackoff(*message); err != nil {
 				errorMessage := fmt.Sprintf(
 					"Error producing message %s to dead letter topic.. Error: %s",
