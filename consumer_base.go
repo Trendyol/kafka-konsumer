@@ -321,26 +321,11 @@ func (c *base) sendToDeadLetterWithBackoff(messages ...Message) error {
 	return produceErr
 }
 
-func (c *base) retryWithBackoff(retryableMsg kcronsumer.Message) error {
+func (c *base) retryWithBackoff(retryableMessage ...kcronsumer.Message) error {
 	var produceErr error
 
 	for attempt := 1; attempt <= 5; attempt++ {
-		produceErr = c.cronsumer.Produce(retryableMsg)
-		if produceErr == nil {
-			return nil
-		}
-		c.logger.Warnf("Error producing message (attempt %d/%d): %v", attempt, 5, produceErr)
-		time.Sleep((50 * time.Millisecond) * time.Duration(1<<attempt))
-	}
-
-	return produceErr
-}
-
-func (c *base) retryBatchWithBackoff(retryableMessages []kcronsumer.Message) error {
-	var produceErr error
-
-	for attempt := 1; attempt <= 5; attempt++ {
-		produceErr = c.cronsumer.ProduceBatch(retryableMessages)
+		produceErr = c.cronsumer.ProduceBatch(retryableMessage)
 		if produceErr == nil {
 			return nil
 		}
