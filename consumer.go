@@ -1,7 +1,6 @@
 package kafka
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -16,7 +15,6 @@ type consumer struct {
 	*base
 
 	consumeFn func(*Message) error
-	producer  Producer
 }
 
 func (c *consumer) Pause() {
@@ -42,30 +40,6 @@ func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 		c.base.setupCronsumer(cfg, func(message kcronsumer.Message) error {
 			return c.consumeFn(toMessage(message))
 		})
-	}
-
-	// Initialize producer for dead letter topic if needed
-	deadLetterTopic := cfg.DeadLetterTopic
-	if deadLetterTopic == "" {
-		deadLetterTopic = cfg.RetryConfiguration.DeadLetterTopic
-	}
-
-	if deadLetterTopic != "" {
-		producerCfg := &ProducerConfig{
-			Writer: WriterConfig{
-				Brokers: cfg.Reader.Brokers,
-			},
-			LogLevel: cfg.LogLevel,
-			SASL:     cfg.SASL,
-			TLS:      cfg.TLS,
-			ClientID: cfg.ClientID,
-		}
-
-		var err error
-		c.producer, err = NewProducer(producerCfg)
-		if err != nil {
-			return nil, fmt.Errorf("error initializing producer for dead letter topic %s: %w", deadLetterTopic, err)
-		}
 	}
 
 	if cfg.APIEnabled {
@@ -188,35 +162,15 @@ func (c *consumer) process(message *Message) {
 
 	if consumeErr != nil {
 		if message.SendDirectToDeadLetter {
-			deadLetterTopic := c.deadLetterTopic
-			if deadLetterTopic == "" && c.consumerCfg != nil {
-				deadLetterTopic = c.consumerCfg.RetryConfiguration.DeadLetterTopic
-			}
-
-			if deadLetterTopic == "" {
-				c.logger.Warn("SendDirectToDeadLetter is true but no dead letter topic is configured")
-				return
-			}
-
-			c.logger.Warnf("Message with error is being sent directly to dead letter topic: %s", deadLetterTopic)
-
-			if c.producer == nil {
-				c.logger.Warn("SendDirectToDeadLetter is true but producer is not initialized")
-				return
-			}
-
-			deadLetterMsg := *message
-			deadLetterMsg.Topic = deadLetterTopic
-
-			deadLetterMsg.AddHeader(Header{
-				Key:   "x-error-message",
-				Value: []byte(consumeErr.Error()),
+			message.AddHeader(Header{
+				Key:   errMessageKey,
+				Value: []byte(getErrorMessage(consumeErr, message)),
 			})
 
-			if err := c.sendToDeadLetterWithBackoff(&deadLetterMsg); err != nil {
+			if err := c.sendToDeadLetterWithBackoff(*message); err != nil {
 				errorMessage := fmt.Sprintf(
-					"Error producing message %s to dead letter topic %s. Error: %s",
-					string(message.Value), deadLetterTopic, err.Error())
+					"Error producing message %s to dead letter topic.. Error: %s",
+					string(message.Value), err.Error())
 				c.logger.Error(errorMessage)
 				panic(err.Error())
 			}
@@ -238,7 +192,7 @@ func (c *consumer) process(message *Message) {
 	}
 
 	if consumeErr != nil && c.retryEnabled {
-		retryableMsg := message.toRetryableMessage(c.retryTopic, consumeErr.Error())
+		retryableMsg := message.toRetryableMessage(c.retryTopic, consumeErr)
 		if err := c.retryWithBackoff(retryableMsg); err != nil {
 			errorMessage := fmt.Sprintf(
 				"Error producing message %s to exception/retry topic %s. Error: %s",
@@ -251,34 +205,4 @@ func (c *consumer) process(message *Message) {
 	if consumeErr == nil {
 		c.metric.IncrementTotalProcessedMessagesCounter(1)
 	}
-}
-
-func (c *consumer) sendToDeadLetterWithBackoff(message *Message) error {
-	var produceErr error
-
-	for attempt := 1; attempt <= 5; attempt++ {
-		produceErr = c.producer.Produce(context.Background(), *message)
-		if produceErr == nil {
-			return nil
-		}
-		c.logger.Warnf("Error producing message to dead letter topic (attempt %d/%d): %v", attempt, 5, produceErr)
-		time.Sleep((50 * time.Millisecond) * time.Duration(1<<attempt))
-	}
-
-	return produceErr
-}
-
-func (c *consumer) retryWithBackoff(retryableMsg kcronsumer.Message) error {
-	var produceErr error
-
-	for attempt := 1; attempt <= 5; attempt++ {
-		produceErr = c.cronsumer.Produce(retryableMsg)
-		if produceErr == nil {
-			return nil
-		}
-		c.logger.Warnf("Error producing message (attempt %d/%d): %v", attempt, 5, produceErr)
-		time.Sleep((50 * time.Millisecond) * time.Duration(1<<attempt))
-	}
-
-	return produceErr
 }
