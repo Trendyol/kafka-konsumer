@@ -373,7 +373,9 @@ func (c *base) Stop() error {
 		}
 
 		c.wg.Wait()
-		c.deadLetterProducer.Close()
+		if c.deadLetterProducer != nil {
+			c.deadLetterProducer.Close()
+		}
 		err = c.r.Close()
 	})
 
