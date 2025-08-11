@@ -5,10 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Trendyol/kafka-konsumer/v2"
-	segmentio "github.com/segmentio/kafka-go"
 	"testing"
 	"time"
+
+	"github.com/Trendyol/kafka-konsumer/v2"
+	segmentio "github.com/segmentio/kafka-go"
 )
 
 func Test_Should_Produce_Successfully(t *testing.T) {
@@ -583,6 +584,158 @@ func Test_Should_Skip_Message_When_Header_Filter_Given(t *testing.T) {
 	case <-consumeCh:
 		t.Fatal("Message must be skipped! consumeCh mustn't receive any value")
 	case <-time.After(1 * time.Second):
+	}
+}
+
+func Test_Should_Send_Directly_To_DeadLetter_On_Single_Consume(t *testing.T) {
+	// Given
+	t.Parallel()
+	brokerAddress := "localhost:9092"
+
+	sourceTopic := "direct-deadletter-single-topic"
+	deadLetterTopic := "direct-deadletter-single-error-topic"
+	consumerGroup := "direct-deadletter-single-cg"
+
+	_, cleanUp := createTopicAndWriteMessages(t, sourceTopic, []segmentio.Message{{Topic: sourceTopic, Key: []byte("1"), Value: []byte(`foo`)}})
+	defer cleanUp()
+
+	deadLetterConn, cleanUpDeadLetter := createTopicAndWriteMessages(t, deadLetterTopic, nil)
+	defer cleanUpDeadLetter()
+
+	consumerCfg := &kafka.ConsumerConfig{
+		Reader:          kafka.ReaderConfig{Brokers: []string{brokerAddress}, Topic: sourceTopic, GroupID: consumerGroup},
+		DeadLetterTopic: deadLetterTopic,
+		ConsumeFn: func(message *kafka.Message) error {
+			message.SendDirectToDeadLetter = true
+			message.ErrDescription = "custom direct error"
+			return errors.New("err")
+		},
+		LogLevel: kafka.LogLevelError,
+	}
+
+	consumer, _ := kafka.NewConsumer(consumerCfg)
+	defer consumer.Stop()
+
+	consumer.Consume()
+
+	// Then
+	var expectedOffset int64 = 1
+	conditionFunc := func() bool {
+		lastOffset, _ := deadLetterConn.ReadLastOffset()
+		return lastOffset == expectedOffset
+	}
+	assertEventually(t, conditionFunc, 45*time.Second, time.Second)
+
+	msg, err := deadLetterConn.ReadMessage(10_000)
+	if err != nil {
+		t.Fatal("error reading dead letter message")
+	}
+	if !bytes.Equal(msg.Key, []byte("1")) {
+		t.Fatalf("dead letter message key must be 1, got %s", string(msg.Key))
+	}
+	if !bytes.Equal(msg.Value, []byte("foo")) {
+		t.Fatalf("dead letter message value must be foo, got %s", string(msg.Value))
+	}
+
+	var errHeaderFound bool
+	for _, h := range msg.Headers {
+		if h.Key == "x-error-message" {
+			errHeaderFound = true
+			if !bytes.Equal(h.Value, []byte("custom direct error")) {
+				t.Fatalf("x-error-message must be 'custom direct error', got %s", string(h.Value))
+			}
+		}
+	}
+	if !errHeaderFound {
+		t.Fatal("x-error-message header not found on dead letter message")
+	}
+}
+
+func Test_Should_Send_Directly_To_DeadLetter_On_Batch_Consume(t *testing.T) {
+	// Given
+	t.Parallel()
+	brokerAddress := "localhost:9092"
+
+	sourceTopic := "direct-deadletter-batch-topic"
+	deadLetterTopic := "direct-deadletter-batch-error-topic"
+	consumerGroup := "direct-deadletter-batch-cg"
+
+	messages := []segmentio.Message{
+		{Topic: sourceTopic, Partition: 0, Offset: 1, Key: []byte("1"), Value: []byte(`foo1`)},
+		{Topic: sourceTopic, Partition: 0, Offset: 2, Key: []byte("2"), Value: []byte(`foo2`)},
+		{Topic: sourceTopic, Partition: 0, Offset: 3, Key: []byte("3"), Value: []byte(`foo3`)},
+		{Topic: sourceTopic, Partition: 0, Offset: 4, Key: []byte("4"), Value: []byte(`foo4`)},
+		{Topic: sourceTopic, Partition: 0, Offset: 5, Key: []byte("5"), Value: []byte(`foo5`)},
+	}
+
+	_, cleanUp := createTopicAndWriteMessages(t, sourceTopic, messages)
+	defer cleanUp()
+
+	deadLetterConn, cleanUpDeadLetter := createTopicAndWriteMessages(t, deadLetterTopic, nil)
+	defer cleanUpDeadLetter()
+
+	consumerCfg := &kafka.ConsumerConfig{
+		MessageGroupDuration: time.Second,
+		Reader:               kafka.ReaderConfig{Brokers: []string{brokerAddress}, Topic: sourceTopic, GroupID: consumerGroup},
+		DeadLetterTopic:      deadLetterTopic,
+		BatchConfiguration: &kafka.BatchConfiguration{
+			MessageGroupLimit: 100,
+			BatchConsumeFn: func(msgs []*kafka.Message) error {
+				for _, m := range msgs {
+					if string(m.Key) == "2" || string(m.Key) == "4" {
+						m.SendDirectToDeadLetter = true
+						m.ErrDescription = string(m.Key) + " error"
+					}
+				}
+				return errors.New("batch processing error")
+			},
+		},
+		LogLevel: kafka.LogLevelError,
+	}
+
+	consumer, _ := kafka.NewConsumer(consumerCfg)
+	defer consumer.Stop()
+
+	consumer.Consume()
+
+	// Then: expect 2 messages on dead letter
+	var expectedOffset int64 = 2
+	conditionFunc := func() bool {
+		lastOffset, _ := deadLetterConn.ReadLastOffset()
+		return lastOffset == expectedOffset
+	}
+	assertEventually(t, conditionFunc, 45*time.Second, time.Second)
+
+	// Read and verify the two dead-lettered messages
+	seen := map[string]bool{"2": false, "4": false}
+	for i := 0; i < 2; i++ {
+		msg, err := deadLetterConn.ReadMessage(10_000)
+		if err != nil {
+			t.Fatal("error reading dead letter message")
+		}
+		k := string(msg.Key)
+		if k != "2" && k != "4" {
+			t.Fatalf("unexpected key on dead letter topic: %s", k)
+		}
+
+		var errHeaderFound bool
+		for _, h := range msg.Headers {
+			if h.Key == "x-error-message" {
+				errHeaderFound = true
+				expected := k + " error"
+				if !bytes.Equal(h.Value, []byte(expected)) {
+					t.Fatalf("x-error-message must be '%s', got %s", expected, string(h.Value))
+				}
+			}
+		}
+		if !errHeaderFound {
+			t.Fatal("x-error-message header not found on dead letter message")
+		}
+		seen[k] = true
+	}
+
+	if !seen["2"] || !seen["4"] {
+		t.Fatal("dead letter messages with keys '2' and '4' must be seen")
 	}
 }
 
