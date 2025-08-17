@@ -352,7 +352,10 @@ func Test_batchConsumer_process(t *testing.T) {
 		mdlp := &mockDeadLetterProducer{}
 		mc := mockCronsumer{wantErr: true, retryBehaviorOpen: true, maxRetry: 5}
 		bc := batchConsumer{
-			base:      &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), deadLetterProducer: mdlp, retryEnabled: true, cronsumer: &mc},
+			base: &base{
+				metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), deadLetterProducer: mdlp,
+				retryEnabled: true, cronsumer: &mc,
+			},
 			consumeFn: func(_ []*Message) error { return errors.New("err occurred") },
 		}
 		msgs := []*Message{
@@ -395,18 +398,7 @@ func Test_batchConsumer_process(t *testing.T) {
 		if produced.Topic != "" {
 			t.Fatalf("produced message Topic must be empty, got %q", produced.Topic)
 		}
-		var found bool
-		for _, h := range produced.Headers {
-			if h.Key == "x-error-message" {
-				found = true
-				if string(h.Value) != "err occurred" {
-					t.Fatalf("x-error-message must be 'err occurred', got %q", string(h.Value))
-				}
-			}
-		}
-		if !found {
-			t.Fatal("x-error-message header must be present on direct dead-lettered message")
-		}
+		assertErrHeader(t, produced, "err occurred")
 		if bc.metric.totalUnprocessedMessagesCounter != 1 {
 			t.Fatalf("totalUnprocessedMessagesCounter must be 1, got %d", bc.metric.totalUnprocessedMessagesCounter)
 		}
@@ -435,18 +427,7 @@ func Test_batchConsumer_process(t *testing.T) {
 			t.Fatalf("dead letter received length must be 1, got %d", len(mdlp.received))
 		}
 		produced := mdlp.received[0]
-		var found bool
-		for _, h := range produced.Headers {
-			if h.Key == "x-error-message" {
-				found = true
-				if string(h.Value) != "custom direct error" {
-					t.Fatalf("x-error-message must be 'custom direct error', got %q", string(h.Value))
-				}
-			}
-		}
-		if !found {
-			t.Fatal("x-error-message header must be present on direct dead-lettered message")
-		}
+		assertErrHeader(t, produced, "custom direct error")
 	})
 
 	t.Run("When_DeadLetter_Producer_Fails_Should_Panic_After_Backoff", func(t *testing.T) {

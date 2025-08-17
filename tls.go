@@ -15,7 +15,7 @@ type TLSConfig struct {
 func (c *TLSConfig) TLSConfig(logger LoggerInterface) (*tls.Config, error) {
 	rootCA, err := os.ReadFile(c.RootCAPath)
 	if err != nil {
-		return nil, fmt.Errorf("Error while reading Root CA file: " + c.RootCAPath + " error: " + err.Error())
+		return nil, fmt.Errorf("%s", "Error while reading Root CA file: "+c.RootCAPath+" error: "+err.Error())
 	}
 
 	caCertPool := x509.NewCertPool()

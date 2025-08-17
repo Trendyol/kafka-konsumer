@@ -467,8 +467,8 @@ func Test_Should_Propagate_Custom_Headers_With_Kafka_Cronsumer_Successfully(t *t
 	if !bytes.Equal(msg.Headers[0].Value, []byte("custom_exception_value")) {
 		t.Fatal("value must be custom_exception_value")
 	}
-	if msg.Headers[1].Key != "x-error-message" {
-		t.Fatal("key must be x-error-message")
+	if msg.Headers[1].Key != errMessageKey {
+		t.Fatalf("key must be %s", errMessageKey)
 	}
 	if !bytes.Equal(msg.Headers[1].Value, []byte("err occurred")) {
 		t.Fatal("err occurred")
@@ -639,15 +639,15 @@ func Test_Should_Send_Directly_To_DeadLetter_On_Single_Consume(t *testing.T) {
 
 	var errHeaderFound bool
 	for _, h := range msg.Headers {
-		if h.Key == "x-error-message" {
+		if h.Key == errMessageKey {
 			errHeaderFound = true
 			if !bytes.Equal(h.Value, []byte("custom direct error")) {
-				t.Fatalf("x-error-message must be 'custom direct error', got %s", string(h.Value))
+				t.Fatalf("%s must be 'custom direct error', got %s", errMessageKey, string(h.Value))
 			}
 		}
 	}
 	if !errHeaderFound {
-		t.Fatal("x-error-message header not found on dead letter message")
+		t.Fatalf("%s header not found on dead letter message", errMessageKey)
 	}
 }
 
@@ -720,16 +720,16 @@ func Test_Should_Send_Directly_To_DeadLetter_On_Batch_Consume(t *testing.T) {
 
 		var errHeaderFound bool
 		for _, h := range msg.Headers {
-			if h.Key == "x-error-message" {
+			if h.Key == errMessageKey {
 				errHeaderFound = true
 				expected := k + " error"
 				if !bytes.Equal(h.Value, []byte(expected)) {
-					t.Fatalf("x-error-message must be '%s', got %s", expected, string(h.Value))
+					t.Fatalf("%s must be '%s', got %s", errMessageKey, expected, string(h.Value))
 				}
 			}
 		}
 		if !errHeaderFound {
-			t.Fatal("x-error-message header not found on dead letter message")
+			t.Fatalf("%s header not found on dead letter message", errMessageKey)
 		}
 		seen[k] = true
 	}
@@ -801,6 +801,7 @@ type mockProducerInterceptor struct{}
 const (
 	xSourceAppKey   = "x-source-app"
 	xSourceAppValue = "kafka-konsumer"
+	errMessageKey   = "x-error-message"
 )
 
 func (i *mockProducerInterceptor) OnProduce(ctx kafka.ProducerInterceptorContext) {

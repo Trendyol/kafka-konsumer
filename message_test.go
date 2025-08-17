@@ -159,10 +159,7 @@ func TestMessage_toRetryableMessage(t *testing.T) {
 					Key:   "x-custom-client-header",
 					Value: []byte("bar"),
 				},
-				{
-					Key:   "x-error-message",
-					Value: []byte("some error description"),
-				},
+				{Key: errMessageKey, Value: []byte("some error description")},
 			},
 		}
 
@@ -223,10 +220,7 @@ func TestMessage_toRetryableMessage(t *testing.T) {
 					Key:   "x-custom-client-header",
 					Value: []byte("bar"),
 				},
-				{
-					Key:   "x-error-message",
-					Value: []byte("consumeFn error"),
-				},
+				{Key: errMessageKey, Value: []byte("consumeFn error")},
 			},
 		}
 

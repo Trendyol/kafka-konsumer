@@ -212,7 +212,10 @@ func Test_consumer_process(t *testing.T) {
 		mdlp := &mockDeadLetterProducer{}
 		mc := mockCronsumer{wantErr: true, retryBehaviorOpen: true, maxRetry: 5}
 		c := consumer{
-			base:      &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), deadLetterProducer: mdlp, retryEnabled: true, cronsumer: &mc},
+			base: &base{
+				metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), deadLetterProducer: mdlp,
+				retryEnabled: true, cronsumer: &mc,
+			},
 			consumeFn: func(*Message) error { return errors.New("err occurred") },
 		}
 		msg := &Message{Key: []byte("1"), Value: []byte("foo"), SendDirectToDeadLetter: true}
@@ -252,18 +255,7 @@ func Test_consumer_process(t *testing.T) {
 		if produced.Topic != "" {
 			t.Fatalf("produced message Topic must be empty, got %q", produced.Topic)
 		}
-		var found bool
-		for _, h := range produced.Headers {
-			if h.Key == "x-error-message" {
-				found = true
-				if string(h.Value) != "err occurred" {
-					t.Fatalf("x-error-message must be 'err occurred', got %q", string(h.Value))
-				}
-			}
-		}
-		if !found {
-			t.Fatal("x-error-message header must be present on direct dead-lettered message")
-		}
+		assertErrHeader(t, produced, "err occurred")
 		if c.metric.totalUnprocessedMessagesCounter != 1 {
 			t.Fatalf("totalUnprocessedMessagesCounter must be 1, got %d", c.metric.totalUnprocessedMessagesCounter)
 		}
@@ -292,18 +284,7 @@ func Test_consumer_process(t *testing.T) {
 			t.Fatalf("dead letter received length must be 1, got %d", len(mdlp.received))
 		}
 		produced := mdlp.received[0]
-		var found bool
-		for _, h := range produced.Headers {
-			if h.Key == "x-error-message" {
-				found = true
-				if string(h.Value) != "custom direct error" {
-					t.Fatalf("x-error-message must be 'custom direct error', got %q", string(h.Value))
-				}
-			}
-		}
-		if !found {
-			t.Fatal("x-error-message header must be present on direct dead-lettered message")
-		}
+		assertErrHeader(t, produced, "custom direct error")
 	})
 
 	t.Run("When_DeadLetter_Producer_Fails_Should_Panic_After_Backoff", func(t *testing.T) {
@@ -401,8 +382,27 @@ type failingDeadLetterProducer struct{ called int }
 func (m *failingDeadLetterProducer) Produce(_ context.Context, _ Message) error {
 	return errors.New("dlq produce fail")
 }
+
 func (m *failingDeadLetterProducer) ProduceBatch(_ context.Context, _ []Message) error {
 	m.called++
 	return errors.New("dlq produce batch fail")
 }
 func (m *failingDeadLetterProducer) Close() error { return nil }
+
+func getHeaderValue(message Message, key string) (string, bool) {
+	for _, h := range message.Headers {
+		if h.Key == key {
+			return string(h.Value), true
+		}
+	}
+	return "", false
+}
+
+func assertErrHeader(t *testing.T, message Message, expected string) {
+	t.Helper()
+	if v, ok := getHeaderValue(message, errMessageKey); !ok {
+		t.Fatalf("%s header must be present on direct dead-lettered message", errMessageKey)
+	} else if v != expected {
+		t.Fatalf("%s must be %q, got %q", errMessageKey, expected, v)
+	}
+}
