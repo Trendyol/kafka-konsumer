@@ -206,6 +206,127 @@ func Test_consumer_process(t *testing.T) {
 		// When && Then
 		c.process(&Message{})
 	})
+
+	t.Run("When_SendDirectToDeadLetter_True_And_RetryEnabled_Should_Not_Call_Retry", func(t *testing.T) {
+		// Given
+		mdlp := &mockDeadLetterProducer{}
+		mc := mockCronsumer{wantErr: true, retryBehaviorOpen: true, maxRetry: 5}
+		c := consumer{
+			base:      &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), deadLetterProducer: mdlp, retryEnabled: true, cronsumer: &mc},
+			consumeFn: func(*Message) error { return errors.New("err occurred") },
+		}
+		msg := &Message{Key: []byte("1"), Value: []byte("foo"), SendDirectToDeadLetter: true}
+
+		// When
+		c.process(msg)
+
+		// Then
+		if mdlp.produceCalled != 1 {
+			t.Fatalf("dead letter producer must be called once, got %d", mdlp.produceCalled)
+		}
+		if mc.times != 0 {
+			t.Fatalf("retry cronsumer must not be called, got %d calls", mc.times)
+		}
+	})
+
+	t.Run("When_SendDirectToDeadLetter_True_Should_Add_Error_Header_And_Metrics", func(t *testing.T) {
+		// Given
+		mdlp := &mockDeadLetterProducer{}
+		c := consumer{
+			base:      &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), deadLetterProducer: mdlp},
+			consumeFn: func(*Message) error { return errors.New("err occurred") },
+		}
+		msg := &Message{Key: []byte("1"), Value: []byte("foo"), SendDirectToDeadLetter: true}
+
+		// When
+		c.process(msg)
+
+		// Then
+		if mdlp.produceCalled != 1 {
+			t.Fatalf("dead letter producer must be called once, got %d", mdlp.produceCalled)
+		}
+		if len(mdlp.received) != 1 {
+			t.Fatalf("dead letter received length must be 1, got %d", len(mdlp.received))
+		}
+		produced := mdlp.received[0]
+		if produced.Topic != "" {
+			t.Fatalf("produced message Topic must be empty, got %q", produced.Topic)
+		}
+		var found bool
+		for _, h := range produced.Headers {
+			if h.Key == "x-error-message" {
+				found = true
+				if string(h.Value) != "err occurred" {
+					t.Fatalf("x-error-message must be 'err occurred', got %q", string(h.Value))
+				}
+			}
+		}
+		if !found {
+			t.Fatal("x-error-message header must be present on direct dead-lettered message")
+		}
+		if c.metric.totalUnprocessedMessagesCounter != 1 {
+			t.Fatalf("totalUnprocessedMessagesCounter must be 1, got %d", c.metric.totalUnprocessedMessagesCounter)
+		}
+		if c.metric.totalProcessedMessagesCounter != 0 {
+			t.Fatalf("totalProcessedMessagesCounter must be 0, got %d", c.metric.totalProcessedMessagesCounter)
+		}
+	})
+
+	t.Run("When_SendDirectToDeadLetter_True_Should_Use_ErrDescription_In_Header", func(t *testing.T) {
+		// Given
+		mdlp := &mockDeadLetterProducer{}
+		c := consumer{
+			base:      &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), deadLetterProducer: mdlp},
+			consumeFn: func(*Message) error { return errors.New("ignored by ErrDescription") },
+		}
+		msg := &Message{Key: []byte("2"), Value: []byte("bar"), SendDirectToDeadLetter: true, ErrDescription: "custom direct error"}
+
+		// When
+		c.process(msg)
+
+		// Then
+		if mdlp.produceCalled != 1 {
+			t.Fatalf("dead letter producer must be called once, got %d", mdlp.produceCalled)
+		}
+		if len(mdlp.received) != 1 {
+			t.Fatalf("dead letter received length must be 1, got %d", len(mdlp.received))
+		}
+		produced := mdlp.received[0]
+		var found bool
+		for _, h := range produced.Headers {
+			if h.Key == "x-error-message" {
+				found = true
+				if string(h.Value) != "custom direct error" {
+					t.Fatalf("x-error-message must be 'custom direct error', got %q", string(h.Value))
+				}
+			}
+		}
+		if !found {
+			t.Fatal("x-error-message header must be present on direct dead-lettered message")
+		}
+	})
+
+	t.Run("When_DeadLetter_Producer_Fails_Should_Panic_After_Backoff", func(t *testing.T) {
+		// Given
+		fdlp := &failingDeadLetterProducer{}
+		c := consumer{
+			base:      &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), deadLetterProducer: fdlp},
+			consumeFn: func(*Message) error { return errors.New("err occurred") },
+		}
+		msg := &Message{Key: []byte("1"), Value: []byte("foo"), SendDirectToDeadLetter: true}
+
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("The code did not panic")
+			}
+			if fdlp.called != 5 {
+				t.Fatalf("dead letter producer must be called 5 times with backoff, got %d", fdlp.called)
+			}
+		}()
+
+		// When && Then
+		c.process(msg)
+	})
 }
 
 func Test_consumer_Pause(t *testing.T) {
@@ -255,3 +376,33 @@ func Test_consumer_Resume(t *testing.T) {
 		t.Fatal("consumer state must be in running")
 	}
 }
+
+type mockDeadLetterProducer struct {
+	received      []Message
+	produceCalled int
+}
+
+func (m *mockDeadLetterProducer) Produce(_ context.Context, message Message) error {
+	m.produceCalled++
+	m.received = append(m.received, message)
+	return nil
+}
+
+func (m *mockDeadLetterProducer) ProduceBatch(_ context.Context, messages []Message) error {
+	m.produceCalled++
+	m.received = append(m.received, messages...)
+	return nil
+}
+
+func (m *mockDeadLetterProducer) Close() error { return nil }
+
+type failingDeadLetterProducer struct{ called int }
+
+func (m *failingDeadLetterProducer) Produce(_ context.Context, _ Message) error {
+	return errors.New("dlq produce fail")
+}
+func (m *failingDeadLetterProducer) ProduceBatch(_ context.Context, _ []Message) error {
+	m.called++
+	return errors.New("dlq produce batch fail")
+}
+func (m *failingDeadLetterProducer) Close() error { return nil }

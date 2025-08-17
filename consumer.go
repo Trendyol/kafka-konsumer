@@ -169,7 +169,7 @@ func (c *consumer) process(message *Message) {
 			message.Topic = "" // we set on initialize for dead letter producer
 			if err := c.sendToDeadLetterWithBackoff(*message); err != nil {
 				errorMessage := fmt.Sprintf(
-					"Error producing message %s to dead letter topic.. Error: %s",
+					"Error producing message %s to dead letter topic. Error: %s",
 					string(message.Value), err.Error())
 				c.logger.Error(errorMessage)
 				panic(err.Error())
