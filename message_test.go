@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
@@ -158,15 +159,12 @@ func TestMessage_toRetryableMessage(t *testing.T) {
 					Key:   "x-custom-client-header",
 					Value: []byte("bar"),
 				},
-				{
-					Key:   "x-error-message",
-					Value: []byte("some error description"),
-				},
+				{Key: errMessageKey, Value: []byte("some error description")},
 			},
 		}
 
 		// When
-		actual := message.toRetryableMessage("retry-topic", "consumeFn error")
+		actual := message.toRetryableMessage("retry-topic", errors.New("consumeFn error"))
 
 		// Then
 		if actual.Topic != expected.Topic {
@@ -222,15 +220,12 @@ func TestMessage_toRetryableMessage(t *testing.T) {
 					Key:   "x-custom-client-header",
 					Value: []byte("bar"),
 				},
-				{
-					Key:   "x-error-message",
-					Value: []byte("consumeFn error"),
-				},
+				{Key: errMessageKey, Value: []byte("consumeFn error")},
 			},
 		}
 
 		// When
-		actual := message.toRetryableMessage("retry-topic", "consumeFn error")
+		actual := message.toRetryableMessage("retry-topic", errors.New("consumeFn error"))
 
 		// Then
 		if actual.Topic != expected.Topic {

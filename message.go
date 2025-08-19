@@ -50,6 +50,11 @@ type Message struct {
 	// If available, kafka-konsumer writes this description into the failed message's
 	// headers as `x-error-message` key when producing retry topic
 	ErrDescription string
+
+	// SendDirectToDeadLetter When set to true, the message will be sent directly to the dead letter topic
+	// without attempting to process it. This is useful for messages that are known to be unprocessable.
+	// You can give directly ConsumerConfig 's DeadLetterTopic or RetryConfiguration 's deadLetterTopic field.
+	SendDirectToDeadLetter bool
 }
 
 func (m *Message) TotalSize() int {
@@ -107,7 +112,14 @@ func fromKafkaMessage(kafkaMessage *kafka.Message) *Message {
 	return message
 }
 
-func (m *Message) toRetryableMessage(retryTopic, consumeError string) kcronsumer.Message {
+func getErrorMessage(consumeErr error, msg *Message) string {
+	if msg.ErrDescription != "" {
+		return msg.ErrDescription
+	}
+	return consumeErr.Error()
+}
+
+func (m *Message) toRetryableMessage(retryTopic string, consumeError error) kcronsumer.Message {
 	headers := make([]kcronsumer.Header, 0, len(m.Headers))
 	for i := range m.Headers {
 		headers = append(headers, kcronsumer.Header{
@@ -116,17 +128,10 @@ func (m *Message) toRetryableMessage(retryTopic, consumeError string) kcronsumer
 		})
 	}
 
-	if m.ErrDescription == "" {
-		headers = append(headers, kcronsumer.Header{
-			Key:   errMessageKey,
-			Value: []byte(consumeError),
-		})
-	} else {
-		headers = append(headers, kcronsumer.Header{
-			Key:   errMessageKey,
-			Value: []byte(m.ErrDescription),
-		})
-	}
+	headers = append(headers, kcronsumer.Header{
+		Key:   errMessageKey,
+		Value: []byte(getErrorMessage(consumeError, m)),
+	})
 
 	return kcronsumer.NewMessageBuilder().
 		WithKey(m.Key).

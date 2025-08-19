@@ -80,11 +80,13 @@ type base struct {
 	once                      sync.Once
 	retryEnabled              bool
 	transactionalRetry        bool
+	deadLetterTopic           string
 	distributedTracingEnabled bool
 	consumerState             state
 	metricPrefix              string
 	mu                        sync.Mutex
 	consumerCfg               *ConsumerConfig
+	deadLetterProducer        Producer
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -118,6 +120,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		concurrency:               cfg.Concurrency,
 		retryEnabled:              cfg.RetryEnabled,
 		transactionalRetry:        *cfg.TransactionalRetry,
+		deadLetterTopic:           cfg.DeadLetterTopic,
 		distributedTracingEnabled: cfg.DistributedTracingEnabled,
 		logger:                    log,
 		subprocesses:              newSubProcesses(),
@@ -135,6 +138,14 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 
 	if cfg.DistributedTracingEnabled {
 		c.propagator = cfg.DistributedTracingConfiguration.Propagator
+	}
+
+	// Initialize dead letter producer if needed
+	if cfg.DeadLetterTopic != "" || cfg.RetryConfiguration.DeadLetterTopic != "" {
+		c.deadLetterProducer, err = initializeDeadLetterProducer(cfg)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	c.context, c.cancelFn = context.WithCancel(context.Background())
@@ -273,6 +284,58 @@ func (c *base) Resume() {
 	go c.startConsume()
 }
 
+func initializeDeadLetterProducer(cfg *ConsumerConfig) (Producer, error) {
+	deadLetterTopic := cfg.DeadLetterTopic
+	if deadLetterTopic == "" {
+		deadLetterTopic = cfg.RetryConfiguration.DeadLetterTopic
+	}
+
+	deadLetterProducer, err := NewProducer(&ProducerConfig{
+		Writer: WriterConfig{
+			Topic:   deadLetterTopic,
+			Brokers: cfg.Reader.Brokers,
+		},
+		LogLevel: cfg.LogLevel,
+		SASL:     cfg.SASL,
+		TLS:      cfg.TLS,
+		ClientID: cfg.ClientID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error initializing producer for dead letter topic %s: %w", deadLetterTopic, err)
+	}
+	return deadLetterProducer, nil
+}
+
+func (c *base) sendToDeadLetterWithBackoff(messages ...Message) error {
+	var produceErr error
+
+	for attempt := 1; attempt <= 5; attempt++ {
+		produceErr = c.deadLetterProducer.ProduceBatch(context.Background(), messages)
+		if produceErr == nil {
+			return nil
+		}
+		c.logger.Warnf("Error producing messages to dead letter topic (attempt %d/%d): %v", attempt, 5, produceErr)
+		time.Sleep((50 * time.Millisecond) * time.Duration(1<<attempt))
+	}
+
+	return produceErr
+}
+
+func (c *base) retryWithBackoff(retryableMessage ...kcronsumer.Message) error {
+	var produceErr error
+
+	for attempt := 1; attempt <= 5; attempt++ {
+		produceErr = c.cronsumer.ProduceBatch(retryableMessage)
+		if produceErr == nil {
+			return nil
+		}
+		c.logger.Warnf("Error producing message (attempt %d/%d): %v", attempt, 5, produceErr)
+		time.Sleep((50 * time.Millisecond) * time.Duration(1<<attempt))
+	}
+
+	return produceErr
+}
+
 func (c *base) WithLogger(logger LoggerInterface) {
 	c.logger = logger
 }
@@ -295,6 +358,9 @@ func (c *base) Stop() error {
 		}
 
 		c.wg.Wait()
+		if c.deadLetterProducer != nil {
+			c.deadLetterProducer.Close()
+		}
 		err = c.r.Close()
 	})
 

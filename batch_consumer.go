@@ -252,39 +252,70 @@ func (b *batchConsumer) process(chunkMessages []*Message) {
 	consumeErr := b.consumeFn(chunkMessages)
 
 	if consumeErr != nil {
-		if b.transactionalRetry {
-			b.logger.Warnf("Consume Function Err %s, Messages will be retried", consumeErr.Error())
-			// Try to process same messages again for resolving transient network errors etc.
-			if consumeErr = b.consumeFn(chunkMessages); consumeErr != nil {
-				b.logger.Warnf("Consume Function Again Err %s, messages are sending to exception/retry topic %s", consumeErr.Error(), b.retryTopic)
-				b.metric.IncrementTotalUnprocessedMessagesCounter(int64(len(chunkMessages)))
+		// Handle SendDirectToDeadLetter messages first
+		deadLetterMessages := make([]Message, 0, len(chunkMessages))
+		remainingMessages := make([]*Message, 0, len(chunkMessages))
+
+		for _, msg := range chunkMessages {
+			if msg.SendDirectToDeadLetter {
+				msg.AddHeader(Header{
+					Key:   errMessageKey,
+					Value: []byte(getErrorMessage(consumeErr, msg)),
+				})
+				msg.Topic = "" // we set on initialize for dead letter producer
+				deadLetterMessages = append(deadLetterMessages, *msg)
+			} else {
+				remainingMessages = append(remainingMessages, msg)
 			}
-		} else {
-			failedCount := countFailedMessages(chunkMessages)
-			b.metric.IncrementTotalUnprocessedMessagesCounter(failedCount)
-			b.metric.IncrementTotalProcessedMessagesCounter(int64(len(chunkMessages)) - failedCount)
 		}
 
-		if consumeErr != nil && b.retryEnabled {
-			cronsumerMessages := make([]kcronsumer.Message, 0, len(chunkMessages))
-			errorMessage := consumeErr.Error()
-			if b.transactionalRetry {
-				for i := range chunkMessages {
-					cronsumerMessages = append(cronsumerMessages, chunkMessages[i].toRetryableMessage(b.retryTopic, errorMessage))
-				}
-			} else {
-				for i := range chunkMessages {
-					if chunkMessages[i].IsFailed {
-						cronsumerMessages = append(cronsumerMessages, chunkMessages[i].toRetryableMessage(b.retryTopic, errorMessage))
-					}
-				}
-			}
-
-			if err := b.retryBatchWithBackoff(cronsumerMessages); err != nil {
+		if len(deadLetterMessages) > 0 {
+			// Send SendDirectToDeadLetter=true messages to dead letter topic
+			if err := b.sendToDeadLetterWithBackoff(deadLetterMessages...); err != nil {
 				errorMsg := fmt.Sprintf(
-					"Error producing messages to exception/retry topic: %s. Error: %s", b.retryTopic, err.Error())
+					"Error producing messages to dead letter topic. Error: %s", err.Error())
 				b.logger.Error(errorMsg)
 				panic(errorMsg)
+			}
+
+			b.metric.IncrementTotalUnprocessedMessagesCounter(int64(len(deadLetterMessages)))
+		}
+
+		// Process remaining messages with normal logic if any
+		if len(remainingMessages) > 0 {
+			if b.transactionalRetry {
+				b.logger.Warnf("Consume Function Err %s, Messages will be retried", consumeErr.Error())
+				// Try to process same messages again for resolving transient network errors etc.
+				if consumeErr = b.consumeFn(remainingMessages); consumeErr != nil {
+					b.logger.Warnf("Consume Function Again Err %s, messages are sending to exception/retry topic %s", consumeErr.Error(), b.retryTopic)
+					b.metric.IncrementTotalUnprocessedMessagesCounter(int64(len(remainingMessages)))
+				}
+			} else {
+				failedCount := countFailedMessages(remainingMessages)
+				b.metric.IncrementTotalUnprocessedMessagesCounter(failedCount)
+				b.metric.IncrementTotalProcessedMessagesCounter(int64(len(remainingMessages)) - failedCount)
+			}
+
+			if b.retryEnabled {
+				cronsumerMessages := make([]kcronsumer.Message, 0, len(remainingMessages))
+				if b.transactionalRetry {
+					for i := range remainingMessages {
+						cronsumerMessages = append(cronsumerMessages, remainingMessages[i].toRetryableMessage(b.retryTopic, consumeErr))
+					}
+				} else {
+					for i := range remainingMessages {
+						if remainingMessages[i].IsFailed {
+							cronsumerMessages = append(cronsumerMessages, remainingMessages[i].toRetryableMessage(b.retryTopic, consumeErr))
+						}
+					}
+				}
+
+				if err := b.retryWithBackoff(cronsumerMessages...); err != nil {
+					errorMsg := fmt.Sprintf(
+						"Error producing messages to exception/retry topic: %s. Error: %s", b.retryTopic, err.Error())
+					b.logger.Error(errorMsg)
+					panic(errorMsg)
+				}
 			}
 		}
 	}
@@ -292,19 +323,4 @@ func (b *batchConsumer) process(chunkMessages []*Message) {
 	if consumeErr == nil {
 		b.metric.IncrementTotalProcessedMessagesCounter(int64(len(chunkMessages)))
 	}
-}
-
-func (b *batchConsumer) retryBatchWithBackoff(retryableMessages []kcronsumer.Message) error {
-	var produceErr error
-
-	for attempt := 1; attempt <= 5; attempt++ {
-		produceErr = b.base.cronsumer.ProduceBatch(retryableMessages)
-		if produceErr == nil {
-			return nil
-		}
-		b.logger.Warnf("Error producing message (attempt %d/%d): %v", attempt, 5, produceErr)
-		time.Sleep((50 * time.Millisecond) * time.Duration(1<<attempt))
-	}
-
-	return produceErr
 }
