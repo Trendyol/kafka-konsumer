@@ -291,6 +291,7 @@ func (c *base) Resume() {
 	go c.startConsume()
 }
 
+//nolint:lll
 func (c *base) ResumeFromLatestOffset() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -395,6 +396,7 @@ func (c *base) ResumeFromLatestOffset() error {
 	return nil
 }
 
+//nolint:lll
 func (c *base) getLatestOffsets(readerConfig kafka.ReaderConfig) (map[int]int64, error) {
 	const (
 		maxRetries      = 10
