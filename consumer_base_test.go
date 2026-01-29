@@ -248,6 +248,10 @@ type mockReader struct {
 	wantErr bool
 }
 
+func (m *mockReader) Config() kafka.ReaderConfig {
+	panic("implement me")
+}
+
 func (m *mockReader) FetchMessage(_ context.Context, msg *kafka.Message) error {
 	if m.wantErr {
 		return errors.New("err")

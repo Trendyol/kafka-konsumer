@@ -31,6 +31,12 @@ type Consumer interface {
 	// Calling with multiple goroutines is safe
 	Resume()
 
+	// ResumeFromLatestOffset resumes consumer from the latest offset of the topic
+	// This is useful when you want to skip messages that arrived during pause
+	// It works idempotent under the hood
+	// Calling with multiple goroutines is safe
+	ResumeFromLatestOffset() error
+
 	// GetMetricCollectors for the purpose of making metric collectors available.
 	// You can register these collectors on your own http server.
 	// Please look at the examples/with-metric-collector directory.
@@ -47,6 +53,7 @@ type Reader interface {
 	FetchMessage(ctx context.Context, msg *kafka.Message) error
 	Close() error
 	CommitMessages(messages []kafka.Message) error
+	Config() kafka.ReaderConfig
 }
 
 type state string
@@ -282,6 +289,220 @@ func (c *base) Resume() {
 
 	c.wg.Add(1)
 	go c.startConsume()
+}
+
+func (c *base) ResumeFromLatestOffset() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.consumerState == stateRunning {
+		c.logger.Debug("Consumer is already running mode!")
+		return nil
+	}
+
+	// Get reader config to access topic and brokers
+	readerConfig := c.r.Config()
+
+	// Only works with consumer groups
+	if readerConfig.GroupID == "" {
+		return fmt.Errorf("ResumeFromLatestOffset only works with consumer groups")
+	}
+
+	c.logger.Info("Getting latest offsets before resume...")
+
+	// Get latest offsets for all partitions
+	latestOffsets, err := c.getLatestOffsets(readerConfig)
+	if err != nil {
+		return fmt.Errorf("failed to get latest offsets: %w", err)
+	}
+
+	c.logger.Infof("Latest offsets retrieved: %v", latestOffsets)
+
+	// Create messages for commit
+	// Note: latestOffsets contains high watermarks (next offset to be written)
+	// To resume from that point, we need to commit the last consumed offset
+	// which is highWatermark - 1 (because commit semantics: "I read offset N, next is N+1")
+	offsetMarkers := make([]kafka.Message, 0, len(latestOffsets))
+	for partition, highWatermark := range latestOffsets {
+		// Skip if partition is empty (no messages written yet)
+		if highWatermark == 0 {
+			c.logger.Infof("Partition %d is empty, skipping commit", partition)
+			continue
+		}
+
+		// Commit the last written offset (highWatermark - 1)
+		// This tells Kafka: "I've read up to offset (highWatermark-1), next read from highWatermark"
+		lastWrittenOffset := highWatermark - 1
+		offsetMarkers = append(offsetMarkers, kafka.Message{
+			Topic:     readerConfig.Topic,
+			Partition: partition,
+			Offset:    lastWrittenOffset,
+		})
+		c.logger.Debugf("Partition %d: high watermark=%d, committing offset=%d",
+			partition, highWatermark, lastWrittenOffset)
+	}
+
+	if len(offsetMarkers) == 0 {
+		c.logger.Warn("No offsets to commit (all partitions are empty), skipping commit")
+		// Still need to resume the consumer
+		c.pause = make(chan struct{})
+		c.context, c.cancelFn = context.WithCancel(context.Background())
+		c.consumerState = stateRunning
+
+		c.wg.Add(1)
+		go c.startConsume()
+
+		c.logger.Info("Consumer resumed (no offset commit needed)!")
+		return nil
+	}
+
+	// Commit using the existing Reader (it's still a member of the consumer group)
+	// Even though consumer is paused, the Reader maintains consumer group membership
+	c.logger.Info("Committing latest offsets via existing Reader...")
+	err = c.r.CommitMessages(offsetMarkers)
+	if err != nil {
+		return fmt.Errorf("failed to commit latest offsets: %w", err)
+	}
+
+	// Close the Reader - this will flush any pending commits before closing
+	// The Reader's Close() method ensures buffered commits are sent to Kafka
+	c.logger.Info("Closing Reader (this flushes pending commits)...")
+	if err := c.r.Close(); err != nil {
+		return fmt.Errorf("failed to close reader: %w", err)
+	}
+
+	// Create new reader with the same configuration
+	// When it joins the consumer group, it will fetch the offsets we just committed
+	c.logger.Info("Creating new Reader...")
+	newReader, err := c.consumerCfg.newKafkaReader(c.logger)
+	if err != nil {
+		return fmt.Errorf("failed to recreate reader: %w", err)
+	}
+	c.r = newReader
+
+	c.logger.Info("Reader recreated successfully")
+
+	// Resume consumer
+	c.pause = make(chan struct{})
+	c.context, c.cancelFn = context.WithCancel(context.Background())
+	c.consumerState = stateRunning
+
+	c.wg.Add(1)
+	go c.startConsume()
+
+	c.logger.Info("Consumer resumed from latest offsets!")
+
+	return nil
+}
+
+func (c *base) getLatestOffsets(readerConfig kafka.ReaderConfig) (map[int]int64, error) {
+	const (
+		maxRetries      = 10
+		initialBackoff  = 100 * time.Millisecond
+		maxBackoff      = 10 * time.Second
+		backoffMultiple = 2
+	)
+
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			backoff := time.Duration(attempt) * initialBackoff * backoffMultiple
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+			c.logger.Infof("Retrying getLatestOffsets (attempt %d/%d) after %v...", attempt+1, maxRetries, backoff)
+			time.Sleep(backoff)
+		}
+
+		offsets, err := c.tryGetLatestOffsets(readerConfig)
+		if err == nil {
+			if len(offsets) == 0 {
+				lastErr = fmt.Errorf("no partition offsets retrieved")
+				c.logger.Warnf("Attempt %d/%d: %v", attempt+1, maxRetries, lastErr)
+				continue
+			}
+			return offsets, nil
+		}
+
+		lastErr = err
+		c.logger.Warnf("Attempt %d/%d failed: %v", attempt+1, maxRetries, err)
+	}
+
+	return nil, fmt.Errorf("failed to get latest offsets after %d attempts: %w", maxRetries, lastErr)
+}
+
+func (c *base) tryGetLatestOffsets(readerConfig kafka.ReaderConfig) (map[int]int64, error) {
+	// Use the custom dialer from ReaderConfig (supports TLS, SASL, etc.)
+	dialer := readerConfig.Dialer
+	if dialer == nil {
+		dialer = kafka.DefaultDialer
+	}
+
+	// Try to connect to any available broker
+	var conn *kafka.Conn
+	var err error
+	for _, broker := range readerConfig.Brokers {
+		conn, err = dialer.Dial("tcp", broker)
+		if err == nil {
+			break
+		}
+		c.logger.Debugf("Failed to dial broker %s: %v", broker, err)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial any broker: %w", err)
+	}
+	defer conn.Close()
+
+	// Get partition list for the topic
+	partitions, err := conn.ReadPartitions(readerConfig.Topic)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read partitions: %w", err)
+	}
+
+	if len(partitions) == 0 {
+		return nil, fmt.Errorf("no partitions found for topic %s", readerConfig.Topic)
+	}
+
+	latestOffsets := make(map[int]int64)
+	var failedPartitions []int
+
+	// Get latest offset for each partition
+	for _, partition := range partitions {
+		// Try to connect to partition leader using multiple brokers
+		var partConn *kafka.Conn
+		var dialErr error
+		for _, broker := range readerConfig.Brokers {
+			partConn, dialErr = dialer.DialLeader(context.Background(), "tcp",
+				broker, readerConfig.Topic, partition.ID)
+			if dialErr == nil {
+				break
+			}
+		}
+		if dialErr != nil {
+			c.logger.Debugf("Failed to dial partition %d leader from any broker: %v", partition.ID, dialErr)
+			failedPartitions = append(failedPartitions, partition.ID)
+			continue
+		}
+
+		// Get first and last offsets
+		_, lastOffset, err := partConn.ReadOffsets()
+		if err != nil {
+			c.logger.Debugf("Failed to read offsets for partition %d: %v", partition.ID, err)
+			partConn.Close()
+			failedPartitions = append(failedPartitions, partition.ID)
+			continue
+		}
+
+		latestOffsets[partition.ID] = lastOffset
+		partConn.Close()
+	}
+
+	// If we failed to get offsets for any partition, return error for retry
+	if len(failedPartitions) > 0 {
+		return nil, fmt.Errorf("failed to get offsets for partitions %v", failedPartitions)
+	}
+
+	return latestOffsets, nil
 }
 
 func initializeDeadLetterProducer(cfg *ConsumerConfig) (Producer, error) {

@@ -28,3 +28,7 @@ func (s *readerWrapper) Close() error {
 func (s *readerWrapper) CommitMessages(messages []segmentio.Message) error {
 	return s.r.CommitMessages(context.Background(), messages...)
 }
+
+func (s *readerWrapper) Config() segmentio.ReaderConfig {
+	return s.r.Config()
+}

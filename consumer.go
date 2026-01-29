@@ -25,6 +25,10 @@ func (c *consumer) Resume() {
 	c.base.Resume()
 }
 
+func (c *consumer) ResumeFromLatestOffset() error {
+	return c.base.ResumeFromLatestOffset()
+}
+
 func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	consumerBase, err := newBase(cfg, cfg.Concurrency)
 	if err != nil {

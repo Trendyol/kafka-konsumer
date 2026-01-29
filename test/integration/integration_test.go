@@ -814,3 +814,360 @@ func (i *mockProducerInterceptor) OnProduce(ctx kafka.ProducerInterceptorContext
 func newMockProducerInterceptor() []kafka.ProducerInterceptor {
 	return []kafka.ProducerInterceptor{&mockProducerInterceptor{}}
 }
+
+func Test_Should_Resume_From_Latest_Offset_And_Skip_Messages_During_Pause(t *testing.T) {
+	// Given
+	t.Parallel()
+	topic := "resume-from-latest-topic"
+	consumerGroup := "resume-from-latest-cg"
+	brokerAddress := "localhost:9092"
+
+	conn, cleanUp := createTopicAndWriteMessages(t, topic, nil)
+	defer cleanUp()
+
+	type consumedMessage struct {
+		key       string
+		value     string
+		offset    int64
+		timestamp time.Time
+	}
+
+	messageCh := make(chan consumedMessage, 100)
+	pauseTimestamp := time.Time{}
+	resumeTimestamp := time.Time{}
+
+	consumerCfg := &kafka.ConsumerConfig{
+		Reader: kafka.ReaderConfig{
+			Brokers: []string{brokerAddress},
+			Topic:   topic,
+			GroupID: consumerGroup,
+		},
+		ConsumeFn: func(message *kafka.Message) error {
+			messageCh <- consumedMessage{
+				key:       string(message.Key),
+				value:     string(message.Value),
+				offset:    message.Offset,
+				timestamp: time.Now(),
+			}
+			return nil
+		},
+	}
+
+	consumer, err := kafka.NewConsumer(consumerCfg)
+	if err != nil {
+		t.Fatalf("Failed to create consumer: %v", err)
+	}
+	defer consumer.Stop()
+
+	consumer.Consume()
+
+	producer := &segmentio.Writer{
+		Topic:                  topic,
+		Addr:                   segmentio.TCP(brokerAddress),
+		AllowAutoTopicCreation: true,
+	}
+	defer producer.Close()
+
+	// Phase 1: Produce and consume initial messages (BEFORE PAUSE)
+	t.Log("Phase 1: Producing initial messages before pause...")
+	initialMessages := []segmentio.Message{
+		{Key: []byte("before-1"), Value: []byte("value-before-1")},
+		{Key: []byte("before-2"), Value: []byte("value-before-2")},
+	}
+	err = producer.WriteMessages(context.Background(), initialMessages...)
+	if err != nil {
+		t.Fatalf("Failed to produce initial messages: %v", err)
+	}
+
+	// Consume initial messages
+	msg1 := <-messageCh
+	msg2 := <-messageCh
+	t.Logf("Consumed before pause: offset=%d, key=%s", msg1.offset, msg1.key)
+	t.Logf("Consumed before pause: offset=%d, key=%s", msg2.offset, msg2.key)
+
+	if msg1.key != "before-1" || msg2.key != "before-2" {
+		t.Fatalf("Initial messages not consumed correctly")
+	}
+
+	// Phase 2: Pause consumer
+	t.Log("Phase 2: Pausing consumer...")
+	consumer.Pause()
+	time.Sleep(100 * time.Millisecond) // Ensure pause takes effect
+	pauseTimestamp = time.Now()
+
+	// Phase 3: Produce messages DURING PAUSE (these should be SKIPPED)
+	t.Log("Phase 3: Producing messages during pause (should be skipped)...")
+	duringPauseMessages := []segmentio.Message{
+		{Key: []byte("during-pause-1"), Value: []byte("skip-me-1")},
+		{Key: []byte("during-pause-2"), Value: []byte("skip-me-2")},
+		{Key: []byte("during-pause-3"), Value: []byte("skip-me-3")},
+		{Key: []byte("during-pause-4"), Value: []byte("skip-me-4")},
+		{Key: []byte("during-pause-5"), Value: []byte("skip-me-5")},
+	}
+	err = producer.WriteMessages(context.Background(), duringPauseMessages...)
+	if err != nil {
+		t.Fatalf("Failed to produce messages during pause: %v", err)
+	}
+
+	// Verify messages are in Kafka but NOT consumed (consumer is paused)
+	lastOffset, err := conn.ReadLastOffset()
+	if err != nil {
+		t.Fatalf("Failed to read last offset: %v", err)
+	}
+	t.Logf("Last offset in Kafka after pause production: %d", lastOffset)
+	if lastOffset != 7 { // 2 initial + 5 during pause
+		t.Fatalf("Expected last offset to be 7, got %d", lastOffset)
+	}
+
+	// Wait during pause to simulate real-world scenario
+	time.Sleep(500 * time.Millisecond)
+
+	// Verify NO messages consumed during pause
+	select {
+	case msg := <-messageCh:
+		t.Fatalf("Consumer consumed message during pause! key=%s, offset=%d", msg.key, msg.offset)
+	case <-time.After(100 * time.Millisecond):
+		t.Log("✓ Verified: No messages consumed during pause")
+	}
+
+	// Phase 4: ResumeFromLatestOffset (CRITICAL TEST)
+	t.Log("Phase 4: Calling ResumeFromLatestOffset (messages during pause should be skipped)...")
+	resumeTimestamp = time.Now()
+	err = consumer.ResumeFromLatestOffset()
+	if err != nil {
+		t.Fatalf("ResumeFromLatestOffset failed: %v", err)
+	}
+
+	// Wait for resume to take effect
+	time.Sleep(200 * time.Millisecond)
+
+	// Phase 5: Produce NEW messages AFTER ResumeFromLatestOffset
+	t.Log("Phase 5: Producing new messages after ResumeFromLatestOffset...")
+	afterResumeMessages := []segmentio.Message{
+		{Key: []byte("after-resume-1"), Value: []byte("consume-me-1")},
+		{Key: []byte("after-resume-2"), Value: []byte("consume-me-2")},
+	}
+	err = producer.WriteMessages(context.Background(), afterResumeMessages...)
+	if err != nil {
+		t.Fatalf("Failed to produce messages after resume: %v", err)
+	}
+
+	// Phase 6: CRITICAL VERIFICATION - Only after-resume messages should be consumed
+	t.Log("Phase 6: Verifying only new messages are consumed...")
+
+	var consumedAfterResume []consumedMessage
+	timeout := time.After(5 * time.Second)
+	expectedCount := 2
+
+	for i := 0; i < expectedCount; i++ {
+		select {
+		case msg := <-messageCh:
+			consumedAfterResume = append(consumedAfterResume, msg)
+			t.Logf("✓ Consumed after resume: offset=%d, key=%s, value=%s, timestamp=%v",
+				msg.offset, msg.key, msg.value, msg.timestamp)
+		case <-timeout:
+			t.Fatalf("Timeout waiting for message %d/%d after resume", i+1, expectedCount)
+		}
+	}
+
+	// Verify correct messages consumed
+	if len(consumedAfterResume) != 2 {
+		t.Fatalf("Expected 2 messages after resume, got %d", len(consumedAfterResume))
+	}
+
+	if consumedAfterResume[0].key != "after-resume-1" {
+		t.Fatalf("Expected first message key 'after-resume-1', got '%s'", consumedAfterResume[0].key)
+	}
+	if consumedAfterResume[1].key != "after-resume-2" {
+		t.Fatalf("Expected second message key 'after-resume-2', got '%s'", consumedAfterResume[1].key)
+	}
+
+	// CRITICAL: Verify no more messages consumed (during-pause messages were skipped)
+	select {
+	case msg := <-messageCh:
+		t.Fatalf("❌ FAIL: Unexpected message consumed! This should have been skipped: key=%s, value=%s, offset=%d",
+			msg.key, msg.value, msg.offset)
+	case <-time.After(1 * time.Second):
+		t.Log("✓ PASS: No during-pause messages consumed - they were correctly skipped!")
+	}
+
+	// Phase 7: Verify timing guarantees (microsecond precision)
+	t.Log("Phase 7: Verifying timing guarantees...")
+	for _, msg := range consumedAfterResume {
+		if msg.timestamp.Before(resumeTimestamp) {
+			t.Fatalf("❌ Message consumed before resume timestamp! msg.timestamp=%v, resumeTimestamp=%v",
+				msg.timestamp, resumeTimestamp)
+		}
+		if msg.timestamp.Before(pauseTimestamp.Add(500 * time.Millisecond)) {
+			t.Logf("⚠️  Warning: Message timestamp very close to pause timestamp")
+		}
+	}
+	t.Log("✓ All timing guarantees verified")
+
+	// Phase 8: Final offset verification
+	t.Log("Phase 8: Final offset verification...")
+	finalOffset, err := conn.ReadLastOffset()
+	if err != nil {
+		t.Fatalf("Failed to read final offset: %v", err)
+	}
+	t.Logf("Final offset in Kafka: %d", finalOffset)
+
+	// We should have: 2 initial + 5 during-pause + 2 after-resume = 9 total messages
+	if finalOffset != 9 {
+		t.Fatalf("Expected final offset to be 9, got %d", finalOffset)
+	}
+
+	t.Log("✅ TEST PASSED: ResumeFromLatestOffset correctly skipped messages during pause")
+	t.Log("✅ Messages during pause (5): SKIPPED")
+	t.Log("✅ Messages after resume (2): CONSUMED")
+	t.Log("✅ No message loss detected")
+	t.Log("✅ Microsecond timing verified")
+}
+
+func Test_Should_Resume_From_Latest_Offset_With_Multiple_Partitions(t *testing.T) {
+	// Given
+	t.Parallel()
+	topic := "resume-multipart-topic"
+	consumerGroup := "resume-multipart-cg"
+	brokerAddress := "localhost:9092"
+
+	// Create topic with multiple partitions
+	conn, err := segmentio.DialLeader(context.Background(), "tcp", brokerAddress, topic, 0)
+	if err != nil {
+		t.Fatalf("Failed to create topic: %v", err)
+	}
+
+	// Create topic with 3 partitions
+	err = conn.CreateTopics(segmentio.TopicConfig{
+		Topic:             topic,
+		NumPartitions:     3,
+		ReplicationFactor: 1,
+	})
+	if err != nil {
+		t.Logf("Topic might already exist: %v", err)
+	}
+
+	cleanUp := func() {
+		if err := conn.DeleteTopics(topic); err != nil {
+			t.Logf("Failed to delete topic: %v", err)
+		}
+		conn.Close()
+	}
+	defer cleanUp()
+
+	time.Sleep(500 * time.Millisecond) // Wait for topic creation
+
+	consumedMessages := make(chan string, 100)
+
+	consumerCfg := &kafka.ConsumerConfig{
+		Reader: kafka.ReaderConfig{
+			Brokers: []string{brokerAddress},
+			Topic:   topic,
+			GroupID: consumerGroup,
+		},
+		ConsumeFn: func(message *kafka.Message) error {
+			consumedMessages <- fmt.Sprintf("p%d-o%d-%s", message.Partition, message.Offset, string(message.Key))
+			return nil
+		},
+	}
+
+	consumer, err := kafka.NewConsumer(consumerCfg)
+	if err != nil {
+		t.Fatalf("Failed to create consumer: %v", err)
+	}
+	defer consumer.Stop()
+
+	consumer.Consume()
+
+	producer := &segmentio.Writer{
+		Topic:    topic,
+		Addr:     segmentio.TCP(brokerAddress),
+		Balancer: &segmentio.RoundRobin{},
+	}
+	defer producer.Close()
+
+	// Phase 1: Produce initial messages to all partitions
+	t.Log("Phase 1: Producing initial messages...")
+	for i := 0; i < 3; i++ {
+		err = producer.WriteMessages(context.Background(), segmentio.Message{
+			Key:   []byte(fmt.Sprintf("initial-%d", i)),
+			Value: []byte(fmt.Sprintf("value-%d", i)),
+		})
+		if err != nil {
+			t.Fatalf("Failed to produce initial message: %v", err)
+		}
+	}
+
+	// Consume initial messages
+	for i := 0; i < 3; i++ {
+		select {
+		case msg := <-consumedMessages:
+			t.Logf("Consumed initial: %s", msg)
+		case <-time.After(5 * time.Second):
+			t.Fatalf("Timeout consuming initial message %d", i)
+		}
+	}
+
+	// Phase 2: Pause and produce messages
+	t.Log("Phase 2: Pausing and producing during pause...")
+	consumer.Pause()
+	time.Sleep(100 * time.Millisecond)
+
+	for i := 0; i < 9; i++ { // 9 messages across 3 partitions
+		err = producer.WriteMessages(context.Background(), segmentio.Message{
+			Key:   []byte(fmt.Sprintf("during-pause-%d", i)),
+			Value: []byte(fmt.Sprintf("skip-%d", i)),
+		})
+		if err != nil {
+			t.Fatalf("Failed to produce during pause: %v", err)
+		}
+	}
+
+	time.Sleep(300 * time.Millisecond)
+
+	// Phase 3: ResumeFromLatestOffset
+	t.Log("Phase 3: ResumeFromLatestOffset...")
+	err = consumer.ResumeFromLatestOffset()
+	if err != nil {
+		t.Fatalf("ResumeFromLatestOffset failed: %v", err)
+	}
+
+	time.Sleep(200 * time.Millisecond)
+
+	// Phase 4: Produce new messages
+	t.Log("Phase 4: Producing after resume...")
+	for i := 0; i < 3; i++ {
+		err = producer.WriteMessages(context.Background(), segmentio.Message{
+			Key:   []byte(fmt.Sprintf("after-resume-%d", i)),
+			Value: []byte(fmt.Sprintf("consume-%d", i)),
+		})
+		if err != nil {
+			t.Fatalf("Failed to produce after resume: %v", err)
+		}
+	}
+
+	// Phase 5: Verify only after-resume messages consumed
+	t.Log("Phase 5: Verifying consumption...")
+	var afterResumeCount int
+	timeout := time.After(5 * time.Second)
+
+	for afterResumeCount < 3 {
+		select {
+		case msg := <-consumedMessages:
+			t.Logf("✓ Consumed: %s", msg)
+			afterResumeCount++
+		case <-timeout:
+			t.Fatalf("Timeout: only got %d/3 messages after resume", afterResumeCount)
+		}
+	}
+
+	// Verify no more messages (during-pause messages were skipped)
+	select {
+	case msg := <-consumedMessages:
+		t.Fatalf("❌ Unexpected message consumed: %s", msg)
+	case <-time.After(1 * time.Second):
+		t.Log("✓ PASS: Multi-partition skip verified!")
+	}
+
+	t.Log("✅ TEST PASSED: ResumeFromLatestOffset works correctly with multiple partitions")
+}

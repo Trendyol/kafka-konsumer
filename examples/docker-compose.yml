@@ -1,58 +1,68 @@
-version: "3.9"
 services:
-  jaeger-all-in-one:
-    image: jaegertracing/all-in-one:latest
-    environment:
-      COLLECTOR_OTLP_ENABLED: "true"
-    ports:
-      - "14268:14268"
-      - "16686:16686"
-      - "4318:4318"
+  # jaeger-all-in-one:
+  #   image: jaegertracing/all-in-one:latest
+  #   environment:
+  #     COLLECTOR_OTLP_ENABLED: "true"
+  #   ports:
+  #     - "14268:14268"
+  #     - "16686:16686"
+  #     - "4318:4318"
 
-  zookeeper:
-    image: debezium/zookeeper:2.6
-    ports:
-      - "2181:2181"
-
+  # podman image pull confluentinc/cp-kafka:7.8.0 --tls-verify=false
   kafka:
-    image: confluentinc/cp-kafka
-    depends_on:
-      - zookeeper
+    image: confluentinc/cp-kafka:7.8.0
+    hostname: kafka
+    container_name: kafka
     ports:
       - "9092:9092"
       - "29092:29092"
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka:9092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:29092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 29092 || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 15s
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.8.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: |
+      bash -c "
+      echo 'Creating topics...' &&
+      kafka-topics --create --topic standart-topic --if-not-exists --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1 &&
+      kafka-topics --create --topic another-standart-topic --if-not-exists --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1 &&
+      kafka-topics --create --topic retry-topic --if-not-exists --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1 &&
+      kafka-topics --create --topic error-topic --if-not-exists --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1 &&
+      echo 'Topics created successfully!'
+      "
 
   kafka-ui:
-    image: quay.io/cloudhut/kowl:master
+    # podman image pull provectuslabs/kafka-ui:latest --tls-verify=false
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
     depends_on:
-      - zookeeper
-      - kafka
+      kafka:
+        condition: service_healthy
     ports:
-      - 8080:8080
+      - "8080:8080"
     environment:
-      KAFKA_BROKERS: kafka:9092
-
-  kafka-create-topics:
-    image: confluentinc/cp-kafka:6.1.1
-    depends_on:
-      - zookeeper
-      - kafka
-    command: "bash -c 'echo Waiting for Kafka to be ready... && \
-                         cub kafka-ready -b kafka:9092 1 20 && \
-                         kafka-topics --create --topic standart-topic --if-not-exists --zookeeper zookeeper:2181 --partitions 1 --replication-factor 1 && \
-                         kafka-topics --create --topic another-standart-topic --if-not-exists --zookeeper zookeeper:2181 --partitions 1 --replication-factor 1 && \
-                         kafka-topics --create --topic retry-topic --if-not-exists --zookeeper zookeeper:2181 --partitions 1 --replication-factor 1 && \
-                         kafka-topics --create --topic error-topic --if-not-exists --zookeeper zookeeper:2181 --partitions 1 --replication-factor 1 && \
-                         sleep infinity'"
-    environment:
-      KAFKA_BROKER_ID: ignored
-      KAFKA_ZOOKEEPER_CONNECT: ignored
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: 'true'

@@ -30,6 +30,10 @@ func (b *batchConsumer) Resume() {
 	b.base.Resume()
 }
 
+func (b *batchConsumer) ResumeFromLatestOffset() error {
+	return b.base.ResumeFromLatestOffset()
+}
+
 func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	consumerBase, err := newBase(cfg, cfg.BatchConfiguration.MessageGroupLimit*cfg.Concurrency)
 	if err != nil {
