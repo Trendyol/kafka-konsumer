@@ -433,6 +433,7 @@ func (c *base) getLatestOffsets(readerConfig kafka.ReaderConfig) (map[int]int64,
 	return nil, fmt.Errorf("failed to get latest offsets after %d attempts: %w", maxRetries, lastErr)
 }
 
+//nolint:funlen
 func (c *base) tryGetLatestOffsets(readerConfig kafka.ReaderConfig) (map[int]int64, error) {
 	// Use the custom dialer from ReaderConfig (supports TLS, SASL, etc.)
 	dialer := readerConfig.Dialer
