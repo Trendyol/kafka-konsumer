@@ -6,7 +6,7 @@ help:
 ## lint: runs golangci lint based on .golangci.yml configuration
 .PHONY: lint
 lint:
-	@if ! test -f `go env GOPATH`/bin/golangci-lint; then go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.0; fi
+	@if ! test -f `go env GOPATH`/bin/golangci-lint; then go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; fi
 	golangci-lint run -c .golangci.yml --fix -v
 
 ## test: runs tests

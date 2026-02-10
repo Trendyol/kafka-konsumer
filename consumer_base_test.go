@@ -12,7 +12,7 @@ import (
 )
 
 func Test_base_startConsume(t *testing.T) {
-	t.Run("Return_When_Quit_Signal_Is_Came", func(t *testing.T) {
+	t.Run("Return_When_Quit_Signal_Is_Came", func(_ *testing.T) {
 		mc := mockReader{wantErr: true}
 		b := base{
 			wg:                    sync.WaitGroup{},

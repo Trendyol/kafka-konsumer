@@ -229,7 +229,7 @@ func Test_batchConsumer_process(t *testing.T) {
 		// Given
 		bc := batchConsumer{
 			base: &base{metric: &ConsumerMetric{}, transactionalRetry: true, logger: NewZapLogger(LogLevelDebug)},
-			consumeFn: func(messages []*Message) error {
+			consumeFn: func(_ []*Message) error {
 				return errors.New("error case")
 			},
 		}
@@ -253,7 +253,7 @@ func Test_batchConsumer_process(t *testing.T) {
 				metric: &ConsumerMetric{}, transactionalRetry: true,
 				logger: NewZapLogger(LogLevelDebug), retryEnabled: true, cronsumer: &mc,
 			},
-			consumeFn: func(messages []*Message) error {
+			consumeFn: func(_ []*Message) error {
 				return errors.New("error case")
 			},
 		}
@@ -277,7 +277,7 @@ func Test_batchConsumer_process(t *testing.T) {
 				metric: &ConsumerMetric{}, transactionalRetry: true,
 				logger: NewZapLogger(LogLevelDebug), retryEnabled: true, cronsumer: &mc,
 			},
-			consumeFn: func(messages []*Message) error {
+			consumeFn: func(_ []*Message) error {
 				return errors.New("error case")
 			},
 		}
@@ -300,7 +300,7 @@ func Test_batchConsumer_process(t *testing.T) {
 				metric: &ConsumerMetric{}, transactionalRetry: true,
 				logger: NewZapLogger(LogLevelDebug), retryEnabled: true, cronsumer: &mc,
 			},
-			consumeFn: func(messages []*Message) error {
+			consumeFn: func(_ []*Message) error {
 				return errors.New("error case")
 			},
 		}
@@ -506,7 +506,7 @@ func Test_batchConsumer_runKonsumerFn(t *testing.T) {
 	t.Run("Should_Return_Default_Error_When_Error_Description_Does_Not_Exist", func(t *testing.T) {
 		// Given
 		expectedError := errors.New("default error")
-		bc := batchConsumer{consumeFn: func(messages []*Message) error {
+		bc := batchConsumer{consumeFn: func(_ []*Message) error {
 			return expectedError
 		}}
 
