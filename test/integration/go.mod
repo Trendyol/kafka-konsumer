@@ -1,6 +1,6 @@
 module integration-test
 
-go 1.19
+go 1.24
 
 replace github.com/Trendyol/kafka-konsumer/v2 => ../..
 
@@ -10,7 +10,7 @@ require (
 )
 
 require (
-	github.com/Trendyol/kafka-cronsumer v1.5.6 // indirect
+	github.com/Trendyol/kafka-cronsumer v1.6.7 // indirect
 	github.com/Trendyol/otel-kafka-konsumer v0.0.7 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/ansrivas/fiberprometheus/v2 v2.6.1 // indirect

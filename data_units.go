@@ -11,6 +11,9 @@ func resolveUnionIntOrStringValue(input any) (int, error) {
 	case int:
 		return value, nil
 	case uint:
+		if value > ^uint(0)>>1 {
+			return 0, fmt.Errorf("uint value %d overflows int", value)
+		}
 		return int(value), nil
 	case nil:
 		return 0, nil

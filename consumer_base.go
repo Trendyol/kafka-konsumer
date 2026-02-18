@@ -292,8 +292,9 @@ func initializeDeadLetterProducer(cfg *ConsumerConfig) (Producer, error) {
 
 	deadLetterProducer, err := NewProducer(&ProducerConfig{
 		Writer: WriterConfig{
-			Topic:   deadLetterTopic,
-			Brokers: cfg.Reader.Brokers,
+			Topic:                  deadLetterTopic,
+			Brokers:                cfg.Reader.Brokers,
+			AllowAutoTopicCreation: true,
 		},
 		LogLevel: cfg.LogLevel,
 		SASL:     cfg.SASL,
