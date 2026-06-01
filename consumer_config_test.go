@@ -39,6 +39,9 @@ func TestConsumerConfig_validate(t *testing.T) {
 		if cfg.RetryConfiguration.Concurrency != 1 {
 			t.Fatal("Retry Configuration Concurrency must equal to 1")
 		}
+		if cfg.RetryConfiguration.BackOffStrategyName != kcronsumer.FixedBackOffStrategy {
+			t.Fatal("BackOffStrategyName default value must equal to fixed")
+		}
 	})
 	t.Run("Set_Defaults_For_BatchConfiguration", func(t *testing.T) {
 		// Given
@@ -114,6 +117,82 @@ func TestConsumerConfig_newCronsumerConfig(t *testing.T) {
 		// Then
 		if actual.Consumer.SkipMessageByHeaderFn == nil {
 			t.Error("SkipMessageByHeaderFn mustn't be nil")
+		}
+	})
+	t.Run("Should_Set_Fixed_BackOff_Strategy_When_Name_Is_Fixed", func(t *testing.T) {
+		// Given
+		cfg := ConsumerConfig{
+			RetryConfiguration: RetryConfiguration{
+				BackOffStrategyName: kcronsumer.FixedBackOffStrategy,
+			},
+		}
+
+		// When
+		actual := cfg.newCronsumerConfig()
+
+		// Then
+		if actual.Consumer.BackOffStrategy == nil {
+			t.Error("BackOffStrategy must not be nil")
+		}
+		if actual.Consumer.BackOffStrategy.String() != kcronsumer.FixedBackOffStrategy {
+			t.Errorf("expected fixed, got %s", actual.Consumer.BackOffStrategy.String())
+		}
+	})
+	t.Run("Should_Set_Linear_BackOff_Strategy_When_Name_Is_Linear", func(t *testing.T) {
+		// Given
+		cfg := ConsumerConfig{
+			RetryConfiguration: RetryConfiguration{
+				BackOffStrategyName: kcronsumer.LinearBackOffStrategy,
+			},
+		}
+
+		// When
+		actual := cfg.newCronsumerConfig()
+
+		// Then
+		if actual.Consumer.BackOffStrategy == nil {
+			t.Error("BackOffStrategy must not be nil")
+		}
+		if actual.Consumer.BackOffStrategy.String() != kcronsumer.LinearBackOffStrategy {
+			t.Errorf("expected linear, got %s", actual.Consumer.BackOffStrategy.String())
+		}
+	})
+	t.Run("Should_Set_Exponential_BackOff_Strategy_When_Name_Is_Exponential", func(t *testing.T) {
+		// Given
+		cfg := ConsumerConfig{
+			RetryConfiguration: RetryConfiguration{
+				BackOffStrategyName: kcronsumer.ExponentialBackOffStrategy,
+			},
+		}
+
+		// When
+		actual := cfg.newCronsumerConfig()
+
+		// Then
+		if actual.Consumer.BackOffStrategy == nil {
+			t.Error("BackOffStrategy must not be nil")
+		}
+		if actual.Consumer.BackOffStrategy.String() != kcronsumer.ExponentialBackOffStrategy {
+			t.Errorf("expected exponential, got %s", actual.Consumer.BackOffStrategy.String())
+		}
+	})
+	t.Run("Should_Return_Error_When_BackOffStrategyName_Is_Invalid", func(t *testing.T) {
+		// Given
+		cfg := ConsumerConfig{
+			RetryEnabled: true,
+			RetryConfiguration: RetryConfiguration{
+				BackOffStrategyName: "Exponential",
+			},
+		}
+		cfg.setDefaults()
+		log := NewZapLogger(LogLevelDebug)
+
+		// When
+		_, err := cfg.newKafkaReader(log)
+
+		// Then
+		if err == nil {
+			t.Fatal("expected error for invalid BackOffStrategyName, got nil")
 		}
 	})
 }
@@ -253,7 +332,7 @@ func TestConsumerConfig_JSON(t *testing.T) {
 			"\"CommitInterval\": \"1s\", \"StartOffset\": \"earliest\"}, \"BatchConfiguration\": {\"MessageGroupLimit\": 100}, " +
 			"\"MessageGroupDuration\": \"20ns\", \"TransactionalRetry\": false, \"Concurrency\": 10, \"RetryEnabled\": true, " +
 			"\"RetryConfiguration\": {\"Brokers\": [\"broker-1.test.com\", \"broker-2.test.com\"], \"Topic\": \"test-exception.0\", " +
-			"\"StartTimeCron\": \"*/2 * * * *\", \"WorkDuration\": \"1m0s\", \"MaxRetry\": 3, \"VerifyTopicOnStartup\": true, \"Rack\": \"\"}, " +
+			"\"StartTimeCron\": \"*/2 * * * *\", \"WorkDuration\": \"1m0s\", \"MaxRetry\": 3, \"VerifyTopicOnStartup\": true, \"Rack\": \"\", \"BackOffStrategyName\": \"fixed\"}, " +
 			"\"Rack\": \"stage\", " +
 			"\"SASL\": {\"Mechanism\": \"scram\", \"Username\": \"user\", \"Password\": \"pass\"}, " +
 			"\"TLS\": {\"RootCAPath\": \"resources/ca\", \"IntermediateCAPath\": \"resources/intCa\"}}"
@@ -270,7 +349,7 @@ func TestConsumerConfig_JSON(t *testing.T) {
 			"\"GroupTopics\": [\"\"], \"MaxWait\": \"0s\", \"CommitInterval\": \"0s\", \"StartOffset\": \"earliest\"}, " +
 			"\"BatchConfiguration\": {}, \"MessageGroupDuration\": \"20ns\", \"TransactionalRetry\": false, \"Concurrency\": 10, " +
 			"\"RetryEnabled\": true, \"RetryConfiguration\": {\"Brokers\": [\"\"], \"Topic\": \"\", \"StartTimeCron\": \"\", " +
-			"\"WorkDuration\": \"0s\", \"MaxRetry\": 0, \"VerifyTopicOnStartup\": false, \"Rack\": \"\"}, " +
+			"\"WorkDuration\": \"0s\", \"MaxRetry\": 0, \"VerifyTopicOnStartup\": false, \"Rack\": \"\", \"BackOffStrategyName\": \"\"}, " +
 			"\"Rack\": \"stage\", \"SASL\": {}, \"TLS\": {}}"
 		// When
 		result := getConsumerConfigWithoutInnerObjectExample().JSON()
@@ -289,7 +368,7 @@ func TestConsumerConfig_String(t *testing.T) {
 			"StartOffset: \"earliest\"}, BatchConfiguration: {MessageGroupLimit: 100}, MessageGroupDuration: \"20ns\", " +
 			"TransactionalRetry: false, Concurrency: 10, RetryEnabled: true, " +
 			"RetryConfiguration: {Brokers: [\"broker-1.test.com\", \"broker-2.test.com\"], Topic: \"test-exception.0\", " +
-			"StartTimeCron: \"*/2 * * * *\", WorkDuration: \"1m0s\", MaxRetry: 3, VerifyTopicOnStartup: true, Rack: \"\"}, " +
+			"StartTimeCron: \"*/2 * * * *\", WorkDuration: \"1m0s\", MaxRetry: 3, VerifyTopicOnStartup: true, Rack: \"\", BackOffStrategyName: \"fixed\"}, " +
 			"Rack: \"stage\", SASL: {Mechanism: \"scram\", Username: \"user\", Password: \"pass\"}, " +
 			"TLS: {RootCAPath: \"resources/ca\", IntermediateCAPath: \"resources/intCa\"}"
 		// When
@@ -305,7 +384,7 @@ func TestConsumerConfig_String(t *testing.T) {
 			"GroupTopics: [\"\"], MaxWait: \"0s\", CommitInterval: \"0s\", StartOffset: \"earliest\"}, " +
 			"BatchConfiguration: {}, MessageGroupDuration: \"20ns\", TransactionalRetry: false, Concurrency: 10, " +
 			"RetryEnabled: true, RetryConfiguration: {Brokers: [\"\"], Topic: \"\", StartTimeCron: \"\", WorkDuration: \"0s\", " +
-			"MaxRetry: 0, VerifyTopicOnStartup: false, Rack: \"\"}, Rack: \"stage\", SASL: {}, TLS: {}"
+			"MaxRetry: 0, VerifyTopicOnStartup: false, Rack: \"\", BackOffStrategyName: \"\"}, Rack: \"stage\", SASL: {}, TLS: {}"
 		// When
 		result := getConsumerConfigWithoutInnerObjectExample().String()
 		// Then
@@ -326,7 +405,7 @@ func TestConsumerConfig_JSONPretty(t *testing.T) {
 			"TransactionalRetry\": false,\n\t\"Concurrency\": 10,\n\t\"RetryEnabled\": true,\n\t\"" +
 			"RetryConfiguration\": {\n\t\t\"Brokers\": [\n\t\t\t\"broker-1.test.com\",\n\t\t\t\"broker-2.test.com\"\n\t\t],\n\t\t\"" +
 			"Topic\": \"test-exception.0\",\n\t\t\"StartTimeCron\": \"*/2 * * * *\",\n\t\t\"WorkDuration\": \"1m0s\",\n\t\t\"" +
-			"MaxRetry\": 3,\n\t\t\"VerifyTopicOnStartup\": true,\n\t\t\"Rack\": \"\"\n\t},\n\t\"" +
+			"MaxRetry\": 3,\n\t\t\"VerifyTopicOnStartup\": true,\n\t\t\"Rack\": \"\",\n\t\t\"BackOffStrategyName\": \"fixed\"\n\t},\n\t\"" +
 			"Rack\": \"stage\",\n\t\"" +
 			"SASL\": {\n\t\t\"Mechanism\": \"scram\",\n\t\t\"Username\": \"user\",\n\t\t\"Password\": \"pass\"\n\t},\n\t\"" +
 			"TLS\": {\n\t\t\"RootCAPath\": \"resources/ca\",\n\t\t\"IntermediateCAPath\": \"resources/intCa\"\n\t}\n}"
@@ -346,7 +425,7 @@ func TestConsumerConfig_JSONPretty(t *testing.T) {
 			"MessageGroupDuration\": \"20ns\",\n\t\"TransactionalRetry\": false,\n\t\"Concurrency\": 10,\n\t\"" +
 			"RetryEnabled\": true,\n\t\"RetryConfiguration\": {\n\t\t\"Brokers\": [\n\t\t\t\"\"\n\t\t],\n\t\t\"" +
 			"Topic\": \"\",\n\t\t\"StartTimeCron\": \"\",\n\t\t\"WorkDuration\": \"0s\",\n\t\t\"MaxRetry\": 0,\n\t\t\"" +
-			"VerifyTopicOnStartup\": false,\n\t\t\"Rack\": \"\"\n\t},\n\t\"" +
+			"VerifyTopicOnStartup\": false,\n\t\t\"Rack\": \"\",\n\t\t\"BackOffStrategyName\": \"\"\n\t},\n\t\"" +
 			"Rack\": \"stage\",\n\t\"SASL\": {},\n\t\"TLS\": {}\n}"
 		// When
 		result := getConsumerConfigWithoutInnerObjectExample().JSONPretty()
@@ -424,6 +503,7 @@ func getConsumerConfigExample() *ConsumerConfig {
 			WorkDuration:         time.Minute * 1,
 			MaxRetry:             3,
 			VerifyTopicOnStartup: true,
+			BackOffStrategyName:  kcronsumer.FixedBackOffStrategy,
 		},
 		TLS: &TLSConfig{
 			RootCAPath:         "resources/ca",
