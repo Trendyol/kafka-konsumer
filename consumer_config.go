@@ -68,9 +68,9 @@ type ConsumerConfig struct {
 
 func (cfg RetryConfiguration) JSON() string {
 	return fmt.Sprintf(`{"Brokers": ["%s"], "Topic": %q, "StartTimeCron": %q, "WorkDuration": %q, `+
-		`"MaxRetry": %d, "VerifyTopicOnStartup": %t, "Rack": %q}`,
+		`"MaxRetry": %d, "VerifyTopicOnStartup": %t, "Rack": %q, "BackOffStrategyName": %q}`,
 		strings.Join(cfg.Brokers, "\", \""), cfg.Topic, cfg.StartTimeCron,
-		cfg.WorkDuration, cfg.MaxRetry, cfg.VerifyTopicOnStartup, cfg.Rack)
+		cfg.WorkDuration, cfg.MaxRetry, cfg.VerifyTopicOnStartup, cfg.Rack, cfg.BackOffStrategyName)
 }
 
 func (cfg *BatchConfiguration) JSON() string {
@@ -141,6 +141,7 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 			RebalanceTimeout:  cfg.Reader.RebalanceTimeout,
 			StartOffset:       kcronsumer.ToStringOffset(cfg.Reader.StartOffset),
 			RetentionTime:     cfg.Reader.RetentionTime,
+			BackOffStrategy:   kcronsumer.GetBackoffStrategy(cfg.RetryConfiguration.BackOffStrategyName),
 		},
 		Producer: kcronsumer.ProducerConfig{
 			Balancer:     cfg.RetryConfiguration.Balancer,
@@ -237,6 +238,10 @@ type RetryConfiguration struct {
 	QueueCapacity         int
 	ProducerBatchSize     int
 	ProducerBatchTimeout  time.Duration
+	// BackOffStrategyName defines the backoff strategy for the retry consumer.
+	// Valid values (case-sensitive): "fixed", "linear", "exponential".
+	// If left empty, defaults to "fixed". An invalid value causes a startup error.
+	BackOffStrategyName string
 }
 
 type BatchConfiguration struct {
@@ -271,6 +276,11 @@ func (cfg *ConsumerConfig) newKafkaDialer(logger LoggerInterface) (*kafka.Dialer
 
 func (cfg *ConsumerConfig) newKafkaReader(logger LoggerInterface) (Reader, error) {
 	cfg.setDefaults()
+
+	if cfg.RetryEnabled && kcronsumer.GetBackoffStrategy(cfg.RetryConfiguration.BackOffStrategyName) == nil {
+		return nil, fmt.Errorf("invalid BackOffStrategyName %q; valid values are: fixed, linear, exponential (case-sensitive)",
+			cfg.RetryConfiguration.BackOffStrategyName)
+	}
 
 	dialer, err := cfg.newKafkaDialer(logger)
 	if err != nil {
@@ -330,6 +340,10 @@ func (cfg *ConsumerConfig) setDefaults() {
 	}
 	if cfg.TransactionalRetry == nil {
 		cfg.TransactionalRetry = NewBoolPtr(true)
+	}
+
+	if cfg.RetryConfiguration.BackOffStrategyName == "" {
+		cfg.RetryConfiguration.BackOffStrategyName = kcronsumer.FixedBackOffStrategy
 	}
 }
 
