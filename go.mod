@@ -3,13 +3,13 @@ module github.com/Trendyol/kafka-konsumer/v2
 go 1.24
 
 require (
-	github.com/Trendyol/kafka-cronsumer v1.6.7
-	github.com/Trendyol/otel-kafka-konsumer v0.0.7
+	github.com/Trendyol/kafka-cronsumer v1.6.8 //update
+	github.com/Trendyol/otel-kafka-konsumer v1.0.0 //update
 	github.com/ansrivas/fiberprometheus/v2 v2.6.1
 	github.com/gofiber/fiber/v2 v2.52.1
 	github.com/google/go-cmp v0.6.0
 	github.com/prometheus/client_golang v1.16.0
-	github.com/segmentio/kafka-go v0.4.47
+	github.com/segmentio/kafka-go v0.4.51
 	go.opentelemetry.io/otel v1.19.0
 	go.opentelemetry.io/otel/trace v1.19.0
 	go.uber.org/zap v1.24.0
@@ -46,6 +46,6 @@ require (
 	go.uber.org/goleak v1.3.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 )
