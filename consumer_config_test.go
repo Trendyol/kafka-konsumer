@@ -7,6 +7,7 @@ import (
 
 	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"github.com/google/go-cmp/cmp"
+	"github.com/segmentio/kafka-go"
 )
 
 func TestConsumerConfig_validate(t *testing.T) {
@@ -174,6 +175,22 @@ func TestConsumerConfig_newCronsumerConfig(t *testing.T) {
 		}
 		if actual.Consumer.BackOffStrategy.String() != kcronsumer.ExponentialBackOffStrategy {
 			t.Errorf("expected exponential, got %s", actual.Consumer.BackOffStrategy.String())
+		}
+	})
+	t.Run("Should_Pass_ProducerRequiredAcks_To_Cronsumer_Producer", func(t *testing.T) {
+		// Given
+		cfg := ConsumerConfig{
+			RetryConfiguration: RetryConfiguration{
+				ProducerRequiredAcks: kafka.RequireAll,
+			},
+		}
+
+		// When
+		actual := cfg.newCronsumerConfig()
+
+		// Then
+		if actual.Producer.RequiredAcks != kafka.RequireAll {
+			t.Errorf("expected RequiredAcks RequireAll, got %v", actual.Producer.RequiredAcks)
 		}
 	})
 	t.Run("Should_Return_Error_When_BackOffStrategyName_Is_Invalid", func(t *testing.T) {
