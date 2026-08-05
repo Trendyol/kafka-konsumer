@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"errors"
+	"math"
 	"strings"
 	"sync"
 	"testing"
@@ -256,8 +257,8 @@ func Test_initializeDeadLetterProducer(t *testing.T) {
 		if writer.Compression != kafka.Gzip {
 			t.Errorf("expected Compression gzip, got %s", writer.Compression)
 		}
-		if writer.BatchBytes != 1024 {
-			t.Errorf("expected BatchBytes 1024, got %d", writer.BatchBytes)
+		if writer.BatchBytes != math.MaxInt {
+			t.Errorf("expected BatchBytes %d, got %d", math.MaxInt, writer.BatchBytes)
 		}
 	})
 }
