@@ -57,6 +57,9 @@ type ConsumerConfig struct {
 	RetryEnabled                    bool
 	APIEnabled                      bool
 	DeadLetterTopic                 string
+	// DeadLetterProducerBatchBytes limits direct dead-letter ProduceBatch calls by approximate uncompressed message bytes.
+	// Zero or negative values disable chunking and preserve the existing single ProduceBatch behavior.
+	DeadLetterProducerBatchBytes int64
 
 	// MetricPrefix is used for prometheus fq name prefix.
 	// If not provided, default metric prefix value is `kafka_konsumer`.

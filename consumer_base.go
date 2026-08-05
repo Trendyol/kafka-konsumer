@@ -57,36 +57,37 @@ const (
 )
 
 type base struct {
-	cronsumer                 kcronsumer.Cronsumer
-	api                       API
-	logger                    LoggerInterface
-	propagator                propagation.TextMapPropagator
-	context                   context.Context
-	r                         Reader
-	cancelFn                  context.CancelFunc
-	skipMessageByHeaderFn     SkipMessageByHeaderFn
-	metric                    *ConsumerMetric
-	pause                     chan struct{}
-	quit                      chan struct{}
-	messageProcessedStream    chan struct{}
-	incomingMessageStream     chan *IncomingMessage
-	singleConsumingStream     chan *Message
-	batchConsumingStream      chan []*Message
-	retryTopic                string
-	subprocesses              subprocesses
-	wg                        sync.WaitGroup
-	concurrency               int
-	messageGroupDuration      time.Duration
-	once                      sync.Once
-	retryEnabled              bool
-	transactionalRetry        bool
-	deadLetterTopic           string
-	distributedTracingEnabled bool
-	consumerState             state
-	metricPrefix              string
-	mu                        sync.Mutex
-	consumerCfg               *ConsumerConfig
-	deadLetterProducer        Producer
+	cronsumer                    kcronsumer.Cronsumer
+	api                          API
+	logger                       LoggerInterface
+	propagator                   propagation.TextMapPropagator
+	context                      context.Context
+	r                            Reader
+	cancelFn                     context.CancelFunc
+	skipMessageByHeaderFn        SkipMessageByHeaderFn
+	metric                       *ConsumerMetric
+	pause                        chan struct{}
+	quit                         chan struct{}
+	messageProcessedStream       chan struct{}
+	incomingMessageStream        chan *IncomingMessage
+	singleConsumingStream        chan *Message
+	batchConsumingStream         chan []*Message
+	retryTopic                   string
+	subprocesses                 subprocesses
+	wg                           sync.WaitGroup
+	concurrency                  int
+	messageGroupDuration         time.Duration
+	once                         sync.Once
+	retryEnabled                 bool
+	transactionalRetry           bool
+	deadLetterTopic              string
+	distributedTracingEnabled    bool
+	consumerState                state
+	metricPrefix                 string
+	mu                           sync.Mutex
+	consumerCfg                  *ConsumerConfig
+	deadLetterProducer           Producer
+	deadLetterProducerBatchBytes int64
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -113,27 +114,28 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 	}
 
 	c := base{
-		metric:                    &ConsumerMetric{},
-		incomingMessageStream:     make(chan *IncomingMessage, messageChSize),
-		quit:                      make(chan struct{}),
-		pause:                     make(chan struct{}),
-		concurrency:               cfg.Concurrency,
-		retryEnabled:              cfg.RetryEnabled,
-		transactionalRetry:        *cfg.TransactionalRetry,
-		deadLetterTopic:           cfg.DeadLetterTopic,
-		distributedTracingEnabled: cfg.DistributedTracingEnabled,
-		logger:                    log,
-		subprocesses:              newSubProcesses(),
-		r:                         reader,
-		messageGroupDuration:      cfg.MessageGroupDuration,
-		messageProcessedStream:    make(chan struct{}, cfg.Concurrency),
-		singleConsumingStream:     make(chan *Message, cfg.Concurrency),
-		batchConsumingStream:      make(chan []*Message, cfg.Concurrency),
-		consumerState:             stateRunning,
-		skipMessageByHeaderFn:     cfg.SkipMessageByHeaderFn,
-		metricPrefix:              cfg.MetricPrefix,
-		mu:                        sync.Mutex{},
-		consumerCfg:               cfg,
+		metric:                       &ConsumerMetric{},
+		incomingMessageStream:        make(chan *IncomingMessage, messageChSize),
+		quit:                         make(chan struct{}),
+		pause:                        make(chan struct{}),
+		concurrency:                  cfg.Concurrency,
+		retryEnabled:                 cfg.RetryEnabled,
+		transactionalRetry:           *cfg.TransactionalRetry,
+		deadLetterTopic:              cfg.DeadLetterTopic,
+		distributedTracingEnabled:    cfg.DistributedTracingEnabled,
+		logger:                       log,
+		subprocesses:                 newSubProcesses(),
+		r:                            reader,
+		messageGroupDuration:         cfg.MessageGroupDuration,
+		messageProcessedStream:       make(chan struct{}, cfg.Concurrency),
+		singleConsumingStream:        make(chan *Message, cfg.Concurrency),
+		batchConsumingStream:         make(chan []*Message, cfg.Concurrency),
+		consumerState:                stateRunning,
+		skipMessageByHeaderFn:        cfg.SkipMessageByHeaderFn,
+		metricPrefix:                 cfg.MetricPrefix,
+		mu:                           sync.Mutex{},
+		consumerCfg:                  cfg,
+		deadLetterProducerBatchBytes: cfg.DeadLetterProducerBatchBytes,
 	}
 
 	if cfg.DistributedTracingEnabled {
@@ -297,6 +299,7 @@ func initializeDeadLetterProducer(cfg *ConsumerConfig) (Producer, error) {
 			AllowAutoTopicCreation: true,
 			RequiredAcks:           cfg.RetryConfiguration.ProducerRequiredAcks,
 			Compression:            cfg.RetryConfiguration.ProducerCompression,
+			BatchBytes:             cfg.DeadLetterProducerBatchBytes,
 		},
 		LogLevel: cfg.LogLevel,
 		SASL:     cfg.SASL,
@@ -310,6 +313,20 @@ func initializeDeadLetterProducer(cfg *ConsumerConfig) (Producer, error) {
 }
 
 func (c *base) sendToDeadLetterWithBackoff(messages ...Message) error {
+	if c.deadLetterProducerBatchBytes <= 0 {
+		return c.produceDeadLetterBatchWithBackoff(messages...)
+	}
+
+	for _, chunk := range chunkMessagesByBytes(messages, c.deadLetterProducerBatchBytes) {
+		if err := c.produceDeadLetterBatchWithBackoff(chunk...); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *base) produceDeadLetterBatchWithBackoff(messages ...Message) error {
 	var produceErr error
 
 	for attempt := 1; attempt <= 5; attempt++ {
@@ -322,6 +339,33 @@ func (c *base) sendToDeadLetterWithBackoff(messages ...Message) error {
 	}
 
 	return produceErr
+}
+
+func chunkMessagesByBytes(messages []Message, limit int64) [][]Message {
+	if limit <= 0 || len(messages) == 0 {
+		return [][]Message{messages}
+	}
+
+	chunks := make([][]Message, 0, len(messages))
+	currentChunkStart := 0
+	currentChunkBytes := int64(0)
+
+	for i := range messages {
+		messageBytes := int64(messages[i].TotalSize())
+		if currentChunkBytes > 0 && currentChunkBytes+messageBytes > limit {
+			chunks = append(chunks, messages[currentChunkStart:i])
+			currentChunkStart = i
+			currentChunkBytes = 0
+		}
+
+		currentChunkBytes += messageBytes
+	}
+
+	if currentChunkStart < len(messages) {
+		chunks = append(chunks, messages[currentChunkStart:])
+	}
+
+	return chunks
 }
 
 func (c *base) retryWithBackoff(retryableMessage ...kcronsumer.Message) error {
