@@ -364,7 +364,8 @@ func Test_base_sendToDeadLetterWithBackoff(t *testing.T) {
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("expected %v, got %v", expectedErr, err)
 		}
-		if !strings.Contains(err.Error(), "messages=1") || !strings.Contains(err.Error(), "approxBytes=") {
+		if !strings.Contains(err.Error(), "messages=1") || !strings.Contains(err.Error(), "approxBytes=") ||
+			!strings.Contains(err.Error(), `firstMessageKey="2"`) {
 			t.Fatalf("expected chunk details in error, got %v", err)
 		}
 		if len(producer.successfulBatches) != 1 {

@@ -319,8 +319,8 @@ func (c *base) sendToDeadLetterWithBackoff(messages ...Message) error {
 
 	for _, chunk := range chunkMessagesByBytes(messages, c.deadLetterProducerBatchBytes) {
 		if err := c.produceDeadLetterBatchWithBackoff(chunk...); err != nil {
-			return fmt.Errorf("error producing direct dead letter chunk messages=%d approxBytes=%d batchBytesLimit=%d: %w",
-				len(chunk), messagesTotalSize(chunk), c.deadLetterProducerBatchBytes, err)
+			return fmt.Errorf("error producing direct dead letter chunk messages=%d approxBytes=%d batchBytesLimit=%d firstMessageKey=%s: %w",
+				len(chunk), messagesTotalSize(chunk), c.deadLetterProducerBatchBytes, messageKeyForLog(chunk), err)
 		}
 	}
 
@@ -375,6 +375,19 @@ func messagesTotalSize(messages []Message) int64 {
 		total += int64(messages[i].TotalSize())
 	}
 	return total
+}
+
+func messageKeyForLog(messages []Message) string {
+	if len(messages) == 0 {
+		return ""
+	}
+
+	key := messages[0].Key
+	if len(key) > 256 {
+		return fmt.Sprintf("%q...(truncated %d bytes)", key[:256], len(key))
+	}
+
+	return fmt.Sprintf("%q", key)
 }
 
 func (c *base) retryWithBackoff(retryableMessage ...kcronsumer.Message) error {
