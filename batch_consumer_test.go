@@ -225,6 +225,38 @@ func Test_batchConsumer_process(t *testing.T) {
 			t.Fatalf("Total Unprocessed Message Counter must equal to 0")
 		}
 	})
+	t.Run("When_Re-processing_Is_Successful_And_Retry_Enabled_Should_Not_Send_To_Retry_Topic", func(t *testing.T) {
+		// Given
+		gotOnlyOneTimeException := true
+		mc := &mockCronsumer{}
+		bc := batchConsumer{
+			base: &base{
+				metric: &ConsumerMetric{}, transactionalRetry: true,
+				logger: NewZapLogger(LogLevelDebug), retryEnabled: true, cronsumer: mc,
+			},
+			consumeFn: func(_ []*Message) error {
+				if gotOnlyOneTimeException {
+					gotOnlyOneTimeException = false
+					return errors.New("simulate only one time exception")
+				}
+				return nil
+			},
+		}
+
+		// When
+		bc.process([]*Message{{}, {}, {}})
+
+		// Then
+		if bc.metric.totalProcessedMessagesCounter != 3 {
+			t.Fatalf("Total Processed Message Counter must equal to 3")
+		}
+		if bc.metric.totalUnprocessedMessagesCounter != 0 {
+			t.Fatalf("Total Unprocessed Message Counter must equal to 0")
+		}
+		if mc.produceBatchCalls != 0 {
+			t.Fatalf("ProduceBatch must not be called when transactional retry succeeds, got %d calls", mc.produceBatchCalls)
+		}
+	})
 	t.Run("When_Re-processing_Is_Failed_And_Retry_Disabled", func(t *testing.T) {
 		// Given
 		bc := batchConsumer{
@@ -749,6 +781,7 @@ type mockCronsumer struct {
 	retryBehaviorOpen bool
 	times             int
 	maxRetry          int
+	produceBatchCalls int
 }
 
 func (m *mockCronsumer) Start() {
@@ -786,6 +819,7 @@ func (m *mockCronsumer) GetMetricCollectors() []prometheus.Collector {
 }
 
 func (m *mockCronsumer) ProduceBatch([]kcronsumer.Message) error {
+	m.produceBatchCalls++
 	if m.retryBehaviorOpen {
 		if m.wantErr && m.times <= m.maxRetry {
 			m.times++

@@ -116,6 +116,9 @@ func getErrorMessage(consumeErr error, msg *Message) string {
 	if msg.ErrDescription != "" {
 		return msg.ErrDescription
 	}
+	if consumeErr == nil {
+		return ""
+	}
 	return consumeErr.Error()
 }
 

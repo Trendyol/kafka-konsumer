@@ -296,7 +296,7 @@ func (b *batchConsumer) process(chunkMessages []*Message) {
 				b.metric.IncrementTotalProcessedMessagesCounter(int64(len(remainingMessages)) - failedCount)
 			}
 
-			if b.retryEnabled {
+			if consumeErr != nil && b.retryEnabled {
 				cronsumerMessages := make([]kcronsumer.Message, 0, len(remainingMessages))
 				if b.transactionalRetry {
 					for i := range remainingMessages {
