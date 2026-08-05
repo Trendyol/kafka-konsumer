@@ -296,6 +296,7 @@ func initializeDeadLetterProducer(cfg *ConsumerConfig) (Producer, error) {
 			Brokers:                cfg.Reader.Brokers,
 			AllowAutoTopicCreation: true,
 			RequiredAcks:           cfg.RetryConfiguration.ProducerRequiredAcks,
+			Compression:            cfg.RetryConfiguration.ProducerCompression,
 		},
 		LogLevel: cfg.LogLevel,
 		SASL:     cfg.SASL,

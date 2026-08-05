@@ -149,6 +149,7 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 			BatchSize:    cfg.RetryConfiguration.ProducerBatchSize,
 			BatchTimeout: cfg.RetryConfiguration.ProducerBatchTimeout,
 			RequiredAcks: cfg.RetryConfiguration.ProducerRequiredAcks,
+			Compression:  cfg.RetryConfiguration.ProducerCompression,
 		},
 		LogLevel: lcronsumer.Level(cfg.RetryConfiguration.LogLevel),
 	}
@@ -240,6 +241,7 @@ type RetryConfiguration struct {
 	ProducerBatchSize     int
 	ProducerBatchTimeout  time.Duration
 	ProducerRequiredAcks  kafka.RequiredAcks
+	ProducerCompression   kafka.Compression
 	// BackOffStrategyName defines the backoff strategy for the retry consumer.
 	// Valid values (case-sensitive): "fixed", "linear", "exponential".
 	// If left empty, defaults to "fixed". An invalid value causes a startup error.

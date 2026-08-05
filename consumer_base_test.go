@@ -219,6 +219,44 @@ func Test_base_Resume(t *testing.T) {
 	})
 }
 
+func Test_initializeDeadLetterProducer(t *testing.T) {
+	t.Run("Should_Set_Producer_Compression", func(t *testing.T) {
+		// Given
+		cfg := ConsumerConfig{
+			ClientID:        "client-id",
+			DeadLetterTopic: "dead-letter-topic",
+			Reader: ReaderConfig{
+				Brokers: []string{"broker-1.test.com"},
+			},
+			RetryConfiguration: RetryConfiguration{
+				ProducerCompression: kafka.Gzip,
+			},
+		}
+
+		// When
+		deadLetterProducer, err := initializeDeadLetterProducer(&cfg)
+
+		// Then
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+
+		p, ok := deadLetterProducer.(*producer)
+		if !ok {
+			t.Fatalf("expected *producer, got %T", deadLetterProducer)
+		}
+
+		writer, ok := p.w.(*kafka.Writer)
+		if !ok {
+			t.Fatalf("expected *kafka.Writer, got %T", p.w)
+		}
+
+		if writer.Compression != kafka.Gzip {
+			t.Errorf("expected Compression gzip, got %s", writer.Compression)
+		}
+	})
+}
+
 func Test_drainTimer(t *testing.T) {
 	// Test case 1: Timer expires before calling drainTimer
 	t1 := time.NewTimer(10 * time.Millisecond)
