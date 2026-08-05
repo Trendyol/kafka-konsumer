@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -362,6 +363,9 @@ func Test_base_sendToDeadLetterWithBackoff(t *testing.T) {
 		// Then
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("expected %v, got %v", expectedErr, err)
+		}
+		if !strings.Contains(err.Error(), "messages=1") || !strings.Contains(err.Error(), "approxBytes=") {
+			t.Fatalf("expected chunk details in error, got %v", err)
 		}
 		if len(producer.successfulBatches) != 1 {
 			t.Fatalf("expected only first chunk to be produced successfully, got %d", len(producer.successfulBatches))

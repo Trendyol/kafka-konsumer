@@ -319,7 +319,8 @@ func (c *base) sendToDeadLetterWithBackoff(messages ...Message) error {
 
 	for _, chunk := range chunkMessagesByBytes(messages, c.deadLetterProducerBatchBytes) {
 		if err := c.produceDeadLetterBatchWithBackoff(chunk...); err != nil {
-			return err
+			return fmt.Errorf("error producing direct dead letter chunk messages=%d approxBytes=%d batchBytesLimit=%d: %w",
+				len(chunk), messagesTotalSize(chunk), c.deadLetterProducerBatchBytes, err)
 		}
 	}
 
@@ -366,6 +367,14 @@ func chunkMessagesByBytes(messages []Message, limit int64) [][]Message {
 	}
 
 	return chunks
+}
+
+func messagesTotalSize(messages []Message) int64 {
+	total := int64(0)
+	for i := range messages {
+		total += int64(messages[i].TotalSize())
+	}
+	return total
 }
 
 func (c *base) retryWithBackoff(retryableMessage ...kcronsumer.Message) error {
