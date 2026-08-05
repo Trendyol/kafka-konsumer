@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -299,7 +300,7 @@ func initializeDeadLetterProducer(cfg *ConsumerConfig) (Producer, error) {
 			AllowAutoTopicCreation: true,
 			RequiredAcks:           cfg.RetryConfiguration.ProducerRequiredAcks,
 			Compression:            cfg.RetryConfiguration.ProducerCompression,
-			BatchBytes:             cfg.DeadLetterProducerBatchBytes,
+			BatchBytes:             math.MaxInt,
 		},
 		LogLevel: cfg.LogLevel,
 		SASL:     cfg.SASL,
