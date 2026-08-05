@@ -235,7 +235,6 @@ func Test_initializeDeadLetterProducer(t *testing.T) {
 
 		// When
 		deadLetterProducer, err := initializeDeadLetterProducer(&cfg)
-
 		// Then
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
