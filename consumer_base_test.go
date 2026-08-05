@@ -238,7 +238,6 @@ func Test_initializeDeadLetterProducer(t *testing.T) {
 
 		// When
 		deadLetterProducer, err := initializeDeadLetterProducer(&cfg)
-
 		// Then
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
@@ -279,7 +278,6 @@ func Test_base_sendToDeadLetterWithBackoff(t *testing.T) {
 
 		// When
 		err := b.sendToDeadLetterWithBackoff(messages...)
-
 		// Then
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
@@ -308,7 +306,6 @@ func Test_base_sendToDeadLetterWithBackoff(t *testing.T) {
 
 		// When
 		err := b.sendToDeadLetterWithBackoff(messages...)
-
 		// Then
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
@@ -335,7 +332,6 @@ func Test_base_sendToDeadLetterWithBackoff(t *testing.T) {
 
 		// When
 		err := b.sendToDeadLetterWithBackoff(messages...)
-
 		// Then
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
