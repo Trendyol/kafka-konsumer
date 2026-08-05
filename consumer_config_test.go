@@ -193,6 +193,22 @@ func TestConsumerConfig_newCronsumerConfig(t *testing.T) {
 			t.Errorf("expected RequiredAcks RequireAll, got %v", actual.Producer.RequiredAcks)
 		}
 	})
+	t.Run("Should_Pass_ProducerCompression_To_Cronsumer_Producer", func(t *testing.T) {
+		// Given
+		cfg := ConsumerConfig{
+			RetryConfiguration: RetryConfiguration{
+				ProducerCompression: kafka.Gzip,
+			},
+		}
+
+		// When
+		actual := cfg.newCronsumerConfig()
+
+		// Then
+		if actual.Producer.Compression != kafka.Gzip {
+			t.Errorf("expected Compression gzip, got %s", actual.Producer.Compression)
+		}
+	})
 	t.Run("Should_Return_Error_When_BackOffStrategyName_Is_Invalid", func(t *testing.T) {
 		// Given
 		cfg := ConsumerConfig{
