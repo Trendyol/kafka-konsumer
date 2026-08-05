@@ -150,6 +150,7 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 			Balancer:     cfg.RetryConfiguration.Balancer,
 			Brokers:      cfg.RetryConfiguration.Brokers,
 			BatchSize:    cfg.RetryConfiguration.ProducerBatchSize,
+			BatchBytes:   cfg.RetryConfiguration.ProducerBatchBytes,
 			BatchTimeout: cfg.RetryConfiguration.ProducerBatchTimeout,
 			RequiredAcks: cfg.RetryConfiguration.ProducerRequiredAcks,
 			Compression:  cfg.RetryConfiguration.ProducerCompression,
@@ -242,6 +243,7 @@ type RetryConfiguration struct {
 	Concurrency           int
 	QueueCapacity         int
 	ProducerBatchSize     int
+	ProducerBatchBytes    int64
 	ProducerBatchTimeout  time.Duration
 	ProducerRequiredAcks  kafka.RequiredAcks
 	ProducerCompression   kafka.Compression
