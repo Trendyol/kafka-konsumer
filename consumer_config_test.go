@@ -209,6 +209,22 @@ func TestConsumerConfig_newCronsumerConfig(t *testing.T) {
 			t.Errorf("expected Compression gzip, got %s", actual.Producer.Compression)
 		}
 	})
+	t.Run("Should_Pass_ProducerBatchBytes_To_Cronsumer_Producer", func(t *testing.T) {
+		// Given
+		cfg := ConsumerConfig{
+			RetryConfiguration: RetryConfiguration{
+				ProducerBatchBytes: 1024,
+			},
+		}
+
+		// When
+		actual := cfg.newCronsumerConfig()
+
+		// Then
+		if actual.Producer.BatchBytes != 1024 {
+			t.Errorf("expected BatchBytes 1024, got %d", actual.Producer.BatchBytes)
+		}
+	})
 	t.Run("Should_Return_Error_When_BackOffStrategyName_Is_Invalid", func(t *testing.T) {
 		// Given
 		cfg := ConsumerConfig{

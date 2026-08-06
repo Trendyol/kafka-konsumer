@@ -57,6 +57,9 @@ type ConsumerConfig struct {
 	RetryEnabled                    bool
 	APIEnabled                      bool
 	DeadLetterTopic                 string
+	// DeadLetterProducerBatchBytes limits direct dead-letter ProduceBatch calls by approximate uncompressed message bytes.
+	// Zero or negative values disable chunking and preserve the existing single ProduceBatch behavior.
+	DeadLetterProducerBatchBytes int64
 
 	// MetricPrefix is used for prometheus fq name prefix.
 	// If not provided, default metric prefix value is `kafka_konsumer`.
@@ -147,6 +150,7 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 			Balancer:     cfg.RetryConfiguration.Balancer,
 			Brokers:      cfg.RetryConfiguration.Brokers,
 			BatchSize:    cfg.RetryConfiguration.ProducerBatchSize,
+			BatchBytes:   cfg.RetryConfiguration.ProducerBatchBytes,
 			BatchTimeout: cfg.RetryConfiguration.ProducerBatchTimeout,
 			RequiredAcks: cfg.RetryConfiguration.ProducerRequiredAcks,
 			Compression:  cfg.RetryConfiguration.ProducerCompression,
@@ -239,6 +243,7 @@ type RetryConfiguration struct {
 	Concurrency           int
 	QueueCapacity         int
 	ProducerBatchSize     int
+	ProducerBatchBytes    int64
 	ProducerBatchTimeout  time.Duration
 	ProducerRequiredAcks  kafka.RequiredAcks
 	ProducerCompression   kafka.Compression

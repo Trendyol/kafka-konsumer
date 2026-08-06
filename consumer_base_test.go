@@ -3,6 +3,8 @@ package kafka
 import (
 	"context"
 	"errors"
+	"math"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -223,8 +225,9 @@ func Test_initializeDeadLetterProducer(t *testing.T) {
 	t.Run("Should_Set_Producer_Compression", func(t *testing.T) {
 		// Given
 		cfg := ConsumerConfig{
-			ClientID:        "client-id",
-			DeadLetterTopic: "dead-letter-topic",
+			ClientID:                     "client-id",
+			DeadLetterTopic:              "dead-letter-topic",
+			DeadLetterProducerBatchBytes: 1024,
 			Reader: ReaderConfig{
 				Brokers: []string{"broker-1.test.com"},
 			},
@@ -253,7 +256,134 @@ func Test_initializeDeadLetterProducer(t *testing.T) {
 		if writer.Compression != kafka.Gzip {
 			t.Errorf("expected Compression gzip, got %s", writer.Compression)
 		}
+		if writer.BatchBytes != math.MaxInt {
+			t.Errorf("expected BatchBytes %d, got %d", math.MaxInt, writer.BatchBytes)
+		}
 	})
+}
+
+func Test_base_sendToDeadLetterWithBackoff(t *testing.T) {
+	t.Run("Should_Call_ProduceBatch_Once_When_BatchBytes_Is_Disabled", func(t *testing.T) {
+		// Given
+		producer := &mockDeadLetterProducer{}
+		b := base{
+			deadLetterProducer: producer,
+			logger:             NewZapLogger(LogLevelError),
+		}
+		messages := []Message{
+			{Value: []byte("aaaa")},
+			{Value: []byte("bbbb")},
+			{Value: []byte("cccc")},
+		}
+
+		// When
+		err := b.sendToDeadLetterWithBackoff(messages...)
+		// Then
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if producer.produceCalled != 1 {
+			t.Fatalf("dead letter producer must be called once, got %d", producer.produceCalled)
+		}
+		if len(producer.batches) != 1 || len(producer.batches[0]) != 3 {
+			t.Fatalf("expected one batch with 3 messages, got %#v", producer.batches)
+		}
+	})
+
+	t.Run("Should_Chunk_Messages_By_BatchBytes", func(t *testing.T) {
+		// Given
+		producer := &mockDeadLetterProducer{}
+		messages := []Message{
+			{Key: []byte("1"), Value: []byte("aaaa")},
+			{Key: []byte("2"), Value: []byte("bbbb")},
+			{Key: []byte("3"), Value: []byte("cccc")},
+		}
+		b := base{
+			deadLetterProducer:           producer,
+			deadLetterProducerBatchBytes: int64(messages[0].TotalSize() + messages[1].TotalSize()),
+			logger:                       NewZapLogger(LogLevelError),
+		}
+
+		// When
+		err := b.sendToDeadLetterWithBackoff(messages...)
+		// Then
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if producer.produceCalled != 2 {
+			t.Fatalf("dead letter producer must be called twice, got %d", producer.produceCalled)
+		}
+		assertBatchKeys(t, producer.batches, [][]string{{"1", "2"}, {"3"}})
+	})
+
+	t.Run("Should_Send_Single_Message_Larger_Than_Limit_Alone", func(t *testing.T) {
+		// Given
+		producer := &mockDeadLetterProducer{}
+		messages := []Message{
+			{Key: []byte("oversized"), Value: []byte("aaaaaaaaaa")},
+			{Key: []byte("small-1"), Value: []byte("b")},
+			{Key: []byte("small-2"), Value: []byte("c")},
+		}
+		b := base{
+			deadLetterProducer:           producer,
+			deadLetterProducerBatchBytes: int64(messages[1].TotalSize() + messages[2].TotalSize()),
+			logger:                       NewZapLogger(LogLevelError),
+		}
+
+		// When
+		err := b.sendToDeadLetterWithBackoff(messages...)
+		// Then
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		assertBatchKeys(t, producer.batches, [][]string{{"oversized"}, {"small-1", "small-2"}})
+	})
+
+	t.Run("Should_Return_Error_And_Stop_When_Chunk_Fails", func(t *testing.T) {
+		// Given
+		expectedErr := errors.New("dlq chunk failed")
+		producer := &failingOnBatchDeadLetterProducer{failBatch: 2, err: expectedErr}
+		messages := []Message{
+			{Key: []byte("1"), Value: []byte("aaaa")},
+			{Key: []byte("2"), Value: []byte("bbbb")},
+			{Key: []byte("3"), Value: []byte("cccc")},
+		}
+		b := base{
+			deadLetterProducer:           producer,
+			deadLetterProducerBatchBytes: int64(messages[0].TotalSize()),
+			logger:                       NewZapLogger(LogLevelError),
+		}
+
+		// When
+		err := b.sendToDeadLetterWithBackoff(messages...)
+
+		// Then
+		if !errors.Is(err, expectedErr) {
+			t.Fatalf("expected %v, got %v", expectedErr, err)
+		}
+		if !strings.Contains(err.Error(), "messages=1") || !strings.Contains(err.Error(), "approxBytes=") ||
+			!strings.Contains(err.Error(), `firstMessageKey="2"`) {
+			t.Fatalf("expected chunk details in error, got %v", err)
+		}
+		if len(producer.successfulBatches) != 1 {
+			t.Fatalf("expected only first chunk to be produced successfully, got %d", len(producer.successfulBatches))
+		}
+		if producer.called != 6 {
+			t.Fatalf("expected 6 ProduceBatch calls (1 success + 5 retries), got %d", producer.called)
+		}
+	})
+}
+
+func Test_chunkMessagesByBytes(t *testing.T) {
+	messages := []Message{
+		{Key: []byte("1"), Value: []byte("aaaa")},
+		{Key: []byte("2"), Value: []byte("bbbb")},
+		{Key: []byte("3"), Value: []byte("cccc")},
+	}
+
+	chunks := chunkMessagesByBytes(messages, int64(messages[0].TotalSize()+messages[1].TotalSize()))
+
+	assertBatchKeys(t, chunks, [][]string{{"1", "2"}, {"3"}})
 }
 
 func Test_drainTimer(t *testing.T) {
@@ -306,4 +436,47 @@ func (m *mockReader) CommitMessages(_ []kafka.Message) error {
 		return errors.New("err")
 	}
 	return nil
+}
+
+type failingOnBatchDeadLetterProducer struct {
+	called            int
+	failBatch         int
+	err               error
+	successfulBatches [][]Message
+}
+
+func (m *failingOnBatchDeadLetterProducer) Produce(_ context.Context, message Message) error {
+	return m.ProduceBatch(context.Background(), []Message{message})
+}
+
+func (m *failingOnBatchDeadLetterProducer) ProduceBatch(_ context.Context, messages []Message) error {
+	m.called++
+	if len(m.successfulBatches)+1 == m.failBatch {
+		return m.err
+	}
+
+	batch := append([]Message(nil), messages...)
+	m.successfulBatches = append(m.successfulBatches, batch)
+	return nil
+}
+
+func (m *failingOnBatchDeadLetterProducer) Close() error { return nil }
+
+func assertBatchKeys(t *testing.T, batches [][]Message, expected [][]string) {
+	t.Helper()
+
+	if len(batches) != len(expected) {
+		t.Fatalf("expected %d batches, got %d", len(expected), len(batches))
+	}
+
+	for i := range expected {
+		if len(batches[i]) != len(expected[i]) {
+			t.Fatalf("expected batch %d to have %d messages, got %d", i, len(expected[i]), len(batches[i]))
+		}
+		for j := range expected[i] {
+			if string(batches[i][j].Key) != expected[i][j] {
+				t.Fatalf("expected batch %d message %d key %q, got %q", i, j, expected[i][j], string(batches[i][j].Key))
+			}
+		}
+	}
 }

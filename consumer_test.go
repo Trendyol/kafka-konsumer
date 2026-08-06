@@ -360,6 +360,7 @@ func Test_consumer_Resume(t *testing.T) {
 
 type mockDeadLetterProducer struct {
 	received      []Message
+	batches       [][]Message
 	produceCalled int
 }
 
@@ -372,6 +373,7 @@ func (m *mockDeadLetterProducer) Produce(_ context.Context, message Message) err
 func (m *mockDeadLetterProducer) ProduceBatch(_ context.Context, messages []Message) error {
 	m.produceCalled++
 	m.received = append(m.received, messages...)
+	m.batches = append(m.batches, append([]Message(nil), messages...))
 	return nil
 }
 
