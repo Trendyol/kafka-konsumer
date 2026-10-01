@@ -261,6 +261,37 @@ func Test_initializeDeadLetterProducer(t *testing.T) {
 			t.Errorf("expected BatchBytes %d, got %d", math.MaxInt, writer.BatchBytes)
 		}
 	})
+
+	t.Run("Should_Not_Write_Into_Broker_List_Shared_With_Running_Reader", func(t *testing.T) {
+		// Given
+		cfg := ConsumerConfig{
+			DeadLetterTopic: "dead-letter-topic",
+			Reader: ReaderConfig{
+				Brokers: []string{" 127.0.0.1:1 "},
+				GroupID: "group-id",
+				Topic:   "topic",
+				Dialer:  &kafka.Dialer{Timeout: 10 * time.Millisecond},
+			},
+		}
+
+		// No broker is required, group coordinator discovery reads the broker list even when dialing fails.
+		// A write into the shared broker list is reported by the race detector.
+		reader := kafka.NewReader(kafka.ReaderConfig(cfg.Reader))
+		defer reader.Close()
+		time.Sleep(20 * time.Millisecond)
+
+		// When
+		deadLetterProducer, err := initializeDeadLetterProducer(&cfg)
+		// Then
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		defer deadLetterProducer.Close()
+
+		if cfg.Reader.Brokers[0] != " 127.0.0.1:1 " {
+			t.Errorf("expected reader broker list to be untouched, got %q", cfg.Reader.Brokers[0])
+		}
+	})
 }
 
 func Test_base_sendToDeadLetterWithBackoff(t *testing.T) {

@@ -37,10 +37,13 @@ func (cfg WriterConfig) JSON() string {
 		strings.Join(cfg.Brokers, "\", \""), GetBalancerString(cfg.Balancer), cfg.Compression.String())
 }
 
+// removeSpaceBrokerList does not write into the given slice, it can be shared with a running reader
 func (cfg *WriterConfig) removeSpaceBrokerList() {
+	brokers := make([]string, len(cfg.Brokers))
 	for i := range cfg.Brokers {
-		cfg.Brokers[i] = strings.TrimSpace(cfg.Brokers[i])
+		brokers[i] = strings.TrimSpace(cfg.Brokers[i])
 	}
+	cfg.Brokers = brokers
 }
 
 type TransportConfig struct {
