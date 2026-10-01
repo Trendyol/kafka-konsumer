@@ -90,10 +90,13 @@ func (cfg ReaderConfig) JSON() string {
 		cfg.MaxWait, cfg.CommitInterval, kcronsumer.ToStringOffset(cfg.StartOffset))
 }
 
+// removeSpaceBrokerList does not write into the given slice, it can be shared with a running reader
 func (cfg *ReaderConfig) removeSpaceBrokerList() {
+	brokers := make([]string, len(cfg.Brokers))
 	for i := range cfg.Brokers {
-		cfg.Brokers[i] = strings.TrimSpace(cfg.Brokers[i])
+		brokers[i] = strings.TrimSpace(cfg.Brokers[i])
 	}
+	cfg.Brokers = brokers
 }
 
 func (cfg *ConsumerConfig) JSON() string {
