@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	kcronsumer "github.com/Trendyol/kafka-cronsumer/pkg/kafka"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -307,6 +308,76 @@ func Test_consumer_process(t *testing.T) {
 
 		// When && Then
 		c.process(msg)
+	})
+}
+
+func Test_consumer_runKonsumerFn(t *testing.T) {
+	retryMessage := kcronsumer.Message{Topic: "retry-topic", Key: []byte("1"), Value: []byte("foo")}
+
+	t.Run("Should_Return_Consume_Error_When_SendDirectToDeadLetter_False", func(t *testing.T) {
+		// Given
+		mdlp := &mockDeadLetterProducer{}
+		c := consumer{
+			base:      &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), deadLetterProducer: mdlp},
+			consumeFn: func(_ *Message) error { return errors.New("err occurred") },
+		}
+
+		// When
+		actualError := c.runKonsumerFn(retryMessage)
+
+		// Then
+		if actualError == nil || actualError.Error() != "err occurred" {
+			t.Fatalf("actual error = %v should be equal to consume error", actualError)
+		}
+		if mdlp.produceCalled != 0 {
+			t.Fatalf("dead letter producer must not be called, got %d", mdlp.produceCalled)
+		}
+	})
+
+	t.Run("Should_Send_To_Dead_Letter_When_SendDirectToDeadLetter_True", func(t *testing.T) {
+		// Given
+		mdlp := &mockDeadLetterProducer{}
+		c := consumer{
+			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), deadLetterProducer: mdlp},
+			consumeFn: func(message *Message) error {
+				message.SendDirectToDeadLetter = true
+				return errors.New("err occurred")
+			},
+		}
+
+		// When
+		actualError := c.runKonsumerFn(retryMessage)
+
+		// Then
+		if actualError != nil {
+			t.Fatalf("actual error must be nil to prevent retry, got %s", actualError.Error())
+		}
+		if mdlp.produceCalled != 1 || len(mdlp.received) != 1 {
+			t.Fatalf("dead letter producer must receive one message once, got %d calls %d messages", mdlp.produceCalled, len(mdlp.received))
+		}
+		if mdlp.received[0].Topic != "" {
+			t.Fatalf("produced message Topic must be empty, got %q", mdlp.received[0].Topic)
+		}
+		assertErrHeader(t, mdlp.received[0], "err occurred")
+	})
+
+	t.Run("Should_Return_Consume_Error_When_Dead_Letter_Producer_Does_Not_Exist", func(t *testing.T) {
+		// Given
+		c := consumer{
+			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug)},
+			consumeFn: func(message *Message) error {
+				message.SendDirectToDeadLetter = true
+				return errors.New("err occurred")
+			},
+		}
+
+		// When
+		actualError := c.runKonsumerFn(retryMessage)
+
+		// Then
+		if actualError == nil || actualError.Error() != "err occurred" {
+			t.Fatalf("actual error = %v should be equal to consume error", actualError)
+		}
 	})
 }
 

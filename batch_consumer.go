@@ -63,11 +63,43 @@ func newBatchConsumer(cfg *ConsumerConfig) (Consumer, error) {
 func (b *batchConsumer) runKonsumerFn(message kcronsumer.Message) error {
 	msgList := []*Message{toMessage(message)}
 
-	err := b.consumeFn(msgList)
-	if msgList[0].ErrDescription != "" {
-		err = errors.New(msgList[0].ErrDescription)
+	if b.preBatchFn != nil {
+		// BatchConsumeFn relies on PreBatch output (e.g. WriterData) on the retry path as well
+		if msgList = b.preBatchFn(msgList); len(msgList) == 0 {
+			return nil
+		}
 	}
-	return err
+
+	consumeErr := b.consumeFn(msgList)
+
+	var retryErr, deadLetterErr error
+	deadLetterMessages := make([]Message, 0, len(msgList))
+	for _, msg := range msgList {
+		msgErr := consumeErr
+		if msg.ErrDescription != "" {
+			msgErr = errors.New(msg.ErrDescription)
+		}
+		if msgErr == nil {
+			continue
+		}
+
+		// Without a dead letter producer, message follows the normal retry flow
+		if msg.SendDirectToDeadLetter && b.deadLetterProducer != nil {
+			deadLetterErr = msgErr
+			deadLetterMessages = append(deadLetterMessages, msg.toDeadLetterMessage(msgErr))
+		} else if retryErr == nil {
+			retryErr = msgErr
+		}
+	}
+
+	if len(deadLetterMessages) > 0 {
+		if err := b.sendToDeadLetterWithBackoff(deadLetterMessages...); err != nil {
+			b.logger.Errorf("Error producing retried messages to dead letter topic, messages will be retried. Error: %s", err.Error())
+			return deadLetterErr
+		}
+	}
+
+	return retryErr
 }
 
 func (b *batchConsumer) GetMetricCollectors() []prometheus.Collector {
@@ -258,12 +290,7 @@ func (b *batchConsumer) process(chunkMessages []*Message) {
 
 		for _, msg := range chunkMessages {
 			if msg.SendDirectToDeadLetter {
-				msg.AddHeader(Header{
-					Key:   errMessageKey,
-					Value: []byte(getErrorMessage(consumeErr, msg)),
-				})
-				msg.Topic = "" // we set on initialize for dead letter producer
-				deadLetterMessages = append(deadLetterMessages, *msg)
+				deadLetterMessages = append(deadLetterMessages, msg.toDeadLetterMessage(consumeErr))
 			} else {
 				remainingMessages = append(remainingMessages, msg)
 			}
