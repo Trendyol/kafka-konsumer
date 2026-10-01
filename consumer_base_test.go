@@ -6,6 +6,7 @@ import (
 	"math"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -385,6 +386,52 @@ func Test_chunkMessagesByBytes(t *testing.T) {
 
 	assertBatchKeys(t, chunks, [][]string{{"1", "2"}, {"3"}})
 }
+
+func Test_base_Stop(t *testing.T) {
+	t.Run("Should_Stop_Subprocesses_After_In_Flight_Messages_Are_Processed", func(t *testing.T) {
+		// Given
+		var processed, stoppedAfterProcessed atomic.Bool
+		ctx, cancelFn := context.WithCancel(context.Background())
+		b := base{
+			logger:  NewZapLogger(LogLevelDebug),
+			quit:    make(chan struct{}),
+			context: ctx, cancelFn: cancelFn,
+			consumerState: stateRunning,
+			r:             &mockReader{},
+			subprocesses:  newSubProcesses(),
+		}
+		b.subprocesses.Add(&mockSubprocess{onStop: func() {
+			stoppedAfterProcessed.Store(processed.Load())
+		}})
+
+		b.wg.Add(1)
+		go func() {
+			defer b.wg.Done()
+			<-b.quit
+			// In-flight messages can still be produced to the retry topic
+			time.Sleep(50 * time.Millisecond)
+			processed.Store(true)
+		}()
+
+		// When
+		err := b.Stop()
+		// Then
+		if err != nil {
+			t.Fatalf("stop error must be nil, got %s", err.Error())
+		}
+		if !stoppedAfterProcessed.Load() {
+			t.Fatal("subprocesses must be stopped after in-flight messages are processed")
+		}
+	})
+}
+
+type mockSubprocess struct {
+	onStop func()
+}
+
+func (m *mockSubprocess) Start() {}
+
+func (m *mockSubprocess) Stop() { m.onStop() }
 
 func Test_drainTimer(t *testing.T) {
 	// Test case 1: Timer expires before calling drainTimer

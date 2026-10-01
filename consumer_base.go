@@ -415,7 +415,6 @@ func (c *base) Stop() error {
 
 	var err error
 	c.once.Do(func() {
-		c.subprocesses.Stop()
 		c.cancelFn()
 
 		// In order to save cpu, we break startConsume loop in pause mode.
@@ -428,6 +427,11 @@ func (c *base) Stop() error {
 		}
 
 		c.wg.Wait()
+
+		// Subprocesses are stopped after in-flight messages are processed,
+		// because failed ones are still produced to the retry topic by cronsumer.
+		c.subprocesses.Stop()
+
 		if c.deadLetterProducer != nil {
 			c.deadLetterProducer.Close()
 		}
