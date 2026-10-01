@@ -146,6 +146,15 @@ func (m *Message) toRetryableMessage(retryTopic string, consumeError error) kcro
 		Build()
 }
 
+func (m *Message) toDeadLetterMessage(consumeError error) Message {
+	m.AddHeader(Header{
+		Key:   errMessageKey,
+		Value: []byte(getErrorMessage(consumeError, m)),
+	})
+	m.Topic = "" // we set on initialize for dead letter producer
+	return *m
+}
+
 func toMessage(message kcronsumer.Message) *Message {
 	headers := make([]protocol.Header, 0, len(message.Headers))
 	for i := range message.Headers {

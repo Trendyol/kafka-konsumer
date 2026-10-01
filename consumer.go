@@ -37,9 +37,7 @@ func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	}
 
 	if cfg.RetryEnabled {
-		c.base.setupCronsumer(cfg, func(message kcronsumer.Message) error {
-			return c.consumeFn(toMessage(message))
-		})
+		c.base.setupCronsumer(cfg, c.runKonsumerFn)
 	}
 
 	if cfg.APIEnabled {
@@ -47,6 +45,23 @@ func newSingleConsumer(cfg *ConsumerConfig) (Consumer, error) {
 	}
 
 	return &c, nil
+}
+
+func (c *consumer) runKonsumerFn(message kcronsumer.Message) error {
+	msg := toMessage(message)
+
+	consumeErr := c.consumeFn(msg)
+	// Without a dead letter producer, message follows the normal retry flow
+	if consumeErr == nil || !msg.SendDirectToDeadLetter || c.deadLetterProducer == nil {
+		return consumeErr
+	}
+
+	if err := c.sendToDeadLetterWithBackoff(msg.toDeadLetterMessage(consumeErr)); err != nil {
+		c.logger.Errorf("Error producing retried message to dead letter topic, message will be retried. Error: %s", err.Error())
+		return consumeErr
+	}
+
+	return nil
 }
 
 func (c *consumer) GetMetricCollectors() []prometheus.Collector {
@@ -162,12 +177,7 @@ func (c *consumer) process(message *Message) {
 
 	if consumeErr != nil {
 		if message.SendDirectToDeadLetter {
-			message.AddHeader(Header{
-				Key:   errMessageKey,
-				Value: []byte(getErrorMessage(consumeErr, message)),
-			})
-			message.Topic = "" // we set on initialize for dead letter producer
-			if err := c.sendToDeadLetterWithBackoff(*message); err != nil {
+			if err := c.sendToDeadLetterWithBackoff(message.toDeadLetterMessage(consumeErr)); err != nil {
 				errorMessage := fmt.Sprintf(
 					"Error producing message %s to dead letter topic. Error: %s",
 					string(message.Value), err.Error())

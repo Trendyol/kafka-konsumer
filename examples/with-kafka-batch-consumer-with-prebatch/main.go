@@ -50,6 +50,8 @@ type MessageValue struct {
 	KafkaMessage *kafka.Message `json:"-"`
 }
 
+// preBatch is also called for each retried message (one message at a time) before batchConsumeFn,
+// so it must be idempotent and safe for concurrent use.
 func preBatch(messages []*kafka.Message) []*kafka.Message {
 	latestMessageById := getLatestMessageByID(messages)
 

@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"reflect"
@@ -566,6 +567,225 @@ func Test_batchConsumer_runKonsumerFn(t *testing.T) {
 		// Then
 		if actualError.Error() != expectedError.Error() {
 			t.Fatalf("actual error = %s should be equal to expected error = %s", actualError.Error(), expectedError.Error())
+		}
+	})
+
+	retryMessage := kcronsumer.Message{
+		Topic: "retry-topic",
+		Key:   []byte("1"),
+		Value: []byte("foo"),
+		Headers: []kcronsumer.Header{
+			{Key: "x-retry-count", Value: []byte("1")},
+			{Key: errMessageKey, Value: []byte("previous error")},
+		},
+	}
+
+	t.Run("Should_Call_PreBatch_And_Consume_Its_Result", func(t *testing.T) {
+		// Given
+		preBatchCalls := 0
+		var actualWriterData interface{}
+		bc := batchConsumer{
+			preBatchFn: func(messages []*Message) []*Message {
+				preBatchCalls++
+				// PreBatch is free to return new instances
+				return []*Message{{Key: messages[0].Key, Value: messages[0].Value, WriterData: "parsed"}}
+			},
+			consumeFn: func(messages []*Message) error {
+				actualWriterData = messages[0].WriterData
+				return nil
+			},
+		}
+
+		// When
+		actualError := bc.runKonsumerFn(retryMessage)
+
+		// Then
+		if actualError != nil {
+			t.Fatalf("actual error must be nil, got %s", actualError.Error())
+		}
+		if preBatchCalls != 1 {
+			t.Fatalf("preBatchFn must be called once, got %d", preBatchCalls)
+		}
+		if actualWriterData != "parsed" {
+			t.Fatalf("consumeFn must receive WriterData set by preBatchFn, got %v", actualWriterData)
+		}
+	})
+
+	t.Run("Should_Not_Consume_When_PreBatch_Returns_Empty", func(t *testing.T) {
+		// Given
+		consumeCalls := 0
+		bc := batchConsumer{
+			preBatchFn: func(_ []*Message) []*Message { return nil },
+			consumeFn: func(_ []*Message) error {
+				consumeCalls++
+				return errors.New("must not be called")
+			},
+		}
+
+		// When
+		actualError := bc.runKonsumerFn(retryMessage)
+
+		// Then
+		if actualError != nil {
+			t.Fatalf("actual error must be nil, got %s", actualError.Error())
+		}
+		if consumeCalls != 0 {
+			t.Fatalf("consumeFn must not be called, got %d", consumeCalls)
+		}
+	})
+
+	t.Run("Should_Send_To_Dead_Letter_When_PreBatch_Sets_SendDirectToDeadLetter", func(t *testing.T) {
+		// Given
+		mdlp := &mockDeadLetterProducer{}
+		bc := batchConsumer{
+			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), deadLetterProducer: mdlp},
+			preBatchFn: func(messages []*Message) []*Message {
+				messages[0].SendDirectToDeadLetter = true
+				messages[0].ErrDescription = "invalid payload"
+				return messages
+			},
+			consumeFn: func(_ []*Message) error { return nil },
+		}
+
+		// When
+		actualError := bc.runKonsumerFn(retryMessage)
+
+		// Then
+		if actualError != nil {
+			t.Fatalf("actual error must be nil to prevent retry, got %s", actualError.Error())
+		}
+		if mdlp.produceCalled != 1 || len(mdlp.received) != 1 {
+			t.Fatalf("dead letter producer must receive one message once, got %d calls %d messages", mdlp.produceCalled, len(mdlp.received))
+		}
+		produced := mdlp.received[0]
+		if produced.Topic != "" {
+			t.Fatalf("produced message Topic must be empty, got %q", produced.Topic)
+		}
+		if !bytes.Equal(produced.Key, retryMessage.Key) || !bytes.Equal(produced.Value, retryMessage.Value) {
+			t.Fatalf("produced message key/value must be preserved, got %q/%q", produced.Key, produced.Value)
+		}
+		if v, _ := getHeaderValue(produced, "x-retry-count"); v != "1" {
+			t.Fatalf("existing headers must be preserved, got x-retry-count %q", v)
+		}
+		assertErrHeader(t, produced, "invalid payload")
+		if len(produced.Headers) != 2 {
+			t.Fatalf("%s header must be replaced, not duplicated, got %s", errMessageKey, produced.Headers.Pretty())
+		}
+	})
+
+	t.Run("Should_Send_To_Dead_Letter_When_Consume_Sets_SendDirectToDeadLetter", func(t *testing.T) {
+		// Given
+		mdlp := &mockDeadLetterProducer{}
+		bc := batchConsumer{
+			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), deadLetterProducer: mdlp},
+			consumeFn: func(messages []*Message) error {
+				messages[0].SendDirectToDeadLetter = true
+				return errors.New("err occurred")
+			},
+		}
+
+		// When
+		actualError := bc.runKonsumerFn(retryMessage)
+
+		// Then
+		if actualError != nil {
+			t.Fatalf("actual error must be nil to prevent retry, got %s", actualError.Error())
+		}
+		if mdlp.produceCalled != 1 || len(mdlp.received) != 1 {
+			t.Fatalf("dead letter producer must receive one message once, got %d calls %d messages", mdlp.produceCalled, len(mdlp.received))
+		}
+		if mdlp.received[0].Topic != "" {
+			t.Fatalf("produced message Topic must be empty, got %q", mdlp.received[0].Topic)
+		}
+		assertErrHeader(t, mdlp.received[0], "err occurred")
+	})
+
+	t.Run("Should_Return_Error_When_IsFailed_With_ErrDescription", func(t *testing.T) {
+		// Given
+		mdlp := &mockDeadLetterProducer{}
+		bc := batchConsumer{
+			base:       &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), deadLetterProducer: mdlp},
+			preBatchFn: func(messages []*Message) []*Message { return messages },
+			consumeFn: func(messages []*Message) error {
+				messages[0].IsFailed = true
+				messages[0].ErrDescription = "db is down"
+				return errors.New("default error")
+			},
+		}
+
+		// When
+		actualError := bc.runKonsumerFn(retryMessage)
+
+		// Then
+		if actualError == nil || actualError.Error() != "db is down" {
+			t.Fatalf("actual error = %v should be equal to message error description", actualError)
+		}
+		if mdlp.produceCalled != 0 {
+			t.Fatalf("dead letter producer must not be called, got %d", mdlp.produceCalled)
+		}
+	})
+
+	t.Run("Should_Return_Nil_When_PreBatch_Does_Not_Exist_And_Consume_Succeeds", func(t *testing.T) {
+		// Given
+		consumeCalls := 0
+		bc := batchConsumer{consumeFn: func(_ []*Message) error {
+			consumeCalls++
+			return nil
+		}}
+
+		// When
+		actualError := bc.runKonsumerFn(retryMessage)
+
+		// Then
+		if actualError != nil {
+			t.Fatalf("actual error must be nil, got %s", actualError.Error())
+		}
+		if consumeCalls != 1 {
+			t.Fatalf("consumeFn must be called once, got %d", consumeCalls)
+		}
+	})
+
+	t.Run("Should_Return_Error_When_Dead_Letter_Producer_Does_Not_Exist", func(t *testing.T) {
+		// Given
+		consumeErr := errors.New("err occurred")
+		bc := batchConsumer{
+			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug)},
+			consumeFn: func(messages []*Message) error {
+				messages[0].SendDirectToDeadLetter = true
+				return consumeErr
+			},
+		}
+
+		// When
+		actualError := bc.runKonsumerFn(retryMessage)
+
+		// Then
+		if !errors.Is(actualError, consumeErr) {
+			t.Fatalf("actual error = %v should be equal to consume error", actualError)
+		}
+	})
+
+	t.Run("Should_Return_Error_Without_Panic_When_Dead_Letter_Producer_Fails", func(t *testing.T) {
+		// Given
+		consumeErr := errors.New("err occurred")
+		fdlp := &failingDeadLetterProducer{}
+		bc := batchConsumer{
+			base: &base{metric: &ConsumerMetric{}, logger: NewZapLogger(LogLevelDebug), deadLetterProducer: fdlp},
+			consumeFn: func(messages []*Message) error {
+				messages[0].SendDirectToDeadLetter = true
+				return consumeErr
+			},
+		}
+
+		// When
+		actualError := bc.runKonsumerFn(retryMessage)
+
+		// Then
+		if !errors.Is(actualError, consumeErr) {
+			t.Fatalf("actual error = %v should be equal to consume error", actualError)
+		}
+		if fdlp.called != 5 {
+			t.Fatalf("dead letter producer must be called 5 times with backoff, got %d", fdlp.called)
 		}
 	})
 }
