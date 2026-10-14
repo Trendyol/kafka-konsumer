@@ -145,7 +145,7 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 			HeartbeatInterval: cfg.Reader.HeartbeatInterval,
 			SessionTimeout:    cfg.Reader.SessionTimeout,
 			RebalanceTimeout:  cfg.Reader.RebalanceTimeout,
-			StartOffset:       kcronsumer.ToStringOffset(cfg.Reader.StartOffset),
+			StartOffset:       kcronsumer.ToStringOffset(cfg.RetryConfiguration.StartOffset),
 			RetentionTime:     cfg.Reader.RetentionTime,
 			BackOffStrategy:   kcronsumer.GetBackoffStrategy(cfg.RetryConfiguration.BackOffStrategyName),
 		},
@@ -254,6 +254,10 @@ type RetryConfiguration struct {
 	// Valid values (case-sensitive): "fixed", "linear", "exponential".
 	// If left empty, defaults to "fixed". An invalid value causes a startup error.
 	BackOffStrategyName string
+	// StartOffset is the retry-topic consumer start when the group has no committed offset.
+	// Same as kafka.ReaderConfig.StartOffset: kafka.FirstOffset, kafka.LastOffset, or 0.
+	// Zero defaults to FirstOffset. The main reader StartOffset is not used.
+	StartOffset int64
 }
 
 type BatchConfiguration struct {
@@ -292,6 +296,10 @@ func (cfg *ConsumerConfig) newKafkaReader(logger LoggerInterface) (Reader, error
 	if cfg.RetryEnabled && kcronsumer.GetBackoffStrategy(cfg.RetryConfiguration.BackOffStrategyName) == nil {
 		return nil, fmt.Errorf("invalid BackOffStrategyName %q; valid values are: fixed, linear, exponential (case-sensitive)",
 			cfg.RetryConfiguration.BackOffStrategyName)
+	}
+	offset := cfg.RetryConfiguration.StartOffset
+	if cfg.RetryEnabled && offset != 0 && offset != kafka.FirstOffset && offset != kafka.LastOffset {
+		return nil, fmt.Errorf("invalid retry StartOffset %d; set kafka.FirstOffset, kafka.LastOffset, or 0", offset)
 	}
 
 	dialer, err := cfg.newKafkaDialer(logger)

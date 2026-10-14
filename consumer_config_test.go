@@ -225,6 +225,35 @@ func TestConsumerConfig_newCronsumerConfig(t *testing.T) {
 			t.Errorf("expected BatchBytes 1024, got %d", actual.Producer.BatchBytes)
 		}
 	})
+	t.Run("Should_Resolve_Retry_StartOffset_Independent_Of_Reader", func(t *testing.T) {
+		for _, tt := range []struct {
+			in   int64
+			want kcronsumer.Offset
+		}{
+			{0, kcronsumer.OffsetEarliest},
+			{kafka.FirstOffset, kcronsumer.OffsetEarliest},
+			{kafka.LastOffset, kcronsumer.OffsetLatest},
+		} {
+			cfg := ConsumerConfig{
+				Reader:             ReaderConfig{StartOffset: kafka.LastOffset},
+				RetryConfiguration: RetryConfiguration{StartOffset: tt.in},
+			}
+			if got := cfg.newCronsumerConfig().Consumer.StartOffset; got != tt.want {
+				t.Errorf("StartOffset %d: got %q, want %q", tt.in, got, tt.want)
+			}
+		}
+	})
+	t.Run("Should_Return_Error_When_Retry_StartOffset_Is_Invalid", func(t *testing.T) {
+		cfg := ConsumerConfig{
+			RetryEnabled:       true,
+			RetryConfiguration: RetryConfiguration{StartOffset: 1},
+		}
+		log := NewZapLogger(LogLevelDebug)
+
+		if _, err := cfg.newKafkaReader(log); err == nil {
+			t.Fatal("expected error for invalid retry StartOffset, got nil")
+		}
+	})
 	t.Run("Should_Return_Error_When_BackOffStrategyName_Is_Invalid", func(t *testing.T) {
 		// Given
 		cfg := ConsumerConfig{
