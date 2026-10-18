@@ -878,12 +878,14 @@ func Test_batchConsumer_chunk(t *testing.T) {
 			shouldPanic: false,
 		},
 		{
-			name:          "Should_Panic_When_chunkByteSize_Less_Than_Message_Size",
+			name:          "Should_Keep_Oversized_Message_In_Single_Chunk",
 			allMessages:   createMessages(0, 1),
 			chunkSize:     2,
 			chunkByteSize: 3, // Message size is 4
-			expected:      nil,
-			shouldPanic:   true,
+			expected: [][]*Message{
+				createMessages(0, 1),
+			},
+			shouldPanic: false,
 		},
 		{
 			name:          "Should_Panic_When_chunkSize=0",

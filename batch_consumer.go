@@ -220,15 +220,14 @@ func chunkMessagesOptimized(allMessages []*Message, chunkSize int, chunkByteSize
 
 		// Check if adding this message would exceed either the chunk size or the byte size
 		if len(currentChunk) >= chunkSize || (chunkByteSize > 0 && currentChunkBytes+messageByteSize > chunkByteSize) {
-			if len(currentChunk) == 0 {
-				panic(fmt.Sprintf("invalid chunk byte size (messageGroupByteSizeLimit) %d, "+
-					"message byte size is %d, bigger!, increase chunk byte size limit", chunkByteSize, messageByteSize))
+			if len(currentChunk) > 0 {
+				chunks = append(chunks, currentChunk)
+				currentChunk = make([]*Message, 0, chunkSize)
+				currentChunkBytes = 0
 			}
-			chunks = append(chunks, currentChunk)
-			currentChunk = make([]*Message, 0, chunkSize)
-			currentChunkBytes = 0
 		}
 
+		// An oversized message cannot be split, so it is processed in its own chunk.
 		// Add the message to the current chunk
 		currentChunk = append(currentChunk, message)
 		currentChunkBytes += messageByteSize
