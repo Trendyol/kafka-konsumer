@@ -1,3 +1,5 @@
+
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Trendyol/kafka-konsumer/badge)](https://scorecard.dev/viewer/?uri=github.com/Trendyol/kafka-konsumer)
 # Kafka Konsumer
 
 [![🔨Build And Test](https://github.com/Trendyol/kafka-konsumer/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/Trendyol/kafka-konsumer/actions/workflows/test.yml)
