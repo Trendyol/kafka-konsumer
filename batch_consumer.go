@@ -280,6 +280,10 @@ func countFailedMessages(chunkMessages []*Message) int64 {
 }
 
 func (b *batchConsumer) process(chunkMessages []*Message) {
+	handlerStart := time.Now()
+	for _, message := range chunkMessages {
+		b.metric.observeMessageQueueLatency(message, b.consumerGroup, handlerStart)
+	}
 	consumeErr := b.consumeFn(chunkMessages)
 
 	if consumeErr != nil {

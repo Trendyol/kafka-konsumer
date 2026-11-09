@@ -85,6 +85,7 @@ type base struct {
 	distributedTracingEnabled    bool
 	consumerState                state
 	metricPrefix                 string
+	consumerGroup                string
 	mu                           sync.Mutex
 	consumerCfg                  *ConsumerConfig
 	deadLetterProducer           Producer
@@ -134,6 +135,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		consumerState:                stateRunning,
 		skipMessageByHeaderFn:        cfg.SkipMessageByHeaderFn,
 		metricPrefix:                 cfg.MetricPrefix,
+		consumerGroup:                cfg.Reader.GroupID,
 		mu:                           sync.Mutex{},
 		consumerCfg:                  cfg,
 		deadLetterProducerBatchBytes: cfg.DeadLetterProducerBatchBytes,

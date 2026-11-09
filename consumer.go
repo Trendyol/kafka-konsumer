@@ -173,6 +173,7 @@ func (c *consumer) consume(messages *[]*Message, commitMessages *[]kafka.Message
 }
 
 func (c *consumer) process(message *Message) {
+	c.metric.observeMessageQueueLatency(message, c.consumerGroup, time.Now())
 	consumeErr := c.consumeFn(message)
 
 	if consumeErr != nil {
