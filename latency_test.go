@@ -210,43 +210,95 @@ func TestMessageQueueLatencyConcurrentCollection(t *testing.T) {
 }
 
 func TestMessageQueueLatencyAfterPreBatch(t *testing.T) {
-	b := &base{
-		metric: &ConsumerMetric{}, consumerGroup: "group", r: &mockReader{}, concurrency: 1,
-		batchConsumingStream: make(chan []*Message), messageProcessedStream: make(chan struct{}),
-	}
-	registry := prometheus.NewPedanticRegistry()
-	registry.MustRegister(b.GetMetricCollectors()...)
-	c := batchConsumer{
-		base: b, messageGroupLimit: 10,
-		preBatchFn: func(messages []*Message) []*Message {
-			// Filter one message and replace another, preserving Kafka metadata.
-			return []*Message{{Topic: messages[1].Topic, Time: messages[1].Time}}
-		},
-		consumeFn: func([]*Message) error { return nil },
-	}
-	now := time.Now()
-	messages := []*Message{
-		{Topic: "filtered", Time: now.Add(-time.Hour)},
-		{Topic: "retained", Time: now.Add(-time.Minute)},
-	}
-	commits := []segmentio.Message{{Topic: "filtered"}, {Topic: "retained"}}
-	bytes := 0
-	b.wg.Add(1)
-	c.setupConcurrentWorkers()
-	c.consume(&messages, &commits, &bytes)
-	close(b.batchConsumingStream)
-	b.wg.Wait()
+	for _, test := range []struct {
+		name    string
+		indices []int
+		mutate  bool
+	}{
+		{name: "replacement drops Time", indices: []int{0, 1, 2, 3}},
+		{name: "hook overwrites Time in place", indices: []int{0, 1, 2, 3}, mutate: true},
+		{name: "filter by partition", indices: []int{1}},
+		{name: "filter by offset", indices: []int{2}},
+		{name: "filter by topic", indices: []int{3}},
+		{name: "reorder replacements", indices: []int{3, 2, 1, 0}},
+		{name: "filter and reorder", indices: []int{3, 1}},
+		{name: "filter all"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			b := &base{
+				metric: &ConsumerMetric{}, consumerGroup: "group", r: &mockReader{}, concurrency: 2,
+				batchConsumingStream: make(chan []*Message, 4), messageProcessedStream: make(chan struct{}),
+			}
+			registry := prometheus.NewPedanticRegistry()
+			registry.MustRegister(b.GetMetricCollectors()...)
+			now := time.Now()
+			messages := []*Message{
+				{Topic: "orders", Partition: 0, Offset: 1, Time: now.Add(-time.Minute)},
+				{Topic: "orders", Partition: 1, Offset: 1, Time: now.Add(-2 * time.Minute)},
+				{Topic: "orders", Partition: 0, Offset: 2, Time: now.Add(-3 * time.Minute)},
+				{Topic: "payments", Partition: 0, Offset: 1, Time: now.Add(-4 * time.Minute)},
+			}
+			wantCount := make(map[string]uint64)
+			wantSum := make(map[string]float64)
+			for _, index := range test.indices {
+				message := messages[index]
+				wantCount[message.Topic]++
+				wantSum[message.Topic] += now.Sub(message.Time).Seconds()
+			}
+			c := batchConsumer{
+				base: b, messageGroupLimit: 1,
+				preBatchFn: func(messages []*Message) []*Message {
+					result := make([]*Message, 0, len(test.indices))
+					for _, index := range test.indices {
+						message := messages[index]
+						if test.mutate {
+							message.Time = time.Now()
+						} else {
+							message = &Message{Topic: message.Topic, Partition: message.Partition, Offset: message.Offset}
+						}
+						result = append(result, message)
+					}
+					return result
+				},
+				consumeFn: func(messages []*Message) error {
+					for _, message := range messages {
+						if !test.mutate && !message.Time.IsZero() {
+							t.Error("metric collection must not change the hook output")
+						}
+					}
+					return nil
+				},
+			}
+			commits := []segmentio.Message{}
+			bytes := 0
+			b.wg.Add(b.concurrency)
+			c.setupConcurrentWorkers()
+			c.consume(&messages, &commits, &bytes)
+			close(b.batchConsumingStream)
+			b.wg.Wait()
+			elapsed := time.Since(now).Seconds()
 
-	metrics := gatherLatency(t, registry, "kafka_konsumer_message_queue_latency_seconds")
-	if len(metrics) != 1 || metrics[0].GetHistogram().GetSampleCount() != 1 {
-		t.Fatalf("only messages reaching the handler should be observed: %v", metrics)
-	}
-	for _, label := range metrics[0].Label {
-		if label.GetName() == "topic" && label.GetValue() != "retained" {
-			t.Fatalf("filtered message contributed a latency observation: %v", label)
-		}
-	}
-	if metrics[0].GetHistogram().GetSampleSum() < 60 {
-		t.Fatal("original Kafka timestamp was not used")
+			metrics := gatherLatency(t, registry, "kafka_konsumer_message_queue_latency_seconds")
+			if len(metrics) != len(wantCount) {
+				t.Fatalf("expected %d topic histograms, got %v", len(wantCount), metrics)
+			}
+			for _, metric := range metrics {
+				var topic string
+				for _, label := range metric.Label {
+					if label.GetName() == "topic" {
+						topic = label.GetValue()
+					}
+				}
+				histogram := metric.GetHistogram()
+				if histogram.GetSampleCount() != wantCount[topic] {
+					t.Errorf("topic %s: expected %d observations, got %d", topic, wantCount[topic], histogram.GetSampleCount())
+				}
+				lower := wantSum[topic]
+				upper := lower + elapsed*float64(wantCount[topic])
+				if sum := histogram.GetSampleSum(); sum < lower || sum > upper {
+					t.Errorf("topic %s: expected original timestamp latency in [%f, %f], got %f", topic, lower, upper, sum)
+				}
+			}
+		})
 	}
 }
