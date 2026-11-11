@@ -16,6 +16,7 @@ type MetricCollector struct {
 	totalUnprocessedMessagesCounter      *prometheus.Desc
 	totalProcessedMessagesCounter        *prometheus.Desc
 	totalErrorCountDuringFetchingMessage *prometheus.Desc
+	messageQueueLatency                  *prometheus.Desc
 }
 
 func NewMetricCollector(metricPrefix string, consumerMetric *ConsumerMetric) *MetricCollector {
@@ -25,6 +26,12 @@ func NewMetricCollector(metricPrefix string, consumerMetric *ConsumerMetric) *Me
 
 	return &MetricCollector{
 		consumerMetric: consumerMetric,
+		messageQueueLatency: prometheus.NewDesc(
+			prometheus.BuildFQName(metricPrefix, "", "message_queue_latency_seconds"),
+			messageQueueLatencyHelp,
+			[]string{"topic", "consumer_group"},
+			nil,
+		),
 
 		totalProcessedMessagesCounter: prometheus.NewDesc(
 			prometheus.BuildFQName(metricPrefix, "processed_messages_total", "current"),
@@ -48,7 +55,10 @@ func NewMetricCollector(metricPrefix string, consumerMetric *ConsumerMetric) *Me
 }
 
 func (s *MetricCollector) Describe(ch chan<- *prometheus.Desc) {
-	prometheus.DescribeByCollect(s, ch)
+	ch <- s.totalProcessedMessagesCounter
+	ch <- s.totalUnprocessedMessagesCounter
+	ch <- s.totalErrorCountDuringFetchingMessage
+	ch <- s.messageQueueLatency
 }
 
 var emptyStringList []string
@@ -74,6 +84,21 @@ func (s *MetricCollector) Collect(ch chan<- prometheus.Metric) {
 		float64(atomic.LoadInt64(&s.consumerMetric.totalErrorCountDuringFetchingMessage)),
 		emptyStringList...,
 	)
+
+	for labels, histogram := range s.consumerMetric.latencySnapshot() {
+		buckets := make(map[float64]uint64, len(messageQueueLatencyBuckets))
+		for i, upperBound := range messageQueueLatencyBuckets {
+			buckets[upperBound] = histogram.buckets[i]
+		}
+		ch <- prometheus.MustNewConstHistogram(
+			s.messageQueueLatency,
+			histogram.count,
+			histogram.sum,
+			buckets,
+			labels.topic,
+			labels.consumerGroup,
+		)
+	}
 }
 
 func NewMetricMiddleware(cfg *ConsumerConfig,

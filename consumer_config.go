@@ -63,9 +63,8 @@ type ConsumerConfig struct {
 
 	// MetricPrefix is used for prometheus fq name prefix.
 	// If not provided, default metric prefix value is `kafka_konsumer`.
-	// Currently, there are two exposed prometheus metrics. `processed_messages_total_current` and `unprocessed_messages_total_current`.
-	// So, if default metric prefix used, metrics names are `kafka_konsumer_processed_messages_total_current` and
-	// `kafka_konsumer_unprocessed_messages_total_current`.
+	// Applies to the processed/unprocessed message counters, fetch error counter,
+	// and message_queue_latency_seconds histogram.
 	MetricPrefix string
 }
 

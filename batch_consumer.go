@@ -20,6 +20,20 @@ type batchConsumer struct {
 
 	messageGroupLimit         int
 	messageGroupByteSizeLimit int
+
+	// Written before dispatching chunks and cleared after all workers finish.
+	// Workers only read this snapshot, so hooks cannot alter metric timestamps.
+	originalTimestamps map[messageIdentity]time.Time
+}
+
+type messageIdentity struct {
+	topic     string
+	partition int
+	offset    int64
+}
+
+func identityOf(message *Message) messageIdentity {
+	return messageIdentity{topic: message.Topic, partition: message.Partition, offset: message.Offset}
 }
 
 func (b *batchConsumer) Pause() {
@@ -245,6 +259,10 @@ func (b *batchConsumer) consume(allMessages *[]*Message, commitMessages *[]kafka
 	chunks := chunkMessagesOptimized(*allMessages, b.messageGroupLimit, b.messageGroupByteSizeLimit)
 
 	if b.preBatchFn != nil {
+		b.originalTimestamps = make(map[messageIdentity]time.Time, len(*allMessages))
+		for _, message := range *allMessages {
+			b.originalTimestamps[identityOf(message)] = message.Time
+		}
 		preBatchResult := b.preBatchFn(*allMessages)
 		chunks = chunkMessagesOptimized(preBatchResult, b.messageGroupLimit, b.messageGroupByteSizeLimit)
 	}
@@ -258,6 +276,7 @@ func (b *batchConsumer) consume(allMessages *[]*Message, commitMessages *[]kafka
 	for i := 0; i < len(chunks); i++ {
 		<-b.messageProcessedStream
 	}
+	b.originalTimestamps = nil
 
 	if err := b.r.CommitMessages(*commitMessages); err != nil {
 		b.logger.Errorf("Commit Error %s,", err.Error())
@@ -280,6 +299,15 @@ func countFailedMessages(chunkMessages []*Message) int64 {
 }
 
 func (b *batchConsumer) process(chunkMessages []*Message) {
+	handlerStart := time.Now()
+	for _, message := range chunkMessages {
+		timestamp := message.Time
+		if b.originalTimestamps != nil {
+			// Unmatched hook output has no original Kafka timestamp to measure.
+			timestamp = b.originalTimestamps[identityOf(message)]
+		}
+		b.metric.observeMessageQueueLatency(&Message{Topic: message.Topic, Time: timestamp}, b.consumerGroup, handlerStart)
+	}
 	consumeErr := b.consumeFn(chunkMessages)
 
 	if consumeErr != nil {
