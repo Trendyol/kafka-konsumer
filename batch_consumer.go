@@ -283,6 +283,8 @@ func (b *batchConsumer) consume(allMessages *[]*Message, commitMessages *[]kafka
 	}
 
 	// Clearing resources
+	clear(*commitMessages)
+	clear(*allMessages)
 	*commitMessages = (*commitMessages)[:0]
 	*allMessages = (*allMessages)[:0]
 	*messageByteSizeLimit = 0
