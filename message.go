@@ -81,6 +81,7 @@ func (m *Message) valueSize() int {
 type IncomingMessage struct {
 	kafkaMessage *kafka.Message
 	message      *Message
+	skip         bool
 }
 
 func (m *Message) toKafkaMessage() kafka.Message {
@@ -147,12 +148,14 @@ func (m *Message) toRetryableMessage(retryTopic string, consumeError error) kcro
 }
 
 func (m *Message) toDeadLetterMessage(consumeError error) Message {
-	m.AddHeader(Header{
+	message := *m
+	message.Headers = append(Headers(nil), m.Headers...)
+	message.AddHeader(Header{
 		Key:   errMessageKey,
 		Value: []byte(getErrorMessage(consumeError, m)),
 	})
-	m.Topic = "" // we set on initialize for dead letter producer
-	return *m
+	message.Topic = "" // Use the configured dead letter producer topic.
+	return message
 }
 
 func toMessage(message kcronsumer.Message) *Message {
