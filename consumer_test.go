@@ -174,14 +174,12 @@ func Test_consumer_process(t *testing.T) {
 			},
 		}
 
-		defer func() {
-			if r := recover(); r == nil {
-				t.Errorf("The code did not panic")
-			}
-		}()
-
 		// When && Then
-		c.process(&Message{})
+		err := c.process(&Message{})
+		var failure *processError
+		if !errors.As(err, &failure) || failure.Stage != "retry" {
+			t.Fatalf("expected retry delivery failure, got %v", err)
+		}
 	})
 
 	t.Run("When_Re-processing_Is_Failed_And_Retry_Failed_5_times", func(t *testing.T) {
@@ -195,17 +193,15 @@ func Test_consumer_process(t *testing.T) {
 			},
 		}
 
-		defer func() {
-			if r := recover(); r == nil {
-				t.Errorf("The code did not panic")
-			}
-			if mc.times != mc.maxRetry {
-				t.Errorf("Expected produce to be called %d times, but got %d", mc.maxRetry, mc.times)
-			}
-		}()
-
 		// When && Then
-		c.process(&Message{})
+		err := c.process(&Message{})
+		var failure *processError
+		if !errors.As(err, &failure) || failure.Stage != "retry" {
+			t.Fatalf("expected retry delivery failure, got %v", err)
+		}
+		if mc.times != mc.maxRetry {
+			t.Errorf("Expected produce to be called %d times, but got %d", mc.maxRetry, mc.times)
+		}
 	})
 
 	t.Run("When_SendDirectToDeadLetter_True_And_RetryEnabled_Should_Not_Call_Retry", func(t *testing.T) {
@@ -288,7 +284,7 @@ func Test_consumer_process(t *testing.T) {
 		assertErrHeader(t, produced, "custom direct error")
 	})
 
-	t.Run("When_DeadLetter_Producer_Fails_Should_Panic_After_Backoff", func(t *testing.T) {
+	t.Run("When_DeadLetter_Producer_Fails_Should_Return_Error_After_Backoff", func(t *testing.T) {
 		// Given
 		fdlp := &failingDeadLetterProducer{}
 		c := consumer{
@@ -297,17 +293,15 @@ func Test_consumer_process(t *testing.T) {
 		}
 		msg := &Message{Key: []byte("1"), Value: []byte("foo"), SendDirectToDeadLetter: true}
 
-		defer func() {
-			if r := recover(); r == nil {
-				t.Errorf("The code did not panic")
-			}
-			if fdlp.called != 5 {
-				t.Fatalf("dead letter producer must be called 5 times with backoff, got %d", fdlp.called)
-			}
-		}()
-
 		// When && Then
-		c.process(msg)
+		err := c.process(msg)
+		var failure *processError
+		if !errors.As(err, &failure) || failure.Stage != "dlq" {
+			t.Fatalf("expected DLQ delivery failure, got %v", err)
+		}
+		if fdlp.called != 5 {
+			t.Fatalf("dead letter producer must be called 5 times with backoff, got %d", fdlp.called)
+		}
 	})
 }
 

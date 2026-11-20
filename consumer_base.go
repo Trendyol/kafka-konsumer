@@ -90,6 +90,7 @@ type base struct {
 	consumerCfg                  *ConsumerConfig
 	deadLetterProducer           Producer
 	deadLetterProducerBatchBytes int64
+	deferHeaderCommit            bool
 }
 
 func NewConsumer(cfg *ConsumerConfig) (Consumer, error) {
@@ -123,7 +124,7 @@ func newBase(cfg *ConsumerConfig, messageChSize int) (*base, error) {
 		concurrency:                  cfg.Concurrency,
 		retryEnabled:                 cfg.RetryEnabled,
 		transactionalRetry:           *cfg.TransactionalRetry,
-		deadLetterTopic:              cfg.DeadLetterTopic,
+		deadLetterTopic:              resolveDeadLetterTopic(cfg),
 		distributedTracingEnabled:    cfg.DistributedTracingEnabled,
 		logger:                       log,
 		subprocesses:                 newSubProcesses(),
@@ -217,10 +218,14 @@ func (c *base) startConsume() {
 			return
 		default:
 			m := &kafka.Message{}
-			err := c.r.FetchMessage(c.context, m)
+			readCtx := c.context
+			if readCtx == nil {
+				readCtx = context.Background()
+			}
+			err := c.r.FetchMessage(readCtx, m)
 			if err != nil {
 				c.logger.Debug("c.r.FetchMessage ", err.Error())
-				if c.context.Err() != nil {
+				if readCtx.Err() != nil {
 					continue
 				}
 
@@ -237,17 +242,24 @@ func (c *base) startConsume() {
 
 			if c.skipMessageByHeaderFn != nil && c.skipMessageByHeaderFn(m.Headers) {
 				c.logger.Debugf("Message is not processed. Header filter applied. Headers: %v", incomingMessage.message.Headers.Pretty())
-				if err = c.r.CommitMessages([]kafka.Message{*m}); err != nil {
-					c.logger.Errorf("Commit Error %s,", err.Error())
+				if c.deferHeaderCommit {
+					incomingMessage.skip = true
+				} else {
+					if err = c.r.CommitMessages([]kafka.Message{*m}); err != nil {
+						c.logger.Errorf("Commit Error %s,", err.Error())
+					}
+					continue
 				}
-				continue
 			}
 
 			if c.distributedTracingEnabled {
 				incomingMessage.message.Context = c.propagator.Extract(context.Background(), otelkafkakonsumer.NewMessageCarrier(m))
 			}
 
-			c.incomingMessageStream <- incomingMessage
+			select {
+			case c.incomingMessageStream <- incomingMessage:
+			case <-readCtx.Done():
+			}
 		}
 	}
 }
@@ -289,11 +301,16 @@ func (c *base) Resume() {
 	go c.startConsume()
 }
 
-func initializeDeadLetterProducer(cfg *ConsumerConfig) (Producer, error) {
+func resolveDeadLetterTopic(cfg *ConsumerConfig) string {
 	deadLetterTopic := cfg.DeadLetterTopic
 	if deadLetterTopic == "" {
 		deadLetterTopic = cfg.RetryConfiguration.DeadLetterTopic
 	}
+	return deadLetterTopic
+}
+
+func initializeDeadLetterProducer(cfg *ConsumerConfig) (Producer, error) {
+	deadLetterTopic := resolveDeadLetterTopic(cfg)
 
 	deadLetterProducer, err := NewProducer(&ProducerConfig{
 		Writer: WriterConfig{
