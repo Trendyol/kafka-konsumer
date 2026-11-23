@@ -291,22 +291,30 @@ func (c *base) Resume() {
 
 func initializeDeadLetterProducer(cfg *ConsumerConfig) (Producer, error) {
 	deadLetterTopic := cfg.DeadLetterTopic
+	brokers := cfg.Reader.Brokers
+	sasl := cfg.SASL
+	tls := cfg.TLS
 	if deadLetterTopic == "" {
 		deadLetterTopic = cfg.RetryConfiguration.DeadLetterTopic
+		if len(cfg.RetryConfiguration.Brokers) > 0 {
+			brokers = cfg.RetryConfiguration.Brokers
+			sasl = cfg.RetryConfiguration.SASL
+			tls = cfg.RetryConfiguration.TLS
+		}
 	}
 
 	deadLetterProducer, err := NewProducer(&ProducerConfig{
 		Writer: WriterConfig{
 			Topic:                  deadLetterTopic,
-			Brokers:                cfg.Reader.Brokers,
+			Brokers:                brokers,
 			AllowAutoTopicCreation: true,
 			RequiredAcks:           cfg.RetryConfiguration.ProducerRequiredAcks,
 			Compression:            cfg.RetryConfiguration.ProducerCompression,
 			BatchBytes:             math.MaxInt,
 		},
 		LogLevel: cfg.LogLevel,
-		SASL:     cfg.SASL,
-		TLS:      cfg.TLS,
+		SASL:     sasl,
+		TLS:      tls,
 		ClientID: cfg.ClientID,
 	})
 	if err != nil {

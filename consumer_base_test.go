@@ -223,6 +223,31 @@ func Test_base_Resume(t *testing.T) {
 }
 
 func Test_initializeDeadLetterProducer(t *testing.T) {
+	t.Run("Should_Use_Retry_Brokers_For_Retry_Dead_Letter_Topic", func(t *testing.T) {
+		cfg := ConsumerConfig{
+			Reader: ReaderConfig{Brokers: []string{"main.test.com:9092"}},
+			SASL:   &SASLConfig{Type: MechanismPlain, Username: "main", Password: "main-password"},
+			RetryConfiguration: RetryConfiguration{
+				Brokers:         []string{"retry.test.com:9092"},
+				DeadLetterTopic: "retry-error",
+			},
+		}
+
+		dlq, err := initializeDeadLetterProducer(&cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer dlq.Close()
+
+		writer := dlq.(*producer).w.(*kafka.Writer)
+		if writer.Topic != "retry-error" || writer.Addr.String() != "retry.test.com:9092" {
+			t.Fatalf("unexpected dead letter destination: %s on %s", writer.Topic, writer.Addr)
+		}
+		if writer.Transport != nil {
+			t.Fatal("main cluster authentication must not be used on the unsecured retry cluster")
+		}
+	})
+
 	t.Run("Should_Set_Producer_Compression", func(t *testing.T) {
 		// Given
 		cfg := ConsumerConfig{
